@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magische Toverstaf vs Piraten</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            margin: 20px;
+            color: #333;
+        }
+        #game-container {
+            position: relative;
+            width: 90vw;
+            height: 60vh;
+            max-width: 800px;
+            max-height: 600px;
+            background-color: #000;
+            border: 2px solid #333;
+        }
+        #game-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+        #controls button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #controls button:hover {
+            background-color: #45a049;
+        }
+        #stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-size: 18px;
+        }
+        #instructions {
+            margin: 20px;
+            max-width: 800px;
+            text-align: center;
+        }
+        #mobile-controls {
+            display: none;
+            justify-content: space-around;
+            margin-top: 10px;
+            width: 90vw;
+            max-width: 800px;
+        }
+        #mobile-controls button {
+            padding: 15px 30px;
+            font-size: 16px;
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #mobile-controls button:active {
+            background-color: #006d9e;
+        }
+        @media (max-width: 600px) {
+            #mobile-controls {
+                display: flex;
+            }
+            #controls {
+                bottom: 5px;
+            }
+            #stats {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Magische Toverstaf vs Piraten</h1>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="controls">
+            <button id="start-button">Start</button>
+            <button id="pause-button">Pauze</button>
+        </div>
+        <div id="stats">
+            <p>Score: <span id="score">0</span></p>
+            <p>Levens: <span id="lives">3</span></p>
+            <p>Level: <span id="level">1</span></p>
+            <p>Hiscore: <span id="hiscore">0</span></p>
+        </div>
+    </div>
+    <div id="mobile-controls">
+        <button id="left-button">Links</button>
+        <button id="shoot-button">Schiet</button>
+        <button id="right-button">Rechts</button>
+    </div>
+    <div id="instructions">
+        <h2>Uitleg</h2>
+        <p>Bescherm de magische toverstaf tegen de piraten door spreuken af te schieten. Draai de toverstaf met de pijltjestoetsen (of touch-knoppen op mobiel) en schiet met de spatiebalk (of schietknop op mobiel). Versla piraten om punten te scoren: gewone piraten (10 punten), blauwe dikke piraten (20 punten), rode kapiteins (50 punten). Je hebt 3 levens. Het spel wordt moeilijker naarmate je level stijgt!</p>
+    </div>
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+
+        let wandAngle = 0;
+        const wandLength = 50;
+        let spells = [];
+        let pirates = [];
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let defeatedPirates = 0;
+        let hiscore = localStorage.getItem('hiscore') || 0;
+        document.getElementById('hiscore').textContent = hiscore;
+        let gameRunning = false;
+        let gamePaused = false;
+
+        function drawWand() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const tipX = centerX + wandLength * Math.cos(wandAngle);
+            const tipY = centerY + wandLength * Math.sin(wandAngle);
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(tipX, tipY);
+            ctx.strokeStyle = 'green';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+        }
+
+        function shootSpell() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const speed = 5;
+            const velocityX = speed * Math.cos(wandAngle);
+            const velocityY = speed * Math.sin(wandAngle);
+            spells.push({
+                x: centerX,
+                y: centerY,
+                vx: velocityX,
+                vy: velocityY
+            });
+        }
+
+        function drawSpells() {
+            ctx.fillStyle = 'yellow';
+            spells.forEach(spell => {
+                ctx.beginPath();
+                ctx.arc(spell.x, spell.y, 3, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+        }
+
+        function updateSpells() {
+            spells.forEach(spell => {
+                spell.x += spell.vx;
+                spell.y += spell.vy;
+            });
+            spells = spells.filter(spell => spell.x >= 0 && spell.x <= canvas.width && spell.y >= 0 && spell.y <= canvas.height);
+        }
+
+        function spawnPirate() {
+            const side = Math.floor(Math.random() * 4);
+            let x, y, vx, vy;
+            const speed = 1 + level * 0.5;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            if (side === 0) {
+                x = Math.random() * canvas.width;
+                y = 0;
+            } else if (side === 1) {
+                x = canvas.width;
+                y = Math.random() * canvas.height;
+            } else if (side === 2) {
+                x = Math.random() * canvas.width;
+                y = canvas.height;
+            } else {
+                x = 0;
+                y = Math.random() * canvas.height;
+            }
+            vx = (centerX - x) / 100;
+            vy = (centerY - y) / 100;
+            const type = Math.random() < 0.1 ? 'captain' : Math.random() < 0.2 ? 'fat' : 'normal';
+            pirates.push({
+                x,
+                y,
+                vx,
+                vy,
+                type
+            });
+        }
+
+        function drawPirates() {
+            pirates.forEach(pirate => {
+                if (pirate.type === 'normal') {
+                    ctx.beginPath();
+                    ctx.arc(pirate.x, pirate.y, 10, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'brown';
+                    ctx.fill();
+                } else if (pirate.type === 'captain') {
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(pirate.x - 10, pirate.y - 10, 20, 20);
+                } else if (pirate.type === 'fat') {
+                    ctx.beginPath();
+                    ctx.arc(pirate.x, pirate.y, 15, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'blue';
+                    ctx.fill();
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(pirate.x - 5, pirate.y - 20, 10, 5); // Rode muts
+                }
+            });
+        }
+
+        function updatePirates() {
+            pirates.forEach(pirate => {
+                pirate.x += pirate.vx;
+                pirate.y += pirate.vy;
+            });
+        }
+
+        function checkCollisions() {
+            spells.forEach((spell, spellIndex) => {
+                pirates.forEach((pirate, pirateIndex) => {
+                    const dx = spell.x - pirate.x;
+                    const dy = spell.y - pirate.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    let pirateSize = pirate.type === 'fat' ? 15 : 10;
+                    if (distance < pirateSize) {
+                        spells.splice(spellIndex, 1);
+                        pirates.splice(pirateIndex, 1);
+                        score += pirate.type === 'normal' ? 10 : pirate.type === 'captain' ? 50 : 20;
+                        document.getElementById('score').textContent = score;
+                        defeatedPirates++;
+                        if (defeatedPirates % 10 === 0) {
+                            level++;
+                            document.getElementById('level').textContent = level;
+                        }
+                    }
+                });
+            });
+        }
+
+        function checkWandHit() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            pirates.forEach((pirate, index) => {
+                const dx = centerX - pirate.x;
+                const dy = centerY - pirate.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < 10) {
+                    pirates.splice(index, 1);
+                    lives--;
+                    document.getElementById('lives').textContent = lives;
+                    if (lives <= 0) {
+                        gameOver();
+                    }
+                }
+            });
+        }
+
+        function gameLoop() {
+            if (!gameRunning || gamePaused) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawWand();
+            drawSpells();
+            drawPirates();
+            updateSpells();
+            updatePirates();
+            checkCollisions();
+            checkWandHit();
+            if (Math.random() < 0.02 * level) {
+                spawnPirate();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            if (score > hiscore) {
+                hiscore = score;
+                localStorage.setItem('hiscore', hiscore);
+                document.getElementById('hiscore').textContent = hiscore;
+            }
+            alert('Game Over! Je score: ' + score);
+            score = 0;
+            lives = 3;
+            level = 1;
+            defeatedPirates = 0;
+            pirates = [];
+            spells = [];
+            document.getElementById('score').textContent = score;
+            document.getElementById('lives').textContent = lives;
+            document.getElementById('level').textContent = level;
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowLeft') {
+                wandAngle -= 0.1;
+            } else if (event.key === 'ArrowRight') {
+                wandAngle += 0.1;
+            } else if (event.key === ' ') {
+                shootSpell();
+            }
+        });
+
+        document.getElementById('start-button').addEventListener('click', () => {
+            if (!gameRunning) {
+                gameRunning = true;
+                gameLoop();
+            }
+        });
+
+        document.getElementById('pause-button').addEventListener('click', () => {
+            gamePaused = !gamePaused;
+            if (!gamePaused) {
+                gameLoop();
+            }
+        });
+
+        document.getElementById('left-button').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            wandAngle -= 0.1;
+        });
+
+        document.getElementById('right-button').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            wandAngle += 0.1;
+        });
+
+        document.getElementById('shoot-button').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            shootSpell();
+        });
+    </script>
+</body>
+</html>
