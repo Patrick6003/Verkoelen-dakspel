@@ -128,9 +128,15 @@
         let isPaused = false;
         let spells = [];
         let pirates = [];
+        let treasureChests = [];
+        let powerUps = [];
         let wandAngle = 0;
         let spawnChance = 0.01;
         let piratesDefeated = 0;
+        let spellCooldown = 200; // milliseconds
+        let lastSpellTime = 0;
+        let invincibilityEndTime = 0;
+        let fasterSpellsEndTime = 0;
 
         // DOM elements
         const scoreEl = document.getElementById('score');
@@ -189,9 +195,12 @@
 
         // Shoot spell
         function shootSpell() {
+            const now = Date.now();
+            if (now - lastSpellTime < spellCooldown) return;
+            lastSpellTime = now;
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
-            const speed = 7;
+            const speed = fasterSpellsEndTime > now ? 10 : 7;
             const vx = speed * Math.cos(wandAngle);
             const vy = speed * Math.sin(wandAngle);
             spells.push({ x: centerX + 30 * Math.cos(wandAngle), y: centerY + 30 * Math.sin(wandAngle), vx, vy });
@@ -219,26 +228,43 @@
             });
         }
 
-        // Spawn pirate or crocodile
+        // Spawn pirate or treasure chest
         function spawnPirate() {
             const r = Math.random();
-            const type = r < 0.05 ? 'crocodile' : r < 0.15 ? 'captain' : r < 0.35 ? 'fat' : 'regular';
-            const side = Math.floor(Math.random() * 4);
-            let x, y;
-            switch (side) {
-                case 0: x = Math.random() * canvas.width; y = -20; break;
-                case 1: x = canvas.width + 20; y = Math.random() * canvas.height; break;
-                case 2: x = Math.random() * canvas.width; y = canvas.height + 20; break;
-                case 3: x = -20; y = Math.random() * canvas.height; break;
+            if (r < 0.01) {
+                const type = 'treasure';
+                const side = Math.floor(Math.random() * 4);
+                let x, y;
+                switch (side) {
+                    case 0: x = Math.random() * canvas.width; y = -20; break;
+                    case 1: x = canvas.width + 20; y = Math.random() * canvas.height; break;
+                    case 2: x = Math.random() * canvas.width; y = canvas.height + 20; break;
+                    case 3: x = -20; y = Math.random() * canvas.height; break;
+                }
+                const speed = 0.5;
+                const angle = Math.atan2(canvas.height / 2 - y, canvas.width / 2 - x);
+                const vx = speed * Math.cos(angle);
+                const vy = speed * Math.sin(angle);
+                treasureChests.push({ x, y, vx, vy, type });
+            } else {
+                const type = r < 0.05 ? 'crocodile' : r < 0.15 ? 'captain' : r < 0.35 ? 'fat' : 'regular';
+                const side = Math.floor(Math.random() * 4);
+                let x, y;
+                switch (side) {
+                    case 0: x = Math.random() * canvas.width; y = -20; break;
+                    case 1: x = canvas.width + 20; y = Math.random() * canvas.height; break;
+                    case 2: x = Math.random() * canvas.width; y = canvas.height + 20; break;
+                    case 3: x = -20; y = Math.random() * canvas.height; break;
+                }
+                const speed = 0.8 + level * 0.1;
+                const angle = Math.atan2(canvas.height / 2 - y, canvas.width / 2 - x);
+                const vx = speed * Math.cos(angle);
+                const vy = speed * Math.sin(angle);
+                pirates.push({ x, y, vx, vy, type });
             }
-            const speed = 1 + level * 0.2;
-            const angle = Math.atan2(canvas.height / 2 - y, canvas.width / 2 - x);
-            const vx = speed * Math.cos(angle);
-            const vy = speed * Math.sin(angle);
-            pirates.push({ x, y, vx, vy, type });
         }
 
-        // Draw pirates
+        // Draw pirates and treasure chests
         function drawPirates() {
             pirates.forEach(pirate => {
                 ctx.save();
@@ -257,12 +283,18 @@
                     ctx.fill();
                     ctx.beginPath();
                     ctx.arc(0, 0, 10, 0, 2 * Math.PI);
-                    ctx.fillStyle = 'brown';
+                    ctx.fillStyle = '#8B4513';
                     ctx.fill();
                     ctx.fillStyle = 'black';
                     ctx.beginPath();
                     ctx.arc(-5, -2, 3, 0, 2 * Math.PI);
                     ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(5, -2, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(0, 5, 5, 0, Math.PI);
+                    ctx.stroke();
                 } else if (pirate.type === 'fat') {
                     ctx.beginPath();
                     ctx.arc(0, 0, 15, 0, 2 * Math.PI);
@@ -273,7 +305,17 @@
                         ctx.fillRect(-15, i, 30, 2);
                     }
                     ctx.fillStyle = 'red';
-                    ctx.fillRect(-5, -20, 10, 5);
+                    ctx.fillRect(-7, -25, 14, 10);
+                    ctx.beginPath();
+                    ctx.arc(-5, -2, 3, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'black';
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(5, -2, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(0, 5, 5, 0, Math.PI);
+                    ctx.stroke();
                 } else if (pirate.type === 'captain') {
                     ctx.fillStyle = 'red';
                     ctx.beginPath();
@@ -291,6 +333,16 @@
                     ctx.lineTo(20, 20);
                     ctx.arc(20, 25, 5, Math.PI, 0, true);
                     ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(-5, -2, 3, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'black';
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(5, -2, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(0, 5, 5, 0, Math.PI);
+                    ctx.stroke();
                 } else if (pirate.type === 'crocodile') {
                     ctx.fillStyle = 'green';
                     ctx.fillRect(-20, -10, 40, 20);
@@ -303,16 +355,36 @@
                         ctx.closePath();
                         ctx.fill();
                     }
+                    ctx.beginPath();
+                    ctx.arc(-15, 0, 5, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'black';
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(15, 0, 5, 0, 2 * Math.PI);
+                    ctx.fill();
                 }
+                ctx.restore();
+            });
+            treasureChests.forEach(chest => {
+                ctx.save();
+                ctx.translate(chest.x, chest.y);
+                ctx.fillStyle = 'brown';
+                ctx.fillRect(-10, -10, 20, 20);
+                ctx.fillStyle = 'yellow';
+                ctx.fillRect(-5, -5, 10, 10);
                 ctx.restore();
             });
         }
 
-        // Update pirates
+        // Update pirates and treasure chests
         function updatePirates() {
             pirates.forEach(pirate => {
                 pirate.x += pirate.vx;
                 pirate.y += pirate.vy;
+            });
+            treasureChests.forEach(chest => {
+                chest.x += chest.vx;
+                chest.y += chest.vy;
             });
         }
 
@@ -346,6 +418,28 @@
                         break;
                     }
                 }
+                for (let j = treasureChests.length - 1; j >= 0; j--) {
+                    const spell = spells[i];
+                    const chest = treasureChests[j];
+                    const dx = spell.x - chest.x;
+                    const dy = spell.y - chest.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < 10) {
+                        spells.splice(i, 1);
+                        treasureChests.splice(j, 1);
+                        const powerUp = Math.random() < 0.33 ? 'extraLife' : Math.random() < 0.66 ? 'fasterSpells' : 'invincibility';
+                        powerUps.push({ type: powerUp, time: Date.now() });
+                        if (powerUp === 'extraLife') {
+                            lives++;
+                            livesEl.textContent = lives;
+                        } else if (powerUp === 'fasterSpells') {
+                            fasterSpellsEndTime = Date.now() + 10000;
+                        } else if (powerUp === 'invincibility') {
+                            invincibilityEndTime = Date.now() + 5000;
+                        }
+                        break;
+                    }
+                }
             }
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
@@ -354,7 +448,7 @@
                 const dx = centerX - pirate.x;
                 const dy = centerY - pirate.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance < 20) {
+                if (distance < 20 && invincibilityEndTime < Date.now()) {
                     pirates.splice(i, 1);
                     lives--;
                     livesEl.textContent = lives;
@@ -369,6 +463,17 @@
             gameOverEl.style.display = 'block';
             finalScoreEl.textContent = score;
             document.getElementById('start-button').textContent = 'Start';
+            // Explosion effect
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            for (let i = 0; i < 50; i++) {
+                const angle = Math.random() * 2 * Math.PI;
+                const speed = Math.random() * 5;
+                const vx = speed * Math.cos(angle);
+                const vy = speed * Math.sin(angle);
+                const particle = { x: centerX, y: centerY, vx, vy, life: 50 };
+                powerUps.push(particle);
+            }
         }
 
         // Game loop
@@ -399,8 +504,8 @@
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
             if (!isRunning || isPaused) return;
-            if (e.key === 'ArrowLeft') wandAngle -= 0.1;
-            if (e.key === 'ArrowRight') wandAngle += 0.1;
+            if (e.key === 'ArrowLeft') wandAngle -= 0.07;
+            if (e.key === 'ArrowRight') wandAngle += 0.07;
             if (e.key === ' ') {
                 e.preventDefault();
                 shootSpell();
@@ -417,6 +522,8 @@
                 level = 1;
                 spells = [];
                 pirates = [];
+                treasureChests = [];
+                powerUps = [];
                 spawnChance = 0.01;
                 piratesDefeated = 0;
                 scoreEl.textContent = score;
@@ -442,8 +549,8 @@
         let rotatingRight = false;
         function updateMobileRotation() {
             if (isRunning && !isPaused) {
-                if (rotatingLeft) wandAngle -= 0.1;
-                if (rotatingRight) wandAngle += 0.1;
+                if (rotatingLeft) wandAngle -= 0.07;
+                if (rotatingRight) wandAngle += 0.07;
                 requestAnimationFrame(updateMobileRotation);
             }
         }
