@@ -27,8 +27,8 @@
     const ctx = canvas.getContext('2d');
 
     // Variabelen
-    let vinkyX = 175; // Startpositie in het midden
-    const vinkyY = 550; // Vinky V onderaan
+    let vinkyX = 175; // Startpositie in het midden van het dak
+    const vinkyY = 530; // Vinky V op het dak (onder de randbeveiliging)
     const normalVinkyWidth = 50;
     const normalVinkyHeight = 50;
     let vinkyWidth = normalVinkyWidth;
@@ -40,6 +40,7 @@
     let powerUpActive = false;
     let powerUpTimer = 0;
     const powerUpDuration = 5000; // 5 seconden
+    let craneX = 50; // Positie van de torenkraan (links)
 
     // Definieer objecttypes met snelheid en punten
     const objectTypes = {
@@ -54,15 +55,17 @@
       e.preventDefault();
       const touch = e.touches[0];
       vinkyX = touch.clientX - canvas.offsetLeft - vinkyWidth / 2;
-      if (vinkyX < 0) vinkyX = 0;
-      if (vinkyX > canvas.width - vinkyWidth) vinkyX = canvas.width - vinkyWidth;
+      // Beperk Vinky V tot het dak (tussen randbeveiliging)
+      if (vinkyX < 50) vinkyX = 50; // Linksaf randbeveiliging
+      if (vinkyX > canvas.width - vinkyWidth - 50) vinkyX = canvas.width - vinkyWidth - 50; // Rechtsaf randbeveiliging
     });
 
     canvas.addEventListener('mousemove', function(e) {
       const rect = canvas.getBoundingClientRect();
       vinkyX = e.clientX - rect.left - vinkyWidth / 2;
-      if (vinkyX < 0) vinkyX = 0;
-      if (vinkyX > canvas.width - vinkyWidth) vinkyX = canvas.width - vinkyWidth;
+      // Beperk Vinky V tot het dak (tussen randbeveiliging)
+      if (vinkyX < 50) vinkyX = 50;
+      if (vinkyX > canvas.width - vinkyWidth - 50) vinkyX = canvas.width - vinkyWidth - 50;
     });
 
     // Klik voor opnieuw knop
@@ -77,7 +80,7 @@
       }
     });
 
-    // Functie om een nieuw object te spawnen
+    // Functie om een nieuw object te spawnen (vanaf de torenkraan)
     function spawnObject() {
       let type;
       if (Math.random() < 0.1) { // 10% kans op power-up
@@ -86,11 +89,11 @@
         const types = ['dakpan', 'dakrol', 'schroef'];
         type = types[Math.floor(Math.random() * types.length)];
       }
-      const x = Math.random() * (canvas.width - objectTypes[type].width);
+      const x = craneX + 20; // Objecten vallen vanaf de kraan
       const object = {
         type: type,
         x: x,
-        y: 0,
+        y: 50, // Start onder de kraan
         speed: objectTypes[type].speed,
         points: objectTypes[type].points,
         width: objectTypes[type].width,
@@ -133,15 +136,22 @@
       }
     }
 
-    // Teken de achtergrond (huisstijl Verkoelen Dakspecialisten)
+    // Teken de achtergrond (plat dak en huisstijl Verkoelen)
     function drawBackground() {
-      ctx.fillStyle = '#D3D3D3'; // Lichtgrijs
+      ctx.fillStyle = '#D3D3D3'; // Lichtgrijs (dak)
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Plat dak (grijze strook onderaan)
+      ctx.fillStyle = '#808080'; // Grijs voor dak
+      ctx.fillRect(0, 500, canvas.width, 100); // Dakoppervlak
+      // Randbeveiliging (witte lijnen links en rechts)
+      ctx.fillStyle = '#FFFFFF'; // Wit
+      ctx.fillRect(0, 500, 50, 100); // Linker randbeveiliging
+      ctx.fillRect(canvas.width - 50, 500, 50, 100); // Rechter randbeveiliging
     }
 
-    // Teken Vinky V
+    // Teken Vinky V (gebaseerd op de afbeelding)
     function drawVinkyV() {
-      ctx.fillStyle = '#FFA500'; // Oranje
+      ctx.fillStyle = '#FFA500'; // Oranje voor de V
       ctx.beginPath();
       ctx.moveTo(vinkyX, vinkyY + vinkyHeight);
       ctx.lineTo(vinkyX + vinkyWidth / 2, vinkyY);
@@ -149,12 +159,23 @@
       ctx.closePath();
       ctx.fill();
 
-      // Teken ogen
-      ctx.fillStyle = '#000000'; // Zwart
+      // Blauwe ogen
+      ctx.fillStyle = '#0000FF'; // Blauw
       ctx.beginPath();
       ctx.arc(vinkyX + vinkyWidth / 4, vinkyY + vinkyHeight / 2, 5, 0, Math.PI * 2);
       ctx.arc(vinkyX + 3 * vinkyWidth / 4, vinkyY + vinkyHeight / 2, 5, 0, Math.PI * 2);
       ctx.fill();
+
+      // Glimlach
+      ctx.fillStyle = '#FF0000'; // Rood
+      ctx.beginPath();
+      ctx.arc(vinkyX + vinkyWidth / 2, vinkyY + vinkyHeight / 2 + 5, 5, 0, Math.PI, true);
+      ctx.fill();
+
+      // Witte handschoenen (vereenvoudigd als rechthoeken)
+      ctx.fillStyle = '#FFFFFF'; // Wit
+      ctx.fillRect(vinkyX - 20, vinkyY + vinkyHeight / 2 - 10, 20, 20); // Linker hand
+      ctx.fillRect(vinkyX + vinkyWidth, vinkyY + vinkyHeight / 2 - 10, 20, 20); // Rechter hand
     }
 
     // Teken de vallende objecten
@@ -168,10 +189,6 @@
           ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
           ctx.fillStyle = '#FFFFFF'; // Wit
           ctx.fillRect(obj.x, obj.y + obj.height / 2 - 2, obj.width, 4); // Witte strook
-          // Simuleer Derbigum logo met tekst
-          ctx.fillStyle = '#000000';
-          ctx.font = '10px Arial';
-          ctx.fillText('Derbigum', obj.x + 2, obj.y + obj.height / 2 + 5);
         } else if (obj.type === 'schroef') {
           ctx.fillStyle = '#4682B4'; // Blauw-grijs
           ctx.beginPath();
@@ -190,6 +207,18 @@
           ctx.fill();
         }
       }
+    }
+
+    // Teken de torenkraan
+    function drawCrane() {
+      ctx.fillStyle = '#FFFF00'; // Geel
+      ctx.fillRect(craneX, 10, 50, 40); // Basis van de kraan
+      ctx.fillStyle = '#000000'; // Zwart voor details
+      ctx.fillRect(craneX + 20, 10, 10, 50); // Arm van de kraan
+      // Simuleer beweging (schommelen tussen links en rechts)
+      craneX += Math.sin(Date.now() / 500) * 2; // Langzame schommeling
+      if (craneX < 0) craneX = 0;
+      if (craneX > canvas.width - 50) craneX = canvas.width - 50;
     }
 
     // Teken de score
@@ -230,20 +259,22 @@
       vinkyHeight = normalVinkyHeight;
       powerUpActive = false;
       powerUpTimer = 0;
+      craneX = 50;
       gameOver = false;
     }
 
     // Game loop
     function gameLoop() {
       if (!gameOver) {
-        // Spawn nieuw object met 2% kans per frame
-        if (Math.random() < 0.02) {
+        // Spawn nieuw object met 0,5% kans per frame (minder objecten)
+        if (Math.random() < 0.005) {
           spawnObject();
         }
 
         updateObjects();
         checkGameOver();
         drawBackground();
+        drawCrane(); // Teken de torenkraan
         drawVinkyV();
         drawObjects();
         drawScore();
