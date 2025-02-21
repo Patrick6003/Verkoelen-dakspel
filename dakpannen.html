@@ -1,8 +1,6 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vinky V Dakspel</title>
   <style>
     body {
@@ -16,6 +14,8 @@
     }
     canvas {
       border: 1px solid #000;
+      background-color: #595A5C; /* Donkergrijs als Verkoelen-achtergrondkleur */
+      display: block;
     }
   </style>
 </head>
@@ -26,72 +26,96 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Variabelen
-    let vinkyX = 175; // Startpositie in het midden
-    const vinkyY = 550; // Vinky V onderaan
-    const normalVinkyWidth = 50;
-    const normalVinkyHeight = 50;
-    let vinkyWidth = normalVinkyWidth;
-    let vinkyHeight = normalVinkyHeight;
-    let objects = [];
+    // --- Spel- en speler-variabelen ---
+    let vinkyX = 175;          // Horizontale startpositie
+    let vinkyY = 550;          // Verticale positie (onderaan)
+    let vinkyWidth = 50;       // Breedte van Vinky
+    let vinkyHeight = 50;      // Hoogte van Vinky
+    let originalVinkyWidth = 50;  // Voor reset na power-up
+    let originalVinkyHeight = 50;
+    let powerUpActive = false;
+    let powerUpTimer = 0;      // Duur (in frames) dat de power-up actief blijft
+
+    let objects = [];          // Vallende objecten
     let score = 0;
     let lives = 3;
     let gameOver = false;
-    let powerUpActive = false;
-    let powerUpTimer = 0;
-    const powerUpDuration = 5000; // 5 seconden
-    let craneX = 0; // Positie van de torenkraan (start links)
 
-    // Definieer objecttypes met snelheid en punten
+    // --- Objecttypes definiëren ---
+    //
+    // Vervanging:
+    // - dakpan => gasfles (grijs, 18kg)
+    // - dakrol => zwart en langwerpig met witte band
+    // - schroef => blauwe tule + grijze schroef
+    // - extra: powerUp => groene power-up (bijv. 'V'-icoon of sterretje)
+    //
     const objectTypes = {
-      gasfles: { speed: 2, points: 15, width: 20, height: 30 }, // 18kg gasfles
-      dakrol: { speed: 3, points: 20, width: 60, height: 30 }, // Langer gemaakt
-      schroef: { speed: 4, points: 5, width: 10, height: 10 },
-      powerup: { speed: 2, points: 0, width: 20, height: 20 }
+      gasfles: { speed: 2, points: 10, width: 20, height: 40 },
+      dakrol:  { speed: 3, points: 20, width: 15, height: 40 },
+      schroef: { speed: 4, points: 5,  width: 10, height: 20 },
+      powerUp: { speed: 3, points: 0,  width: 20, height: 20 } // Geen punten, maar geeft vergroting
     };
 
-    // Besturing via touch (mobiel) of muis (desktop)
+    // --- Besturing via touch (mobiel) of muis (desktop) ---
     canvas.addEventListener('touchmove', function(e) {
       e.preventDefault();
       const touch = e.touches[0];
       vinkyX = touch.clientX - canvas.offsetLeft - vinkyWidth / 2;
-      if (vinkyX < 0) vinkyX = 0;
-      if (vinkyX > canvas.width - vinkyWidth) vinkyX = canvas.width - vinkyWidth;
+      limitVinkyMovement();
     });
 
     canvas.addEventListener('mousemove', function(e) {
       const rect = canvas.getBoundingClientRect();
       vinkyX = e.clientX - rect.left - vinkyWidth / 2;
-      if (vinkyX < 0) vinkyX = 0;
-      if (vinkyX > canvas.width - vinkyWidth) vinkyX = canvas.width - vinkyWidth;
+      limitVinkyMovement();
     });
 
-    // Klik voor opnieuw knop
+    function limitVinkyMovement() {
+      if (vinkyX < 0) vinkyX = 0;
+      if (vinkyX > canvas.width - vinkyWidth) {
+        vinkyX = canvas.width - vinkyWidth;
+      }
+    }
+
+    // --- Klik voor 'opnieuw' knop ---
     canvas.addEventListener('click', function(e) {
       if (gameOver) {
         const rect = canvas.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
         const clickY = e.clientY - rect.top;
+        // Check of de klik in de witte 'Opnieuw'-knop valt
         if (clickX > 150 && clickX < 250 && clickY > 275 && clickY < 325) {
           restartGame();
         }
       }
     });
 
-    // Functie om een nieuw object te spawnen (vanaf de torenkraan)
+    // --- Functie om een nieuw object te maken ---
     function spawnObject() {
+      // We kiezen welk object spawnt op basis van een willekeurige waarde
+      const rand = Math.random();
       let type;
-      if (Math.random() < 0.05) { // 5% kans op power-up
-        type = 'powerup';
+
+      if (rand < 0.01) {
+        // ~1% kans op power-up
+        type = 'powerUp';
+      } else if (rand < 0.4) {
+        // 40% kans op gasfles
+        type = 'gasfles';
+      } else if (rand < 0.7) {
+        // 30% kans op dakrol
+        type = 'dakrol';
       } else {
-        const types = ['gasfles', 'dakrol', 'schroef'];
-        type = types[Math.floor(Math.random() * types.length)];
+        // 29% kans op schroef
+        type = 'schroef';
       }
-      const x = craneX + 20; // Objecten vallen vanaf de kraan
+
+      // Bepaal x-positie (random binnen canvasbreedte)
+      const x = Math.random() * (canvas.width - objectTypes[type].width);
       const object = {
         type: type,
         x: x,
-        y: 50, // Start onder de kraan
+        y: 0,
         speed: objectTypes[type].speed,
         points: objectTypes[type].points,
         width: objectTypes[type].width,
@@ -100,198 +124,211 @@
       objects.push(object);
     }
 
-    // Update de objecten (beweging, vangdetectie en explosies)
+    // --- Update objecten (beweging & check of Vinky vangt) ---
     function updateObjects() {
       for (let i = objects.length - 1; i >= 0; i--) {
         let obj = objects[i];
         obj.y += obj.speed;
 
-        // Controleer of Vinky V het object vangt
-        if (obj.y + obj.height > vinkyY && obj.y < vinkyY + vinkyHeight &&
-            obj.x + obj.width > vinkyX && obj.x < vinkyX + vinkyWidth) {
-          if (obj.type === 'powerup') {
-            powerUpActive = true;
-            powerUpTimer = powerUpDuration;
+        // Check vangst
+        if (
+          obj.y + obj.height > vinkyY &&
+          obj.y < vinkyY + vinkyHeight &&
+          obj.x + obj.width > vinkyX &&
+          obj.x < vinkyX + vinkyWidth
+        ) {
+          // Is het een power-up?
+          if (obj.type === 'powerUp') {
+            activatePowerUp();
           } else {
+            // Normaal object: score optellen
             score += obj.points;
           }
           objects.splice(i, 1);
-        } 
-        // Controleer of het object de grond raakt of explodeert
+        }
+        // Check of het voorbij de onderkant is (gemist)
         else if (obj.y > canvas.height) {
-          if (obj.type === 'gasfles') {
-            // Gasfles explodeert en kost een leven
+          // Alleen levens aftrekken bij gewone objecten
+          if (obj.type !== 'powerUp') {
             lives--;
           }
           objects.splice(i, 1);
-        }
-        // Controleer of Vinky V te dicht bij een gasfles staat (explosie)
-        else if (obj.type === 'gasfles') {
-          const distance = Math.sqrt((vinkyX + vinkyWidth / 2 - (obj.x + obj.width / 2)) ** 2 + 
-                                   (vinkyY + vinkyHeight / 2 - (obj.y + obj.height / 2)) ** 2);
-          if (distance < 50) { // Explosie-radius van 50 pixels
-            lives--;
-            objects.splice(i, 1);
-          }
         }
       }
     }
 
-    // Controleer of het spel voorbij is
+    // --- Power-up activeren ---
+    function activatePowerUp() {
+      powerUpActive = true;
+      powerUpTimer = 300; // bijv. ~5 seconden (60 FPS * 5)
+      // Vinky tijdelijk groter
+      vinkyWidth = 75;
+      vinkyHeight = 75;
+    }
+
+    // --- Power-up check in de game-loop ---
+    function updatePowerUp() {
+      if (powerUpActive) {
+        powerUpTimer--;
+        if (powerUpTimer <= 0) {
+          // Power-up is verlopen
+          powerUpActive = false;
+          vinkyWidth = originalVinkyWidth;
+          vinkyHeight = originalVinkyHeight;
+        }
+      }
+    }
+
+    // --- Check of het spel voorbij is ---
     function checkGameOver() {
       if (lives <= 0) {
         gameOver = true;
       }
     }
 
-    // Teken de achtergrond (huisstijl Verkoelen)
+    // --- Achtergrond tekenen (huisstijl Verkoelen) ---
     function drawBackground() {
-      ctx.fillStyle = '#D3D3D3'; // Lichtgrijs
+      // Donkergrijs is al als canvas-background-color ingesteld via CSS,
+      // maar we kunnen het hier opnieuw “overschilderen” als je wilt animeren.
+      ctx.fillStyle = '#595A5C';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // Teken Vinky V (oranje letter V met ogen)
+    // --- Vinky V tekenen (oranje V met ogen) ---
     function drawVinkyV() {
-      ctx.fillStyle = '#FFA500'; // Oranje voor de V
+      // Simpelweg een oranje rechthoek. Wil je echt een 'V' tekenen, gebruik path:
+      ctx.save();
+      ctx.fillStyle = '#F36F21'; // Oranje
+      ctx.translate(vinkyX + vinkyWidth / 2, vinkyY + vinkyHeight / 2);
+      // Teken een 'V'-vorm (twee diagonale paden)
       ctx.beginPath();
-      ctx.moveTo(vinkyX, vinkyY + vinkyHeight);
-      ctx.lineTo(vinkyX + vinkyWidth / 2, vinkyY);
-      ctx.lineTo(vinkyX + vinkyWidth, vinkyY + vinkyHeight);
+      ctx.moveTo(-vinkyWidth / 2, -vinkyHeight / 2);
+      ctx.lineTo(-vinkyWidth * 0.1,  vinkyHeight / 2);
+      ctx.lineTo( vinkyWidth * 0.1,  vinkyHeight / 2);
+      ctx.lineTo( vinkyWidth / 2, -vinkyHeight / 2);
       ctx.closePath();
       ctx.fill();
 
-      // Zwarte ogen
-      ctx.fillStyle = '#000000'; // Zwart
+      // Eenvoudige "oogjes" door witte cirkels:
+      ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
-      ctx.arc(vinkyX + vinkyWidth / 4, vinkyY + vinkyHeight / 2, 5, 0, Math.PI * 2);
-      ctx.arc(vinkyX + 3 * vinkyWidth / 4, vinkyY + vinkyHeight / 2, 5, 0, Math.PI * 2);
+      ctx.arc(-vinkyWidth*0.2, 0, 4, 0, 2*Math.PI);
+      ctx.arc( vinkyWidth*0.2, 0, 4, 0, 2*Math.PI);
       ctx.fill();
+
+      // Blauwe pupillen:
+      ctx.fillStyle = '#0000FF';
+      ctx.beginPath();
+      ctx.arc(-vinkyWidth*0.2, 0, 2, 0, 2*Math.PI);
+      ctx.arc( vinkyWidth*0.2, 0, 2, 0, 2*Math.PI);
+      ctx.fill();
+
+      ctx.restore();
     }
 
-    // Teken de vallende objecten
+    // --- Vallende objecten tekenen in de juiste "look" ---
     function drawObjects() {
       for (let obj of objects) {
         if (obj.type === 'gasfles') {
-          ctx.fillStyle = '#FF0000'; // Rood voor gasfles
-          ctx.beginPath();
-          ctx.ellipse(obj.x + obj.width / 2, obj.y + obj.height / 2, obj.width / 2, obj.height / 2, 0, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (obj.type === 'dakrol') {
-          ctx.fillStyle = '#000000'; // Zwart
+          // Gasfles (grijs en rechthoekig)
+          ctx.fillStyle = '#A9A9A9';
           ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
-          ctx.fillStyle = '#FFFFFF'; // Wit
-          ctx.fillRect(obj.x, obj.y + obj.height / 2 - 2, obj.width, 4); // Witte strook
+          // Eventueel bovenop een iets smallere 'kop'
+          ctx.fillStyle = '#7F7F7F';
+          ctx.fillRect(obj.x + obj.width/4, obj.y - 5, obj.width/2, 5);
+
+        } else if (obj.type === 'dakrol') {
+          // Dakrol (zwart, langwerpig) met witte band in het midden
+          ctx.fillStyle = '#000000'; 
+          ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+          // Witte band
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(obj.x, obj.y + obj.height/2 - 2, obj.width, 4);
+
         } else if (obj.type === 'schroef') {
-          ctx.fillStyle = '#4682B4'; // Blauw-grijs
+          // Schroef: blauwe tule + grijze 'schacht'
+          // Bovenste deel (tule): blauw
+          ctx.fillStyle = '#0000FF';
+          ctx.fillRect(obj.x, obj.y, obj.width, obj.height * 0.4);
+          // Onderste deel (schroef): grijs
+          ctx.fillStyle = '#C0C0C0';
+          ctx.fillRect(obj.x + obj.width/4, obj.y + obj.height * 0.4, 
+                       obj.width/2, obj.height * 0.6);
+
+        } else if (obj.type === 'powerUp') {
+          // Power-up: bv. een groen ‘bolletje’ of ster
+          ctx.fillStyle = '#00FF00';
           ctx.beginPath();
-          ctx.arc(obj.x + obj.width / 2, obj.y + obj.height / 2, obj.width / 2, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (obj.type === 'powerup') {
-          ctx.fillStyle = '#FFD700'; // Goud
-          // Teken een eenvoudige ster
-          ctx.beginPath();
-          ctx.moveTo(obj.x + obj.width / 2, obj.y);
-          ctx.lineTo(obj.x + obj.width, obj.y + obj.height);
-          ctx.lineTo(obj.x, obj.y + obj.height / 3);
-          ctx.lineTo(obj.x + obj.width, obj.y + obj.height / 3);
-          ctx.lineTo(obj.x, obj.y + obj.height);
-          ctx.closePath();
+          let centerX = obj.x + obj.width/2;
+          let centerY = obj.y + obj.height/2;
+          let radius = obj.width/2;
+          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
           ctx.fill();
         }
       }
     }
 
-    // Teken de torenkraan (over hele bereik)
-    function drawCrane() {
-      ctx.fillStyle = '#FFFF00'; // Geel
-      ctx.fillRect(craneX, 10, 50, 40); // Basis van de kraan
-      ctx.fillStyle = '#000000'; // Zwart voor details
-      ctx.fillRect(craneX + 20, 10, 10, 50); // Arm van de kraan
-      // Beweeg over hele canvas-breedte (sneller)
-      craneX += Math.sin(Date.now() / 300) * 5; // Snellere schommeling
-      if (craneX < 0) craneX = 0;
-      if (craneX > canvas.width - 50) craneX = canvas.width - 50;
-    }
-
-    // Teken de score
+    // --- Score tekenen ---
     function drawScore() {
       ctx.font = '20px Arial';
-      ctx.fillStyle = '#FFFFFF'; // Wit voor tekst
+      ctx.fillStyle = '#FFFFFF';
       ctx.fillText('Score: ' + score, 10, 30);
     }
 
-    // Teken de levens
+    // --- Levens tekenen ---
     function drawLives() {
+      ctx.font = '20px Arial';
+      ctx.fillStyle = '#FFFFFF';
       ctx.fillText('Levens: ' + lives, 10, 60);
     }
 
-    // Teken de power-up status
-    function drawPowerUpStatus() {
-      if (powerUpActive) {
-        ctx.fillText('Power-Up Active!', 10, 90);
-      }
-    }
-
-    // Teken de opnieuw knop
+    // --- Opnieuw-knop tekenen ---
     function drawRestartButton() {
-      ctx.fillStyle = '#FFFFFF'; // Wit
+      ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(150, 275, 100, 50);
-      ctx.fillStyle = '#003087'; // Blauw
+      ctx.fillStyle = '#003087';
       ctx.font = '20px Arial';
       ctx.fillText('Opnieuw', 165, 305);
     }
 
-    // Herstart het spel
+    // --- Herstart het spel ---
     function restartGame() {
       score = 0;
       lives = 3;
       objects = [];
       vinkyX = 175;
-      vinkyWidth = normalVinkyWidth;
-      vinkyHeight = normalVinkyHeight;
+      vinkyWidth = originalVinkyWidth;
+      vinkyHeight = originalVinkyHeight;
       powerUpActive = false;
       powerUpTimer = 0;
-      craneX = 0;
       gameOver = false;
     }
 
-    // Game loop
+    // --- De hoofd-game-loop ---
     function gameLoop() {
       if (!gameOver) {
-        // Spawn nieuw object met 1% kans per frame (sneller vallen)
-        if (Math.random() < 0.01) {
+        // 2% kans per frame om een nieuw object te spawnen
+        if (Math.random() < 0.02) {
           spawnObject();
         }
-
         updateObjects();
+        updatePowerUp();
         checkGameOver();
+
+        // Tekenfase
         drawBackground();
-        drawCrane(); // Teken de torenkraan
         drawVinkyV();
         drawObjects();
         drawScore();
         drawLives();
-        drawPowerUpStatus();
-
-        // Update power-up timer
-        if (powerUpActive) {
-          powerUpTimer -= 16; // Aangenomen ~60fps
-          if (powerUpTimer <= 0) {
-            powerUpActive = false;
-            vinkyWidth = normalVinkyWidth;
-            vinkyHeight = normalVinkyHeight;
-          } else {
-            vinkyWidth = normalVinkyWidth * 1.5;
-            vinkyHeight = normalVinkyHeight * 1.5;
-          }
-        }
       } else {
+        // Game over: toon ‘Opnieuw’-knop
         drawRestartButton();
       }
       requestAnimationFrame(gameLoop);
     }
 
-    // Start het spel
+    // --- Start het spel ---
     gameLoop();
   </script>
 </body>
