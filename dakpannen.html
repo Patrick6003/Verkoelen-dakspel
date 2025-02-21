@@ -1,41 +1,73 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Daktegels Vangen - Dakspecialisten Weert</title>
+    <title>Dakpannen Vangen - Verkoelen Dakspecialisten</title>
     <style>
-        canvas {
-            border: 2px solid #333;
-            background: #87CEEB;
-        }
         body {
+            margin: 0;
+            padding: 0;
             text-align: center;
             font-family: Arial, sans-serif;
-            background: #f0f0f0;
+            background: #87CEEB; /* Lichte blauwe hemelachtergrond */
+            overflow: hidden;
+        }
+        #gameCanvas {
+            border: 2px solid #333;
+            background: #87CEEB;
+            touch-action: none; /* Voor touch-besturing */
         }
         #score {
             font-size: 24px;
+            color: #FF4500; /* Oranje, huisstijl Verkoelen */
             margin: 10px;
+            font-weight: bold;
+        }
+        #restartButton {
+            display: none;
+            margin: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #FF4500; /* Oranje knop */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #restartButton:hover {
+            background-color: #FF6347; /* Lichtere oranje bij hover */
+        }
+        #title {
+            color: #FF4500; /* Oranje titel */
+            font-size: 28px;
+            margin: 10px 0;
+        }
+        #instructions {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
-    <h1>Daktegels Vangen</h1>
-    <p>Gebruik ← en → om de emmer te bewegen en dakpannen te vangen!</p>
+    <h1 id="title">Dakpannen Vangen - Verkoelen</h1>
+    <p id="instructions">Beweeg Vinky V met je vinger/muis om dakpannen te vangen!</p>
     <div id="score">Score: 0</div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <button id="restartButton" onclick="restartGame()">Probeer opnieuw</button>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreDisplay = document.getElementById('score');
+        const restartButton = document.getElementById('restartButton');
 
-        // Spelobjecten
-        let bucket = {
+        // Vinky V (in plaats van emmer)
+        let vinky = {
             x: canvas.width / 2 - 25,
-            y: canvas.height - 50,
+            y: canvas.height - 100,
             width: 50,
-            height: 30,
-            speed: 5
+            height: 80,
+            speed: 8
         };
 
         let tiles = [];
@@ -43,18 +75,46 @@
         let gameSpeed = 2;
         let gameOver = false;
 
-        // Beweging emmer
-        let leftPressed = false;
-        let rightPressed = false;
+        // Touch/muis besturing
+        let isDragging = false;
+        let dragX = 0;
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft') leftPressed = true;
-            if (e.key === 'ArrowRight') rightPressed = true;
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            dragX = e.clientX - canvas.offsetLeft - vinky.width / 2;
         });
 
-        document.addEventListener('keyup', (e) => {
-            if (e.key === 'ArrowLeft') leftPressed = false;
-            if (e.key === 'ArrowRight') rightPressed = false;
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                dragX = e.clientX - canvas.offsetLeft - vinky.width / 2;
+                vinky.x = dragX;
+                // Beperk Vinky V binnen de canvas
+                vinky.x = Math.max(0, Math.min(canvas.width - vinky.width, vinky.x));
+            }
+        });
+
+        // Touch-besturing voor mobiel
+        canvas.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            dragX = e.touches[0].clientX - canvas.offsetLeft - vinky.width / 2;
+        });
+
+        canvas.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (isDragging) {
+                dragX = e.touches[0].clientX - canvas.offsetLeft - vinky.width / 2;
+                vinky.x = dragX;
+                // Beperk Vinky V binnen de canvas
+                vinky.x = Math.max(0, Math.min(canvas.width - vinky.width, vinky.x));
+                e.preventDefault(); // Voorkom scrolling
+            }
         });
 
         // Nieuwe tegel maken
@@ -73,9 +133,11 @@
         function update() {
             if (gameOver) return;
 
-            // Emmer bewegen
-            if (leftPressed && bucket.x > 0) bucket.x -= bucket.speed;
-            if (rightPressed && bucket.x < canvas.width - bucket.width) bucket.x += bucket.speed;
+            // Beweeg Vinky V (via drag/touch)
+            if (isDragging) {
+                vinky.x = dragX;
+                vinky.x = Math.max(0, Math.min(canvas.width - vinky.width, vinky.x));
+            }
 
             // Nieuwe tegel spawnen (gemiddeld elke seconde)
             if (Math.random() < 0.02) spawnTile();
@@ -84,10 +146,10 @@
             for (let i = tiles.length - 1; i >= 0; i--) {
                 tiles[i].y += tiles[i].speed;
 
-                // Check botsing met emmer
-                if (tiles[i].y + tiles[i].height > bucket.y &&
-                    tiles[i].x > bucket.x && 
-                    tiles[i].x < bucket.x + bucket.width) {
+                // Check botsing met Vinky V
+                if (tiles[i].y + tiles[i].height > vinky.y &&
+                    tiles[i].x > vinky.x && 
+                    tiles[i].x < vinky.x + vinky.width) {
                     score += 10;
                     tiles.splice(i, 1);
                     gameSpeed += 0.1; // Verhoog moeilijkheid
@@ -97,7 +159,7 @@
                 // Game over als tegel grond raakt
                 if (tiles[i].y > canvas.height) {
                     gameOver = true;
-                    alert(`Game Over! Jouw score: ${score}`);
+                    showRestartButton();
                 }
             }
 
@@ -108,11 +170,23 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Teken emmer
-            ctx.fillStyle = '#666';
-            ctx.fillRect(bucket.x, bucket.y, bucket.width, bucket.height);
+            // Teken Vinky V (eenvoudige oranje "V" met ogen en hand)
+            ctx.fillStyle = '#FF4500'; // Oranje, huisstijl Verkoelen
+            ctx.fillRect(vinky.x, vinky.y, vinky.width, vinky.height / 2); // Lichaam (V-vorm basis)
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(vinky.x + 15, vinky.y + 20, 8, 0, Math.PI * 2); // Linker oog
+            ctx.arc(vinky.x + 35, vinky.y + 20, 8, 0, Math.PI * 2); // Rechter oog
+            ctx.fill();
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(vinky.x + 15, vinky.y + 20, 3, 0, Math.PI * 2); // Linker pupil
+            ctx.arc(vinky.x + 35, vinky.y + 20, 3, 0, Math.PI * 2); // Rechter pupil
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.fillRect(vinky.x + 45, vinky.y + 10, 20, 10); // Witte handschoen
 
-            // Teken tegels
+            // Teken dakpannen (bruin)
             ctx.fillStyle = '#8B4513';
             tiles.forEach(tile => {
                 ctx.fillRect(tile.x, tile.y, tile.width, tile.height);
@@ -124,6 +198,24 @@
             update();
             draw();
             requestAnimationFrame(gameLoop);
+        }
+
+        // Toon "Probeer opnieuw"-knop na game over
+        function showRestartButton() {
+            restartButton.style.display = 'block';
+            alert(`Game Over! Jouw score: ${score}`);
+        }
+
+        // Herstart het spel
+        function restartGame() {
+            tiles = [];
+            score = 0;
+            gameSpeed = 2;
+            gameOver = false;
+            vinky.x = canvas.width / 2 - vinky.width / 2;
+            scoreDisplay.textContent = `Score: ${score}`;
+            restartButton.style.display = 'none';
+            gameLoop();
         }
 
         // Start spel
