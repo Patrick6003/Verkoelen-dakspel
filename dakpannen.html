@@ -1,204 +1,194 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dakpannen Vangen - Verkoelen Dakspecialisten</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            text-align: center;
-            font-family: Arial, sans-serif;
-            background: #87CEEB; /* Lichte blauwe hemelachtergrond */
-            overflow: hidden;
-        }
-        #gameCanvas {
-            border: 2px solid #333;
-            background: #87CEEB;
-            touch-action: none; /* Voor touch-besturing */
-        }
-        #score {
-            font-size: 24px;
-            color: #FF4500; /* Oranje, huisstijl Verkoelen */
-            margin: 10px;
-            font-weight: bold;
-        }
-        #restartButton {
-            display: none;
-            margin: 20px;
-            padding: 10px 20px;
-            font-size: 18px;
-            background-color: #FF4500; /* Oranje knop */
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        #restartButton:hover {
-            background-color: #FF6347; /* Lichtere oranje bij hover */
-        }
-        #title {
-            color: #FF4500; /* Oranje titel */
-            font-size: 28px;
-            margin: 10px 0;
-        }
-        #instructions {
-            color: #333;
-            font-size: 16px;
-            margin-bottom: 10px;
-        }
-    </style>
+  <title>Vinky V Dakspel</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    canvas {
+      border: 1px solid #000;
+    }
+  </style>
 </head>
 <body>
-    <h1 id="title">Dakpannen Vangen - Verkoelen</h1>
-    <p id="instructions">Beweeg Vinky V met je vinger/muis om dakpannen, bitumen rollen en schroeven te vangen!</p>
-    <div id="score">Score: 0</div>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <button id="restartButton" onclick="restartGame()">Probeer opnieuw</button>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreDisplay = document.getElementById('score');
-        const restartButton = document.getElementById('restartButton');
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
 
-        // Vinky V (oranje "V" met oogjes)
-        let vinky = {
-            x: canvas.width / 2 - 25,
-            y: canvas.height - 100,
-            width: 50,
-            height: 80,
-            speed: 8
-        };
+    // Variabelen
+    let vinkyX = 175; // Startpositie in het midden
+    const vinkyY = 550; // Vinky V onderaan
+    const vinkyWidth = 50;
+    const vinkyHeight = 50;
+    let objects = [];
+    let score = 0;
+    let lives = 3;
+    let gameOver = false;
 
-        let objects = []; // Array voor dakpannen, bitumen rollen en schroeven
-        let score = 0;
-        let gameSpeed = 2;
-        let gameOver = false;
+    // Definieer objecttypes met snelheid en punten
+    const objectTypes = {
+      dakpan: { speed: 2, points: 10, width: 20, height: 20 },
+      dakrol: { speed: 3, points: 20, width: 30, height: 30 },
+      schroef: { speed: 4, points: 5, width: 10, height: 10 }
+    };
 
-        // Touch/muis besturing
-        let isDragging = false;
-        let dragX = 0;
+    // Besturing via touch (mobiel) of muis (desktop)
+    canvas.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      vinkyX = touch.clientX - canvas.offsetLeft - vinkyWidth / 2;
+      if (vinkyX < 0) vinkyX = 0;
+      if (vinkyX > canvas.width - vinkyWidth) vinkyX = canvas.width - vinkyWidth;
+    });
 
-        canvas.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            dragX = e.clientX - canvas.offsetLeft - vinky.width / 2;
-        });
+    canvas.addEventListener('mousemove', function(e) {
+      const rect = canvas.getBoundingClientRect();
+      vinkyX = e.clientX - rect.left - vinkyWidth / 2;
+      if (vinkyX < 0) vinkyX = 0;
+      if (vinkyX > canvas.width - vinkyWidth) vinkyX = canvas.width - vinkyWidth;
+    });
 
-        canvas.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
+    // Klik voor opnieuw knop
+    canvas.addEventListener('click', function(e) {
+      if (gameOver) {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+        if (clickX > 150 && clickX < 250 && clickY > 275 && clickY < 325) {
+          restartGame();
+        }
+      }
+    });
 
-        canvas.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                dragX = e.clientX - canvas.offsetLeft - vinky.width / 2;
-                vinky.x = dragX;
-                vinky.x = Math.max(0, Math.min(canvas.width - vinky.width, vinky.x));
-            }
-        });
+    // Functie om een nieuw object te spawnen
+    function spawnObject() {
+      const types = ['dakpan', 'dakrol', 'schroef'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      const x = Math.random() * (canvas.width - objectTypes[type].width);
+      const object = {
+        type: type,
+        x: x,
+        y: 0,
+        speed: objectTypes[type].speed,
+        points: objectTypes[type].points,
+        width: objectTypes[type].width,
+        height: objectTypes[type].height
+      };
+      objects.push(object);
+    }
 
-        // Touch-besturing voor mobiel
-        canvas.addEventListener('touchstart', (e) => {
-            isDragging = true;
-            dragX = e.touches[0].clientX - canvas.offsetLeft - vinky.width / 2;
-        });
+    // Update de objecten (beweging en vangdetectie)
+    function updateObjects() {
+      for (let i = objects.length - 1; i >= 0; i--) {
+        let obj = objects[i];
+        obj.y += obj.speed;
 
-        canvas.addEventListener('touchend', () => {
-            isDragging = false;
-        });
+        // Controleer of Vinky V het object vangt
+        if (obj.y + obj.height > vinkyY && obj.y < vinkyY + vinkyHeight &&
+            obj.x + obj.width > vinkyX && obj.x < vinkyX + vinkyWidth) {
+          score += obj.points;
+          objects.splice(i, 1);
+        } 
+        // Controleer of het object de grond raakt
+        else if (obj.y > canvas.height) {
+          lives--;
+          objects.splice(i, 1);
+        }
+      }
+    }
 
-        canvas.addEventListener('touchmove', (e) => {
-            if (isDragging) {
-                dragX = e.touches[0].clientX - canvas.offsetLeft - vinky.width / 2;
-                vinky.x = dragX;
-                vinky.x = Math.max(0, Math.min(canvas.width - vinky.width, vinky.x));
-                e.preventDefault(); // Voorkom scrolling
-            }
-        });
+    // Controleer of het spel voorbij is
+    function checkGameOver() {
+      if (lives <= 0) {
+        gameOver = true;
+      }
+    }
 
-        // Nieuwe objecten spawnen (dakpannen, bitumen rollen, schroeven)
-        function spawnObject() {
-            const type = Math.random(); // Kies willekeurig type object
-            let obj = {};
+    // Teken de achtergrond (huisstijl Verkoelen Dakspecialisten)
+    function drawBackground() {
+      ctx.fillStyle = '#003087'; // Blauwe achtergrond
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
-            if (type < 0.5) { // 50% kans op dakpan
-                obj = {
-                    type: 'tile',
-                    x: Math.random() * (canvas.width - 20),
-                    y: -20,
-                    width: 20,
-                    height: 20,
-                    speed: gameSpeed * 1, // Normale snelheid
-                    points: 10
-                };
-            } else if (type < 0.8) { // 30% kans op bitumen rol
-                obj = {
-                    type: 'roll',
-                    x: Math.random() * (canvas.width - 40),
-                    y: -20,
-                    width: 40,
-                    height: 20,
-                    speed: gameSpeed * 0.8, // Langzamer
-                    points: 15
-                };
-            } else { // 20% kans op schroef
-                obj = {
-                    type: 'screw',
-                    x: Math.random() * (canvas.width - 15),
-                    y: -20,
-                    width: 15,
-                    height: 15,
-                    speed: gameSpeed * 1.2, // Sneller
-                    points: 5
-                };
-            }
-            objects.push(obj);
+    // Teken Vinky V
+    function drawVinkyV() {
+      ctx.fillStyle = '#FFFFFF'; // Wit voor Vinky V
+      ctx.fillRect(vinkyX, vinkyY, vinkyWidth, vinkyHeight);
+      // Hier kun je een afbeelding toevoegen met ctx.drawImage
+    }
+
+    // Teken de vallende objecten
+    function drawObjects() {
+      for (let obj of objects) {
+        if (obj.type === 'dakpan') ctx.fillStyle = '#8B4513'; // Bruin
+        else if (obj.type === 'dakrol') ctx.fillStyle = '#808080'; // Grijs
+        else if (obj.type === 'schroef') ctx.fillStyle = '#C0C0C0'; // Zilver
+        ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+      }
+    }
+
+    // Teken de score
+    function drawScore() {
+      ctx.font = '20px Arial';
+      ctx.fillStyle = '#FFFFFF'; // Wit voor tekst
+      ctx.fillText('Score: ' + score, 10, 30);
+    }
+
+    // Teken de levens
+    function drawLives() {
+      ctx.fillText('Levens: ' + lives, 10, 60);
+    }
+
+    // Teken de opnieuw knop
+    function drawRestartButton() {
+      ctx.fillStyle = '#FFFFFF'; // Wit
+      ctx.fillRect(150, 275, 100, 50);
+      ctx.fillStyle = '#003087'; // Blauw
+      ctx.font = '20px Arial';
+      ctx.fillText('Opnieuw', 165, 305);
+    }
+
+    // Herstart het spel
+    function restartGame() {
+      score = 0;
+      lives = 3;
+      objects = [];
+      vinkyX = 175;
+      gameOver = false;
+    }
+
+    // Game loop
+    function gameLoop() {
+      if (!gameOver) {
+        // Spawn nieuw object met 2% kans per frame
+        if (Math.random() < 0.02) {
+          spawnObject();
         }
 
-        // Spelupdate
-        function update() {
-            if (gameOver) return;
+        updateObjects();
+        checkGameOver();
+        drawBackground();
+        drawVinkyV();
+        drawObjects();
+        drawScore();
+        drawLives();
+      } else {
+        drawRestartButton();
+      }
+      requestAnimationFrame(gameLoop);
+    }
 
-            // Beweeg Vinky V (via drag/touch)
-            if (isDragging) {
-                vinky.x = dragX;
-                vinky.x = Math.max(0, Math.min(canvas.width - vinky.width, vinky.x));
-            }
-
-            // Nieuwe objecten spawnen (gemiddeld elke seconde)
-            if (Math.random() < 0.02) spawnObject();
-
-            // Update objecten
-            for (let i = objects.length - 1; i >= 0; i--) {
-                objects[i].y += objects[i].speed;
-
-                // Check botsing met Vinky V
-                if (objects[i].y + objects[i].height > vinky.y &&
-                    objects[i].x > vinky.x && 
-                    objects[i].x < vinky.x + vinky.width) {
-                    score += objects[i].points;
-                    objects.splice(i, 1);
-                    gameSpeed += 0.05; // Verhoog moeilijkheid langzamer
-                    continue;
-                }
-
-                // Game over als object grond raakt
-                if (objects[i].y > canvas.height) {
-                    gameOver = true;
-                    showRestartButton();
-                }
-            }
-
-            scoreDisplay.textContent = `Score: ${score}`;
-        }
-
-        // Tekenen
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Teken Vinky V (oranje "V" met oogjes en hand)
-            ctx.fillStyle = '#FF4500'; // Oranje, huisstijl Verkoelen
-            ctx.beginPath();
-            ctx.moveTo(vinky.x + vinky.width / 2, vinky.y); // Top van V
-            ctx.lineTo(vinky.x, vinky.y + vinky.height / 2); // Linker punt
-            ctx.lineTo(vinky.x + vinky.width, vinky.y + vinky.height / 2); // Rechter punt
-            ctx.fill();
+    // Start het spel
+    gameLoop();
+  </script>
+</body>
+</html>
