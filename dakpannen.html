@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8" />
-  <title>Vinky V Dakspel (Verbeterd)</title>
+  <title>Vinky V Dakspel (Buiten-achtergrond + Moeilijkheidslevels)</title>
   <style>
     body {
       margin: 0;
@@ -11,44 +11,61 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: start;
     }
-    #gameCanvas {
+    /* Canvas is in 'echte' pixels 400×600, maar schaalt naar max 400px breed. */
+    canvas {
       border: 1px solid #000;
-      background-color: #595A5C; /* Donkergrijze achtergrond (Verkoelen-stijl) */
+      width: 100%;
+      max-width: 400px;
+      height: auto;
       display: block;
       margin-top: 20px;
+      background-color: #595A5C; /* Fallback, wordt overschreven door drawBackground() */
     }
     #scoreBoard {
       margin-top: 10px;
       font-family: Arial, sans-serif;
+      text-align: center;
     }
     #scoreBoard p {
       margin: 5px;
       font-size: 16px;
     }
+    /* Beknopte uitleg over levels en power-ups */
+    #gameInfo {
+      max-width: 400px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      background-color: #eee;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
-  <!-- Popup met uitleg (verschijnt automatisch bij laden van de pagina) -->
-  <script>
-    window.addEventListener('load', () => {
-      alert("Welkom bij het Vinky V Dakspel!\n\n" +
-        "De gele kraan is op hol geslagen en laat allerlei dakmaterialen vallen. " +
-        "Beweeg Vinky (de oranje V) onderaan om de gasflessen, dakrollen en schroeven te vangen. " +
-        "Je verliest een leven als je iets mist. Soms valt er ook een geldzak (power-up) waarmee je tijdelijk groter wordt!\n\n" +
-        "Veel plezier!");
-    });
-  </script>
+
+  <!-- Beknopte uitleg onder de scoreboard -->
+  <div id="gameInfo">
+    <strong>Levels & Effecten:</strong><br/>
+    - Level 1 (&lt; 1000 punten): Normaal<br/>
+    - Level 2 (&ge; 1000 punten): Kraan beweegt willekeurig<br/>
+    - Level 3 (&ge; 1500 punten): Vinky beweegt trager (moe)<br/>
+    - Level 4 (&ge; 2000 punten): Haak hangt lager<br/>
+    - Level 5 (&ge; 3000 punten): Wind en mist<br/><br/>
+    <strong>Power-up (geldzak):</strong> +1 leven en tijdelijk sneller bewegen!
+  </div>
 
   <canvas id="gameCanvas" width="400" height="600"></canvas>
   
-  <!-- ScoreBoard onder het speelveld: hoeveel van elk ding is gevangen -->
+  <!-- Telling van het aantal gevangen items -->
   <div id="scoreBoard">
     <p>
       Gasflessen: <span id="gasflesCount">0</span> | 
       Dakrollen: <span id="dakrolCount">0</span> | 
       Schroeven: <span id="schroefCount">0</span> | 
-      Geldzakken: <span id="powerUpCount">0</span>
+      PIR-platen: <span id="pirCount">0</span> | 
+      Power-ups: <span id="powerUpCount">0</span>
     </p>
   </div>
 
@@ -57,100 +74,167 @@
     const ctx = canvas.getContext('2d');
 
     // --- Speler (Vinky) ---
-    let vinkyX = 175;          
-    let vinkyY = 550;         
-    let vinkyWidth = 50;      
-    let vinkyHeight = 50;     
+    let vinkyX = 175;
+    let vinkyY = 550;
+    let vinkyWidth = 50;
+    let vinkyHeight = 50;
     const originalVinkyWidth = 50;
     const originalVinkyHeight = 50;
-    let powerUpActive = false;
-    let powerUpTimer = 0;      // Duur (in frames) dat de power-up actief is
+
+    // --- Moeilijkheidslevels ---
+    let currentLevel = 1;
+
+    // --- Extra: Power-up geeft extra leven + speed boost ---
+    let speedBoostActive = false;
+    let speedBoostTimer = 0;
+    const SPEED_BOOST_DURATION = 300; // ~5 seconden bij 60 FPS
 
     // --- Kraan / haak ---
-    const craneHeight = 10;    // Dikte van de gele balk bovenaan
-    let hookX = 0;             // Horizontale positie van de haak
-    let hookY = craneHeight;   // Haak net onder de gele balk
+    const craneHeight = 10;
+    let hookX = 0;
+    let hookY = craneHeight;
     let hookWidth = 10;
     let hookHeight = 20;
     let hookSpeed = 2;
-    let hookDirection = 1;     // 1 = naar rechts, -1 = naar links
+    let hookDirection = 1; // 1 = rechts, -1 = links
+    let randomCraneTimer = 0;
+
+    // --- Wind / Mist (Level 5) ---
+    let windSpeed = 0;
+    let windDirection = 1; 
+    let windChangeTimer = 0;
 
     // --- Objecten ---
-    let objects = [];          
+    let objects = [];
     let score = 0;
     let lives = 3;
     let gameOver = false;
 
-    // Counters voor aantal gevangen van elk type
+    // Counters
     let gasflesCount = 0;
     let dakrolCount = 0;
     let schroefCount = 0;
-    let powerUpCount = 0;  // Geldzakken
+    let pirCount = 0;
+    let powerUpCount = 0;
 
-    // Typedefinities
+    // Types (meer PIR-platen -> we verhogen de kans later)
     const objectTypes = {
-      gasfles: { speed: 2, points: 10, width: 20, height: 40 },
-      dakrol:  { speed: 3, points: 20, width: 15, height: 40 },
-      schroef: { speed: 4, points: 5,  width: 10, height: 20 },
-      powerUp: { speed: 3, points: 0,  width: 20, height: 20 } // Geldzak
+      gasfles: { speed: 2,  points: 10, width: 20, height: 40 },
+      dakrol:  { speed: 3,  points: 20, width: 15, height: 40 },
+      schroef: { speed: 4,  points: 5,  width: 10, height: 20 },
+      pir:     { speed: 2.5,points: 15, width: 30, height: 20 }, // PIR-plaat
+      powerUp: { speed: 3,  points: 0,  width: 20, height: 20 }  // Geldzak
     };
 
-    // --- Besturing via touch ---
-    canvas.addEventListener('touchmove', function(e) {
+    // --- Besturing via touch en muis (alleen x bepalen) ---
+    canvas.addEventListener('touchmove', e => {
       e.preventDefault();
-      const touch = e.touches[0];
-      vinkyX = touch.clientX - canvas.offsetLeft - vinkyWidth / 2;
-      limitVinkyMovement();
+      if (e.touches.length > 0) moveVinky(e.touches[0].clientX);
+    });
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (e.touches.length > 0) moveVinky(e.touches[0].clientX);
+    });
+    canvas.addEventListener('mousemove', e => {
+      moveVinky(e.clientX);
     });
 
-    // --- Besturing via muis ---
-    canvas.addEventListener('mousemove', function(e) {
+    function moveVinky(clientX) {
+      // Schaal om echte canvas-coördinaten te krijgen
       const rect = canvas.getBoundingClientRect();
-      vinkyX = e.clientX - rect.left - vinkyWidth / 2;
-      limitVinkyMovement();
-    });
+      const scaleX = canvas.width / rect.width;
 
-    function limitVinkyMovement() {
+      // Bij Level 3 beweegt Vinky trager. 
+      // PLUS we kunnen ook een "speedBoostActive" meewegen (die Vinky weer sneller maakt)
+      let slowFactor = 1.0;
+
+      if (currentLevel >= 3) slowFactor *= 0.5; // 50% speed
+      if (speedBoostActive) slowFactor *= 2.0;  // x2 speed
+
+      // Bepaal nieuwe x
+      let desiredX = (clientX - rect.left) * scaleX - vinkyWidth / 2;
+
+      // Interpoleer met 'slowFactor' (als slowFactor=1 => direct, 0.5 => halve afstand, 2 => dubbel?)
+      // Opgelet: als slowFactor > 1, kunnen we overshoot krijgen. Om ‘sneller’ te maken, laten we Vinky in één stap direct naar desiredX gaan, of we maken “extra” steps.
+      // Eenvoudige manier: 
+      //   vinkyX += (desiredX - vinkyX) * slowFactor
+      // Als slowFactor=2 => 2x zo snel naderen
+      // Let wel: hij kan iets "over" schieten. 
+      // Dit is een simpele benadering voor de demonstratie.
+      vinkyX += (desiredX - vinkyX) * slowFactor;
+
+      // Grenzen
       if (vinkyX < 0) vinkyX = 0;
       if (vinkyX > canvas.width - vinkyWidth) {
         vinkyX = canvas.width - vinkyWidth;
       }
     }
 
-    // --- Opnieuw klikken als game over is ---
-    canvas.addEventListener('click', function(e) {
+    // --- Klik voor opnieuw bij game over ---
+    canvas.addEventListener('click', e => {
       if (gameOver) {
         const rect = canvas.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
         const clickY = e.clientY - rect.top;
+        // bounding box van de 'Opnieuw'-knop
         if (clickX > 150 && clickX < 250 && clickY > 275 && clickY < 325) {
           restartGame();
         }
       }
     });
 
-    // --- Nieuwe objecten spawnen vanaf de haak ---
+    // --- Levels ---
+    function updateLevel() {
+      if (score >= 3000) {
+        currentLevel = 5;
+      } else if (score >= 2000) {
+        currentLevel = 4;
+      } else if (score >= 1500) {
+        currentLevel = 3;
+      } else if (score >= 1000) {
+        currentLevel = 2;
+      } else {
+        currentLevel = 1;
+      }
+    }
+
+    // --- Objecten spawnen (meer PIR) ---
     function spawnObject() {
       // ~1% kans per frame
       if (Math.random() < 0.01) {
+        // We hebben wat gewichten: 
+        // - powerUp: 2% van 1% = 0.02%
+        // - gasfles
+        // - dakrol
+        // - schroef
+        // - pir => wat meer kans nu
         let type;
         const rand = Math.random();
         if (rand < 0.02) {
-          type = 'powerUp';  // 2% van die 1% kans => 0.02% op geldzak
-        } else if (rand < 0.5) {
-          type = 'gasfles';
-        } else if (rand < 0.8) {
-          type = 'dakrol';
+          type = 'powerUp'; // 2% van de 1% => 0.02% kans
+        } else if (rand < 0.17) {
+          type = 'gasfles'; // 15%
+        } else if (rand < 0.47) {
+          type = 'dakrol';  // 30%
+        } else if (rand < 0.80) {
+          type = 'pir';     // 33%
         } else {
-          type = 'schroef';
+          type = 'schroef'; // 20%
         }
 
-        // Het object valt vanaf (ongeveer) de positie van de haak
+        // Als level >= 4 hangt de haak lager
+        let effectiveHookY = hookY + hookHeight;
+        if (currentLevel >= 4) {
+          effectiveHookY += 50;
+        }
+
+        // X is midden v/d haak
         const x = hookX + hookWidth / 2 - objectTypes[type].width / 2;
+
         objects.push({
           type: type,
           x: x,
-          y: hookY + hookHeight,
+          y: effectiveHookY,
           speed: objectTypes[type].speed,
           points: objectTypes[type].points,
           width: objectTypes[type].width,
@@ -159,10 +243,11 @@
       }
     }
 
-    // --- Haak bewegen (links-rechts) ---
+    // --- Haak bewegen (level 2 => random) ---
     function updateHook() {
+      // Normale horizontale beweging
       hookX += hookDirection * hookSpeed;
-      // Check randen
+
       if (hookX < 0) {
         hookX = 0;
         hookDirection = 1;
@@ -170,12 +255,33 @@
         hookX = canvas.width - hookWidth;
         hookDirection = -1;
       }
+
+      // vanaf level 2: kraan kan random heen-en-weer
+      if (currentLevel >= 2) {
+        randomCraneTimer--;
+        if (randomCraneTimer <= 0) {
+          randomCraneTimer = 60 + Math.floor(Math.random() * 60);
+          hookDirection = (Math.random() < 0.5) ? 1 : -1;
+          hookSpeed = 2 + Math.random() * 2;
+        }
+      }
     }
 
-    // --- Update objecten (vallen + check vangst) ---
+    // --- Objecten updaten (wind = level 5), en check vangst ---
     function updateObjects() {
       for (let i = objects.length - 1; i >= 0; i--) {
         let obj = objects[i];
+
+        // Wind
+        if (currentLevel >= 5 && windSpeed !== 0) {
+          obj.x += windSpeed * windDirection;
+          if (obj.x < 0) obj.x = 0;
+          if (obj.x + obj.width > canvas.width) {
+            obj.x = canvas.width - obj.width;
+          }
+        }
+
+        // Vallen
         obj.y += obj.speed;
 
         // Check vangst
@@ -185,20 +291,22 @@
           obj.x + obj.width > vinkyX &&
           obj.x < vinkyX + vinkyWidth
         ) {
-          // Vinky vangt het object
+          // powerUp => +1 leven + speed boost
           if (obj.type === 'powerUp') {
             powerUpCount++;
-            activatePowerUp();
+            lives++;
+            activateSpeedBoost();
           } else {
-            // Punten + tellers
+            // score & telling
             score += obj.points;
             if (obj.type === 'gasfles') gasflesCount++;
             if (obj.type === 'dakrol')  dakrolCount++;
             if (obj.type === 'schroef') schroefCount++;
+            if (obj.type === 'pir')     pirCount++;
           }
           objects.splice(i, 1);
         }
-        // Gemist (onder uit beeld)
+        // Gemist
         else if (obj.y > canvas.height) {
           if (obj.type !== 'powerUp') {
             lives--;
@@ -208,44 +316,88 @@
       }
     }
 
-    // --- Power-up activeren (grotere Vinky) ---
-    function activatePowerUp() {
-      powerUpActive = true;
-      powerUpTimer = 300; // ~5 seconden bij 60 FPS
-      vinkyWidth = 75;
-      vinkyHeight = 75;
+    // --- SpeedBoost in plaats van 'grotere Vinky' ---
+    function activateSpeedBoost() {
+      speedBoostActive = true;
+      speedBoostTimer = SPEED_BOOST_DURATION;
     }
-
-    // --- Power-up actief houden/timer ---
-    function updatePowerUp() {
-      if (powerUpActive) {
-        powerUpTimer--;
-        if (powerUpTimer <= 0) {
-          // Power-up is verlopen, terug naar normale afmetingen
-          powerUpActive = false;
-          vinkyWidth = originalVinkyWidth;
-          vinkyHeight = originalVinkyHeight;
+    function updateSpeedBoost() {
+      if (speedBoostActive) {
+        speedBoostTimer--;
+        if (speedBoostTimer <= 0) {
+          speedBoostActive = false;
         }
       }
     }
 
-    // --- Check of het spel voorbij is ---
+    // --- Wind en mist (level 5) ---
+    function updateWindAndMist() {
+      if (currentLevel < 5) {
+        windSpeed = 0;
+      } else {
+        if (windSpeed === 0) {
+          // initieel
+          windSpeed = 0.3;
+        }
+        windChangeTimer--;
+        if (windChangeTimer <= 0) {
+          windChangeTimer = 120 + Math.floor(Math.random() * 120);
+          windDirection = (Math.random() < 0.5) ? 1 : -1;
+          windSpeed = 0.2 + Math.random() * 0.5;
+        }
+      }
+    }
+
+    // --- Check Game Over ---
     function checkGameOver() {
-      if (lives <= 0) {
+      if (lives <= 0 && !gameOver) {
+        // Pop-up met score
+        alert(`Game Over! Je score is: ${score}`);
         gameOver = true;
       }
     }
 
-    // --- Achtergrond tekenen ---
+    // --- Achtergrond tekenen (buiten!) ---
     function drawBackground() {
-      // Volledige canvas overschrijven
-      ctx.fillStyle = '#595A5C';
+      // Lucht
+      ctx.fillStyle = '#87CEEB';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Zon (simpel: gele cirkel rechtsboven)
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(canvas.width - 50, 50, 30, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // Wolken (paar witte bollen)
+      drawCloud(60, 70);
+      drawCloud(200, 50);
+      drawCloud(300, 80);
+
+      // Grasveld (groene balk onderaan, achter het dak)
+      ctx.fillStyle = '#228B22';
+      ctx.fillRect(0, 500, canvas.width, 100);
+      
+      // Mist-laag?
+      if (currentLevel >= 5) {
+        ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
     }
 
-    // --- Gele kraanbalk bovenaan ---
+    // Eenvoudige "wolk" (3 overlappende cirkels)
+    function drawCloud(cx, cy) {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 20, 0, 2 * Math.PI);
+      ctx.arc(cx + 15, cy, 25, 0, 2 * Math.PI);
+      ctx.arc(cx - 15, cy + 10, 25, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    // --- Gele kraanbalk ---
     function drawCraneBar() {
-      ctx.fillStyle = '#FFD700'; // Gougeel
+      ctx.fillStyle = '#FFD700';
       ctx.fillRect(0, 0, canvas.width, craneHeight);
     }
 
@@ -254,60 +406,59 @@
       // Touw/lijn
       ctx.strokeStyle = '#808080';
       ctx.beginPath();
-      // vanuit midden van de haak tot bovenaan de balk
       ctx.moveTo(hookX + hookWidth / 2, 0);
       ctx.lineTo(hookX + hookWidth / 2, hookY);
       ctx.stroke();
 
-      // Zelfde kleur voor de haak
+      // Haak
       ctx.fillStyle = '#808080';
       ctx.fillRect(hookX, hookY, hookWidth, hookHeight);
     }
 
-    // --- Plat dak onderaan (simpele grijze balk) ---
+    // --- Plat dak onderaan ---
     function drawFlatRoof() {
       ctx.fillStyle = '#444';
       ctx.fillRect(0, 580, canvas.width, 20);
     }
 
-    // --- Vinky V tekenen (oranje V met “uitsparing”) ---
+    // --- Vinky V tekenen (iets dikker) ---
     function drawVinkyV() {
       ctx.save();
-      // Verplaats naar middelpunt van Vinky
       ctx.translate(vinkyX + vinkyWidth / 2, vinkyY + vinkyHeight / 2);
       
-      // Grote oranje driehoek (V)
+      // Grote oranje driehoek
       ctx.fillStyle = '#F36F21';
       ctx.beginPath();
-      ctx.moveTo(-vinkyWidth / 2, -vinkyHeight / 2);  // linkerboven
-      ctx.lineTo(0, vinkyHeight / 2);                // punt onder
-      ctx.lineTo(vinkyWidth / 2, -vinkyHeight / 2);  // rechterboven
+      ctx.moveTo(-vinkyWidth / 2, -vinkyHeight / 2);
+      ctx.lineTo(0, vinkyHeight / 2);
+      ctx.lineTo(vinkyWidth / 2, -vinkyHeight / 2);
       ctx.closePath();
       ctx.fill();
 
-      // Kleinere driehoek in achtergrondkleur, zodat het meer op een V lijkt
-      ctx.fillStyle = '#595A5C';
+      // Kleinere driehoek in achtergrondkleur, maar kleiner => V blijft dikker
+      ctx.fillStyle = '#87CEEB'; // dezelfde kleur als de lucht
+      // Op level 5 heb je mist, maar we doen geen extra complicatie: 
+      // desnoods is dit mismatch als er gras of kraan achter is
+      // (Voor de demo: we houden het bij de luchtkleur.)
       ctx.beginPath();
-      // iets minder breed dan de hoofddriehoek en iets vanaf de top, 
-      // zodat de ogen vrij blijven
-      ctx.moveTo(-vinkyWidth * 0.3, -vinkyHeight / 2);
-      ctx.lineTo(0, vinkyHeight * 0.2);
-      ctx.lineTo(vinkyWidth * 0.3, -vinkyHeight / 2);
+      ctx.moveTo(-vinkyWidth * 0.2, -vinkyHeight / 2);
+      ctx.lineTo(0, vinkyHeight * 0.15);
+      ctx.lineTo(vinkyWidth * 0.2, -vinkyHeight / 2);
       ctx.closePath();
       ctx.fill();
 
-      // Ogen (boven de ‘uitsparing’)
+      // Ogen
       ctx.fillStyle = '#FFFFFF';
-      // linkeroog
+      // links
       ctx.beginPath();
       ctx.arc(-vinkyWidth * 0.25, -vinkyHeight * 0.1, 4, 0, 2 * Math.PI);
       ctx.fill();
-      // rechteroog
+      // rechts
       ctx.beginPath();
       ctx.arc(vinkyWidth * 0.25, -vinkyHeight * 0.1, 4, 0, 2 * Math.PI);
       ctx.fill();
 
-      // Pupillen (blauw)
+      // Pupillen
       ctx.fillStyle = '#0000FF';
       ctx.beginPath();
       ctx.arc(-vinkyWidth * 0.25, -vinkyHeight * 0.1, 2, 0, 2 * Math.PI);
@@ -324,12 +475,12 @@
           // Grijze gasfles
           ctx.fillStyle = '#A9A9A9';
           ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
-          // Kop van de gasfles
+          // Kop
           ctx.fillStyle = '#7F7F7F';
           ctx.fillRect(obj.x + obj.width / 4, obj.y - 5, obj.width / 2, 5);
 
         } else if (obj.type === 'dakrol') {
-          // Zwarte rechthoek met witte band
+          // Zwarte rol
           ctx.fillStyle = '#000000';
           ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
           ctx.fillStyle = '#FFFFFF';
@@ -347,44 +498,50 @@
             obj.height * 0.6
           );
 
+        } else if (obj.type === 'pir') {
+          // Lichtgele/plaat
+          ctx.fillStyle = '#EEE8AA'; // PaleGoldenrod
+          ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+          // Rand
+          ctx.strokeStyle = '#BDB76B';
+          ctx.strokeRect(obj.x, obj.y, obj.width, obj.height);
+
         } else if (obj.type === 'powerUp') {
-          // Geldzak
+          // Geldzak (maar nu +1 leven + speed boost)
           const centerX = obj.x + obj.width / 2;
           const centerY = obj.y + obj.height / 2;
           const radius = obj.width / 2;
 
-          // Zak-ovaal
           ctx.fillStyle = '#8B4513'; // bruin
           ctx.beginPath();
           ctx.ellipse(centerX, centerY + 2, radius, radius * 1.2, 0, 0, Math.PI * 2);
           ctx.fill();
 
-          // Bovenkant van de zak
+          // Bovenkant
           ctx.fillStyle = '#654321';
           ctx.fillRect(centerX - radius * 0.6, centerY - radius * 0.6, radius * 1.2, radius * 0.4);
 
-          // Een simpel geld-teken erop (bijv. € of $)
+          // Evt. hartje of "+1" symbool
           ctx.fillStyle = '#FFFF00';
           ctx.font = '10px Arial';
-          ctx.fillText('€', centerX - 3, centerY + 4);
+          ctx.fillText('+1', centerX - 6, centerY + 4);
         }
       }
     }
 
-    // --- Score & levens tekenen (optioneel in canvas) ---
+    // --- Score & levens in canvas ---
     function drawScore() {
       ctx.font = '20px Arial';
       ctx.fillStyle = '#FFFFFF';
       ctx.fillText('Score: ' + score, 10, 70);
     }
-
     function drawLives() {
       ctx.font = '20px Arial';
       ctx.fillStyle = '#FFFFFF';
       ctx.fillText('Levens: ' + lives, 10, 95);
     }
 
-    // --- Opnieuw-knop tekenen ---
+    // --- Opnieuw-knop bij game over ---
     function drawRestartButton() {
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(150, 275, 100, 50);
@@ -398,40 +555,57 @@
       document.getElementById('gasflesCount').textContent = gasflesCount;
       document.getElementById('dakrolCount').textContent = dakrolCount;
       document.getElementById('schroefCount').textContent = schroefCount;
+      document.getElementById('pirCount').textContent = pirCount;
       document.getElementById('powerUpCount').textContent = powerUpCount;
     }
 
-    // --- Herstart het spel ---
+    // --- Herstart ---
     function restartGame() {
       score = 0;
       lives = 3;
       objects = [];
-      powerUpActive = false;
-      powerUpTimer = 0;
+      gameOver = false;
+      currentLevel = 1;
+
+      // Reset kraan
+      hookX = 0;
+      hookSpeed = 2;
+      hookDirection = 1;
+      randomCraneTimer = 0;
+
+      // Reset wind
+      windSpeed = 0;
+      windDirection = 1;
+      windChangeTimer = 0;
+
+      // Reset Vinky
       vinkyWidth = originalVinkyWidth;
       vinkyHeight = originalVinkyHeight;
       vinkyX = 175;
-      hookX = 0;
-      gameOver = false;
 
-      // Reset ook de counters
+      // Reset power-up / speed boost
+      speedBoostActive = false;
+      speedBoostTimer = 0;
+
+      // Reset counters
       gasflesCount = 0;
       dakrolCount = 0;
       schroefCount = 0;
+      pirCount = 0;
       powerUpCount = 0;
     }
 
-    // --- Hoofd-loop ---
+    // --- GameLoop ---
     function gameLoop() {
       if (!gameOver) {
-        // Update
+        updateLevel();
         updateHook();
         spawnObject();
         updateObjects();
-        updatePowerUp();
+        updateSpeedBoost();
+        updateWindAndMist();
         checkGameOver();
 
-        // Teken
         drawBackground();
         drawCraneBar();
         drawHook();
@@ -441,18 +615,18 @@
         drawScore();
         drawLives();
 
-        // ScoreBoard in DOM bijwerken
         updateScoreBoard();
 
       } else {
-        // Laat het canvas leeg zien + "Opnieuw" knop
+        // Game Over: tonen "Opnieuw"-knop
         drawBackground();
         drawRestartButton();
       }
+
       requestAnimationFrame(gameLoop);
     }
 
-    // Start de gameloop
+    // Start
     gameLoop();
   </script>
 </body>
