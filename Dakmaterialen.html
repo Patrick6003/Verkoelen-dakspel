@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
-  <title>Vinky V Dakspel (Groot Verbeterd Voorbeeld)</title>
+  <meta charset="UTF-8" />
+  <title>Vinky V Dakspel (Volledig Verbeterd, Direct Start)</title>
   <style>
     body {
-      margin: 0; padding: 0;
+      margin: 0; 
+      padding: 0;
       background: #f0f0f0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: start;
     }
-
-    /* Bovenbalk met highscore + pauzeknop */
+    /* Bovenbalk met highscore en Pause-knop */
     #topBar {
       width: 100%;
       max-width: 400px;
@@ -33,8 +33,7 @@
       padding: 4px 8px;
       cursor: pointer;
     }
-
-    /* Canvas is in "echte" pixels 400×600, maar schaalt tot max 400px breed */
+    /* Canvas: 400×600 intern, schaalt max 400px breed */
     canvas {
       border: 1px solid #000;
       width: 100%;
@@ -44,8 +43,7 @@
       margin-top: 10px;
       background-color: #595A5C; /* fallback */
     }
-
-    /* ScoreBoard in 2 regels (Salaris + Promotie apart) */
+    /* ScoreBoard: 2 regels (Salaris + Promotie apart) */
     #scoreBoard {
       margin-top: 10px;
       font-family: Arial, sans-serif;
@@ -55,7 +53,6 @@
       margin: 5px;
       font-size: 16px;
     }
-
     /* Info over levels en extra */
     #gameInfo {
       max-width: 400px;
@@ -70,15 +67,16 @@
 </head>
 <body>
 
-  <!-- Bovenbalk: Highscore + Pause-knop -->
+  <!-- Bovenbalk met Highscore en Pause-knop -->
   <div id="topBar">
     <div id="highScoreLabel">Highscore: <span id="highScoreSpan">0</span></div>
     <button id="pauseBtn">Pause</button>
   </div>
 
+  <!-- Canvas voor het spel -->
   <canvas id="gameCanvas" width="400" height="600"></canvas>
 
-  <!-- ScoreBoard in 2 regels: basis + power-ups -->
+  <!-- ScoreBoard (2 regels) -->
   <div id="scoreBoard">
     <p>
       Score: <span id="scoreSpan">0</span> |
@@ -91,53 +89,50 @@
     </p>
   </div>
 
+  <!-- Uitleg over Levels en extra -->
   <div id="gameInfo">
-    <strong>Verbeterde versie met:</strong><br/>
-    - Giftige vaten (verlies 1 leven bij vangst),<br/>
-    - Bommen (verlies 2 levens als je ze vangt, 1 als ze de grond raken),<br/>
-    - Extra power-ups: magnet (zuigt objecten aan), slowMo (halve valsnelheid),<br/>
-    - Combo-systeem (bij 5 op rij vangst: +20 punten),<br/>
-    - Waves (soms 5..8 objecten tegelijk),<br/>
-    - Knipperende ogen & idle-armbewegingen,<br/>
-    - Parallax-wolken, regen/mist/wind/donker/storm op hogere levels,<br/>
-    - Achtergrondmuziek (optioneel).<br/><br/>
-
-    Speel en veel plezier!
+    <strong>Vinky V Dakspel - Volledig Verbeterd</strong><br/>
+    • Direct start (geen startknop/overlay).<br/>
+    • Dak onderaan weer zichtbaar.<br/>
+    • Verbeteringen: Giftige vaten, bommen, magnet, slowmo, promotie, combo-systeem, waves.<br/>
+    • Storm, regen, mist, donker bij hogere levels.<br/>
+    • Parallax-wolken, knipperende ogen, idle-armbeweging.<br/>
+    Veel plezier!
   </div>
 
   <script>
+    /* ---- Canvas & Context ---- */
     const canvas = document.getElementById('gameCanvas');
     const ctx    = canvas.getContext('2d');
 
     /* ---- Audio ---- */
     const catchSound = new Audio('catch.mp3');
     const missSound  = new Audio('miss.mp3');
-    /* Optionele achtergrondmuziek */
-    let bgMusic = new Audio('bgMusic.mp3');
-    bgMusic.loop = true; 
-    // Probeer direct te starten (sommige browsers eisen user-gesture):
-    bgMusic.volume = 0.5;
-    bgMusic.play().catch(()=>{}); // als user-geste nodig is, faalt dit silently
+    let bgMusic      = new Audio('bgMusic.mp3');
+    bgMusic.loop     = true;
+    bgMusic.volume   = 0.5;
+    bgMusic.play().catch(()=>{}); // Start direct (als browser het toelaat)
 
-    /* ---- Pauzeknop ---- */
-    let paused = false;
+    /* ---- Gamevariabelen ---- */
+    let paused   = false; // direct false => spel start
+    let gameOver = false;
+
+    /* Bovenbalk: Pause-knop */
     const pauseBtn = document.getElementById('pauseBtn');
     pauseBtn.addEventListener('click', ()=>{
       paused = !paused;
       pauseBtn.textContent = paused? 'Start' : 'Pause';
-      if(paused) {
-        bgMusic.pause();
-      } else {
-        bgMusic.play().catch(()=>{});
-      }
+      if(paused) bgMusic.pause();
+      else       bgMusic.play().catch(()=>{});
     });
 
-    /* ---- Highscore & Ranking (lokale) ---- */
-    let highScore = 0;
+    /* Highscore */
+    let highScore=0;
     if(localStorage.getItem('vinkyHighScore')){
       highScore = parseInt(localStorage.getItem('vinkyHighScore'), 10);
     }
     document.getElementById('highScoreSpan').textContent = String(highScore);
+
     function updateHighScoreIfNeeded(){
       if(score>highScore){
         highScore=score;
@@ -146,53 +141,48 @@
       }
     }
 
-    /* ---- Basisspel: Score, Levens, Levels ---- */
+    /* Score & Levens */
     let score=0;
     let lives=3;
-    let currentLevel=1;
-    let previousLevel=1;
+
+    /* Level-systeem */
+    let currentLevel=1, previousLevel=1;
     let levelChangeTimer=0;
 
-    /* ---- Combo-systeem ---- */
+    /* Combo-systeem */
     let comboCount=0; 
-    const COMBO_THRESHOLD=5; // bij 5 op rij
+    const COMBO_THRESHOLD=5;
     const COMBO_BONUS=20;
 
-    /* ---- Spawner-functies ---- */
-    // ~3% kans per frame voor "normaal" spawnen
-    // Soms wave van 5..8 objecten
-    let waveTimer=600; // elke ~10 sec (600 frames) komt een wave
-    let gameOver=false;
-
-    /* ---- Speler (Vinky) ---- */
+    /* Dak-spelers: Vinky */
     let vinkyX=175, vinkyY=550;
     let vinkyWidth=50, vinkyHeight=50;
     const originalVinkyWidth=50, originalVinkyHeight=50;
-    let vinkyCheerTimer=0;    // Vinky juicht
-    let vinkyStunnedTimer=0;  // door bliksem
-    let blinkTimer=120;       // knipper-ogen idle
-    let armSwing=0;           // idle-armbeweging
+    let vinkyCheerTimer=0;   // juich
+    let vinkyStunnedTimer=0; // bliksem
+    let blinkTimer=120;      // knipper idle
+    let armSwing=0;          // armen schommelen
 
-    /* ---- Kraan / Haak 1 ---- */
+    /* Kraan / Haak 1 */
     const craneHeight=10;
     let hookX=0, hookY=craneHeight;
     let hookWidth=10, hookHeight=20;
     let hookSpeed=2, hookDirection=1;
     let randomCraneTimer=0;
 
-    /* ---- Kraan / Haak 2 (Promotie) ---- */
+    /* Kraan / Haak 2 (promotie) */
     let twoHooksActive=false, twoHooksTimer=0;
     let hook2X=380, hook2Y=craneHeight;
     let hook2Width=10, hook2Height=20;
     let hook2Speed=2, hook2Direction=-1;
 
-    /* ---- Power-ups: magnet, slowMo, etc. ---- */
+    /* Power-ups: magnet, slowMo, promotie, forcedPromotie */
     let magnetActive=false, magnetTimer=0;
     let slowMoActive=false, slowMoTimer=0;
     let promotieActive=false, promotieTimer=0;
     let forcedPromotionGiven=false;
 
-    /* ---- Wind/Mist/Regen/Storm ---- */
+    /* Wind/Mist/Regen/Storm */
     let windSpeed=0, windDirection=1, windChangeTimer=0;
     let raindrops=[];
     for(let i=0; i<60; i++){
@@ -202,88 +192,84 @@
         speed: 3+Math.random()*2
       });
     }
-
     let lightningActive=false, lightningX=0, lightningTimer=0;
     let randomLightningTimer=300;
 
-    /* ---- Objecten en objectTypes ---- */
-    let objects = [];
-    // Giftige vaten, bommen, magnet, slowMo, powerUp, promotie, etc.
-    const objectTypes = {
-      gasfles:       { points:15, width:20, height:40 },
-      dakrol:        { points:30, width:15, height:40 },
-      schroef:       { points:10, width:10, height:20 },
-      pir:           { points:25, width:30, height:20 },
-      powerUp:       { points:0,  width:20, height:20 }, // +1 leven
-      promotie:      { points:0,  width:20, height:20 }, // +1 leven, 2e haak, bigger Vinky
-      toxicBarrel:   { points:0,  width:20, height:30 }, // giftig vat => -1 leven bij vangst
-      bomb:          { points:0,  width:15, height:25 }, // bom => -2 leven bij vangst, -1 gemist
-      magnet:        { points:0,  width:20, height:20 }, // magnetische vinky
-      slowMo:        { points:0,  width:20, height:20 }  // slow motion
-    };
+    /* Golven/waves */
+    let waveTimer=600; // elke ~10sec
 
-    /* ---- Parallax wolken: twee lagen ---- */
+    /* Voor parallax-wolken (twee lagen) */
     let clouds1 = [
-      { x: 50, y: 60, size: 1.0 },
-      { x: 200,y: 40, size: 1.2 },
-      { x: 350,y: 70, size: 1.1 },
+      { x:50, y:60, size:1.0 },
+      { x:200,y:40, size:1.2 },
+      { x:350,y:70, size:1.1 }
     ];
     let clouds2 = [
-      { x: 100,y: 80,  size: 0.8 },
-      { x: 250,y: 50,  size: 1.0 },
-      { x: 400,y: 90,  size: 1.3 },
+      { x:100,y:80, size:0.8 },
+      { x:250,y:50, size:1.0 },
+      { x:400,y:90, size:1.3 }
     ];
 
-    /* ---- Besturing (muis/touch) ---- */
+    /* Object-lijst */
+    let objects=[];
+    /* Objecttypes (inclusief giftig vat, bom, magnet, slowMo, powerUp, promotie) */
+    const objectTypes={
+      gasfles:     { points:15, width:20, height:40 },
+      dakrol:      { points:30, width:15, height:40 },
+      schroef:     { points:10, width:10, height:20 },
+      pir:         { points:25, width:30, height:20 },
+      powerUp:     { points: 0, width:20, height:20 }, // +1 leven
+      promotie:    { points: 0, width:20, height:20 }, // +1 leven, bigger Vinky, extra haak
+      toxicBarrel: { points: 0, width:20, height:30 }, // giftig => -1 leven als vangt
+      bomb:        { points: 0, width:15, height:25 }, // bom => -2 leven als vangt
+      magnet:      { points: 0, width:20, height:20 }, // magnetische power-up
+      slowMo:      { points: 0, width:20, height:20 }  // slow motion
+    };
+
+    /* Besturing: muis/touch => moveVinky */
     canvas.addEventListener('touchmove', e=>{
       e.preventDefault();
-      if(gameOver||paused) return;
-      if(vinkyStunnedTimer>0) return;
-      if(e.touches.length>0) moveVinky(e.touches[0].clientX);
+      if(gameOver||paused||vinkyStunnedTimer>0) return;
+      if(e.touches.length>0){
+        moveVinky(e.touches[0].clientX);
+      }
     });
     canvas.addEventListener('touchstart', e=>{
       e.preventDefault();
-      if(gameOver||paused) return;
-      if(vinkyStunnedTimer>0) return;
-      if(e.touches.length>0) moveVinky(e.touches[0].clientX);
+      if(gameOver||paused||vinkyStunnedTimer>0) return;
+      if(e.touches.length>0){
+        moveVinky(e.touches[0].clientX);
+      }
     });
     canvas.addEventListener('mousemove', e=>{
-      if(gameOver||paused) return;
-      if(vinkyStunnedTimer>0) return;
+      if(gameOver||paused||vinkyStunnedTimer>0) return;
       moveVinky(e.clientX);
     });
     function moveVinky(clientX){
       const rect=canvas.getBoundingClientRect();
-      const scaleX=canvas.width/rect.width;
-      let desiredX=(clientX-rect.left)*scaleX - vinkyWidth/2;
+      const scaleX= canvas.width/rect.width;
+      let desiredX= (clientX-rect.left)*scaleX - vinkyWidth/2;
       if(desiredX<0) desiredX=0;
       if(desiredX>canvas.width-vinkyWidth) desiredX=canvas.width-vinkyWidth;
       vinkyX=desiredX;
     }
 
-    /* ---- Klik -> Opnieuw-knop ---- */
+    /* Klik op canvas => check "opnieuw" knop (bij game over) */
     canvas.addEventListener('click', e=>{
       if(!gameOver) return;
       const rect=canvas.getBoundingClientRect();
       const scaleX=canvas.width/rect.width;
       const scaleY=canvas.height/rect.height;
-      const clickX=(e.clientX-rect.left)*scaleX;
-      const clickY=(e.clientY-rect.top)*scaleY;
-      // bounding box (150..250, 275..325)
+      let clickX=(e.clientX-rect.left)*scaleX;
+      let clickY=(e.clientY-rect.top)*scaleY;
+      // (150..250, 275..325)
       if(clickX>150 && clickX<250 && clickY>275 && clickY<325){
         restartGame();
       }
     });
 
-    /* ---- Pause-knop ---- */
-    document.getElementById('pauseBtn').addEventListener('click', ()=>{
-      if(!gameOver){
-        if(paused) bgMusic.play().catch(()=>{});
-        else bgMusic.pause();
-      }
-    });
-
-    /* ---- GameLoop ---- */
+    /* Start direct gameLoop: geen timer/overlay. */
+    requestAnimationFrame(gameLoop);
     function gameLoop(){
       if(!paused && !gameOver){
         updateLevel();
@@ -292,9 +278,9 @@
         waveTimer--;
         if(waveTimer<=0){
           spawnWave();
-          waveTimer=600; // om de ~10 sec
+          waveTimer=600; 
         }
-        spawnObjects();  // "normale" 3% kans
+        spawnObjects();
         updateObjects();
         updateMagnet();
         updateSlowMo();
@@ -312,7 +298,7 @@
       drawCraneBar();
       drawHook();
       if(twoHooksActive) drawHook2();
-      drawFlatRoof();
+      drawFlatRoof();   // Zorg dat dak zichtbaar is
       drawVinkyV();
       drawObjects();
       drawUI();
@@ -323,12 +309,10 @@
       if(gameOver){
         drawRestartButton();
       }
-
       requestAnimationFrame(gameLoop);
     }
-    requestAnimationFrame(gameLoop);
 
-    /* ---- Functies ---- */
+    /* Functies: Levels, Waves, etc. */
 
     function updateLevel(){
       previousLevel=currentLevel;
@@ -343,50 +327,37 @@
 
       if(currentLevel>previousLevel){
         levelChangeTimer=90;
-        vinkyCheerTimer=60; // Juich
+        vinkyCheerTimer=60;
       }
     }
-
     function drawLevelUpMessage(){
       ctx.font='24px Arial';
       ctx.fillStyle='#FF0000';
-      const msg='LEVEL '+currentLevel+'!';
-      const w=ctx.measureText(msg).width;
+      let msg='LEVEL '+currentLevel+'!';
+      let w=ctx.measureText(msg).width;
       ctx.fillText(msg, canvas.width/2 - w/2, 50);
     }
 
+    let spawnChance=0.05; // 5% per frame => direct start
     function spawnObjects(){
-      // ~3% kans
-      if(Math.random()<0.03){
-        spawnOneRandom(hookX, hookY);
-      }
-      if(twoHooksActive && Math.random()<0.03){
-        spawnOneRandom(hook2X, hook2Y);
-      }
+      // Haak1
+      if(Math.random()<spawnChance) spawnOneRandom(hookX, hookY);
+      // Haak2
+      if(twoHooksActive && Math.random()<spawnChance) spawnOneRandom(hook2X, hook2Y);
     }
-
-    // wave van 5..8 objecten in 1 frame
     function spawnWave(){
-      let count = 5 + Math.floor(Math.random()*4); // 5..8
+      let count= 5 + Math.floor(Math.random()*4); // 5..8
       for(let i=0; i<count; i++){
-        let hx = Math.random()<0.5 ? hookX : (twoHooksActive? hook2X: hookX);
+        let hx= (Math.random()<0.5)? hookX: (twoHooksActive? hook2X : hookX);
         spawnOneRandom(hx, craneHeight);
       }
     }
 
-    // Forceer promotie als je >1200 punten en nog geen promotieCount
-    function forcePromotionIfNeeded(){
-      if(!forcedPromotionGiven && score>=1200 && promotieCount===0){
-        forcedPromotionGiven=true;
-        spawnOneObject('promotie', hookX, hookY);
-      }
-    }
-
     function spawnOneRandom(hx, hy){
-      const rand=Math.random();
+      const rand = Math.random();
       let type;
       if(rand<0.003)         type='promotie';
-      else if(rand<0.01)     type='powerUp'; // Salaris
+      else if(rand<0.01)     type='powerUp';
       else if(rand<0.02)     type='magnet';
       else if(rand<0.03)     type='slowMo';
       else if(rand<0.06)     type='toxicBarrel';
@@ -396,8 +367,8 @@
       else if(rand<0.70)     type='pir';
       else                   type='schroef';
 
-      let baseSpeed= slowMoActive? 1.5 : 3; // als slowMo, basis ~1.5
-      let variation=0;
+      let baseSpeed= (slowMoActive? 1.5 : 3);
+      let variation= 0;
       switch(currentLevel){
         case 1: variation=0.5; break;
         case 2: variation=1.0; break;
@@ -410,14 +381,15 @@
       }
       let finalSpeed = baseSpeed + Math.random()*variation;
 
-      let effY= hy + hookHeight;
+      let effY= hy+hookHeight;
       if(currentLevel>=3) effY+=30;
       if(currentLevel>=4) effY+=30;
-      const x= hx + hookWidth/2 - objectTypes[type].width/2;
+      let x= hx + hookWidth/2 - objectTypes[type].width/2;
 
       objects.push({
         type,
-        x, y: effY,
+        x,
+        y: effY,
         speed: finalSpeed,
         points: objectTypes[type].points,
         width: objectTypes[type].width,
@@ -425,27 +397,10 @@
       });
     }
 
-    function spawnOneObject(t, hx, hy){
-      let baseSpeed= slowMoActive? 1.5 : 3;
-      let variation=2+Math.random()*2;
-      let finalSpeed= baseSpeed+variation;
-      let effY= hy+hookHeight;
-      if(currentLevel>=3) effY+=30;
-      if(currentLevel>=4) effY+=30;
-      const x= hx + hookWidth/2 - objectTypes[t].width/2;
-      objects.push({
-        type:t, x, y:effY,
-        speed: finalSpeed,
-        points: objectTypes[t].points,
-        width:objectTypes[t].width,
-        height:objectTypes[t].height
-      });
-    }
-
     function updateHook(){
       hookX+= hookDirection*hookSpeed;
-      if(hookX<0){ hookX=0; hookDirection=1; }
-      else if(hookX+hookWidth>canvas.width){ hookX=canvas.width-hookWidth; hookDirection=-1; }
+      if(hookX<0){ hookX=0; hookDirection=1;}
+      else if(hookX+hookWidth>canvas.width){ hookX=canvas.width-hookWidth; hookDirection=-1;}
       if(currentLevel>=2){
         randomCraneTimer--;
         if(randomCraneTimer<=0){
@@ -455,11 +410,10 @@
         }
       }
     }
-
     function updateHook2(){
       hook2X+= hook2Direction*hook2Speed;
-      if(hook2X<0){ hook2X=0; hook2Direction=1; }
-      else if(hook2X+hook2Width>canvas.width){ hook2X=canvas.width-hook2Width; hook2Direction=-1; }
+      if(hook2X<0){ hook2X=0; hook2Direction=1;}
+      else if(hook2X+hook2Width>canvas.width){ hook2X=canvas.width-hook2Width; hook2Direction=-1;}
       if(currentLevel>=2){
         if(Math.random()<0.01){
           hook2Direction=(Math.random()<0.5)?1:-1;
@@ -471,33 +425,30 @@
     function updateObjects(){
       for(let i=objects.length-1; i>=0; i--){
         let obj=objects[i];
-        // magnet effect?
+
+        // magnet effect
         if(magnetActive){
           let vx = (vinkyX + vinkyWidth/2);
           let vy = (vinkyY + vinkyHeight/2);
           let ox = (obj.x + obj.width/2);
           let oy = (obj.y + obj.height/2);
-          let dx = vx - ox;
-          let dy = vy - oy;
-          let dist = Math.sqrt(dx*dx + dy*dy);
-          if(dist<60){ 
-            // Trek object horizontaal wat naar Vinky
-            obj.x += dx*0.07; 
+          let dx = vx-ox, dy=vy-oy;
+          let dist= Math.sqrt(dx*dx + dy*dy);
+          if(dist<60){
+            // zuig horizontaal
+            obj.x+= dx*0.07;
           }
         }
 
-        // slowMo => speed is al verlaagd bij spawn, of we verlagen realtime
-        if(slowMoActive){
-          obj.y += obj.speed*0.5;
-        } else {
-          obj.y += obj.speed;
-        }
+        // slowMo => halve valsnelheid
+        if(slowMoActive) obj.y += obj.speed*0.5;
+        else obj.y += obj.speed;
 
         // check vangst
         if(
           obj.y+obj.height>vinkyY &&
-          obj.y < vinkyY+vinkyHeight &&
-          obj.x+obj.width>vinkyX &&
+          obj.y< vinkyY+vinkyHeight &&
+          obj.x+obj.width> vinkyX &&
           obj.x< vinkyX+vinkyWidth
         ){
           catchSound.currentTime=0; catchSound.play().catch(()=>{});
@@ -511,73 +462,64 @@
         }
       }
     }
-
     function handleCatch(obj){
       if(obj.type==='powerUp'){
-        // Salaris => +1 leven
+        // +1 leven
         lives++;
-        document.getElementById('powerUpCount').textContent = parseInt(document.getElementById('powerUpCount').textContent)+1;
-        vinkyCheerTimer=30; // juich
+        powerUpCount++;
+        vinkyCheerTimer=30;
         comboCount++;
       }
       else if(obj.type==='promotie'){
-        // +1 leven
         lives++;
-        document.getElementById('promotieCount').textContent = parseInt(document.getElementById('promotieCount').textContent)+1;
+        promotieCount++;
         activatePromotie();
         vinkyCheerTimer=30;
         comboCount++;
       }
       else if(obj.type==='magnet'){
         magnetActive=true;
-        magnetTimer=300; // ~5s
+        magnetTimer=300; //5s
         comboCount++;
       }
       else if(obj.type==='slowMo'){
         slowMoActive=true;
-        slowMoTimer=300; 
+        slowMoTimer=300;
         comboCount++;
       }
       else if(obj.type==='toxicBarrel'){
         // giftig => -1 leven
         lives--;
-        comboCount=0; 
+        comboCount=0;
       }
       else if(obj.type==='bomb'){
-        // direct -2 levens
+        // direct -2
         lives-=2;
         comboCount=0;
       }
       else {
-        // normale items => punten
+        // normaal object
         score+= obj.points;
         comboCount++;
       }
     }
-
     function handleMiss(obj){
-      if(obj.type==='powerUp' || obj.type==='promotie' || obj.type==='magnet' || obj.type==='slowMo'){
-        // Gratis gemist: geen leven kwijt
-        // Combo breken we niet, want het is "niet slecht" om powerUp te missen, optioneel kun je wél combo verbreken
-        // comboCount=0; // Je kunt die logica zelf bepalen
-      }
-      else if(obj.type==='bomb'){
-        // als bom de grond raakt => -1 leven
+      if(obj.type==='bomb'){
+        // bom grond => -1
         lives--;
-        comboCount=0;
         missSound.currentTime=0; missSound.play().catch(()=>{});
+        comboCount=0;
       }
-      else if(obj.type==='toxicBarrel'){
-        // giftige vat op de grond => is dat extra effect? 
-        // hier doen we even 0 (geen extra)
-        // je kunt bv. leven-- doen. 
-        //comboCount=0;
+      else if(obj.type==='powerUp' || obj.type==='promotie' || obj.type==='magnet' || obj.type==='slowMo'){
+        // Als je powerups mist, geen leven kwijt
+        // comboCount laten we hetzelfde of resetten, naar keuze
+        // comboCount=0; // als je wilt
       }
       else {
-        // gemist => -1 leven
+        // gemist
         lives--;
-        comboCount=0;
         missSound.currentTime=0; missSound.play().catch(()=>{});
+        comboCount=0;
       }
     }
 
@@ -585,24 +527,20 @@
     function updateMagnet(){
       if(magnetActive){
         magnetTimer--;
-        if(magnetTimer<=0){
-          magnetActive=false;
-        }
+        if(magnetTimer<=0) magnetActive=false;
       }
     }
     function updateSlowMo(){
       if(slowMoActive){
         slowMoTimer--;
-        if(slowMoTimer<=0){
-          slowMoActive=false;
-        }
+        if(slowMoTimer<=0) slowMoActive=false;
       }
     }
 
-    /* Combo-systeem => bij 5 op rij: +20 */
+    /* Combo-systeem => bij 5 op rij => +20 */
     function updateCombo(){
       if(comboCount>=COMBO_THRESHOLD){
-        score+=COMBO_BONUS;
+        score+= COMBO_BONUS;
         comboCount=0;
       }
     }
@@ -627,13 +565,19 @@
       }
       if(twoHooksActive){
         twoHooksTimer--;
-        if(twoHooksTimer<=0){
-          twoHooksActive=false;
-        }
+        if(twoHooksTimer<=0) twoHooksActive=false;
       }
     }
 
-    /* Wind & regen & mist etc. */
+    /* Forceer promotie 1x als je >1200 punten */
+    function forcePromotionIfNeeded(){
+      if(!forcedPromotionGiven && score>=1200 && promotieCount===0){
+        forcedPromotionGiven=true;
+        spawnOneObject('promotie', hookX, hookY);
+      }
+    }
+
+    /* Wind/mist etc. */
     function updateWindAndEffects(){
       if(currentLevel<5){
         windSpeed=0;
@@ -643,15 +587,15 @@
         if(windChangeTimer<=0){
           windChangeTimer=120+Math.floor(Math.random()*120);
           windDirection=(Math.random()<0.5)?1:-1;
-          windSpeed=0.2+Math.random()*0.7; 
+          windSpeed=0.2+ Math.random()*0.7;
         }
       }
     }
 
-    /* Regen */
+    /* Golven Regen */
     function updateRain(){
       for(let r of raindrops){
-        r.y+=r.speed;
+        r.y+= r.speed;
         if(r.y>600){
           r.x=Math.random()*400; 
           r.y=-10;
@@ -670,7 +614,7 @@
       }
     }
 
-    /* Storm / bliksem */
+    /* Storm: bliksem */
     function updateLightning(){
       if(currentLevel<8)return;
       if(!lightningActive){
@@ -681,26 +625,23 @@
           lightningTimer=15; 
           randomLightningTimer=300+Math.floor(Math.random()*300);
           // check vinky
-          if(vinkyX+vinkyWidth> lightningX-25 && vinkyX < lightningX+25){
-            vinkyStunnedTimer=120; // 2s
+          if(vinkyX+vinkyWidth> lightningX-25 && vinkyX< lightningX+25){
+            vinkyStunnedTimer=120; //2s
           }
         }
       } else {
         lightningTimer--;
-        if(lightningTimer<=0){
-          lightningActive=false;
-        }
+        if(lightningTimer<=0) lightningActive=false;
       }
     }
     function drawLightning(){
-      if(!lightningActive) return;
+      if(!lightningActive)return;
       ctx.strokeStyle='yellow';
       ctx.lineWidth=3;
       ctx.beginPath();
       ctx.moveTo(lightningX,0);
       ctx.lineTo(lightningX, vinkyY+20);
       ctx.stroke();
-      // zijsprong
       ctx.lineWidth=2;
       ctx.beginPath();
       ctx.moveTo(lightningX, canvas.height*0.2);
@@ -708,32 +649,28 @@
       ctx.stroke();
     }
     function updateStun(){
-      if(vinkyStunnedTimer>0){
-        vinkyStunnedTimer--;
-      }
+      if(vinkyStunnedTimer>0) vinkyStunnedTimer--;
     }
 
-    /* Check GameOver */
+    /* Check game over */
     function checkGameOver(){
       if(lives<=0 && !gameOver){
-        alert("Game Over! Je score is: "+score);
+        alert(`Game Over! Je score is: ${score}`);
         updateHighScoreIfNeeded();
         gameOver=true;
-        bgMusic.pause(); // stop de muziek
+        bgMusic.pause();
       }
     }
 
-    /* Achtergrond met parallax-wolken */
+    /* Achtergrond met parallax-wolken in 2 lagen */
     function drawBackground(){
-      // Bepaal skyColor
       let skyColor;
       if(currentLevel<5) skyColor='#87CEEB';
       else if(currentLevel===5) skyColor='#87CEEB';
       else if(currentLevel===6) skyColor='#444444';
       else if(currentLevel===7) skyColor='#2F2F2F';
       else skyColor='#1C1C1C';
-
-      ctx.fillStyle=skyColor;
+      ctx.fillStyle= skyColor;
       ctx.fillRect(0,0, canvas.width, canvas.height);
 
       // Zon
@@ -743,35 +680,28 @@
         ctx.arc(canvas.width-50, 50, 30, 0, 2*Math.PI);
         ctx.fill();
       }
-
-      // Wolken 1
+      // Wolken-lagen
       for(let c of clouds1){
         drawCloud(c.x, c.y, c.size);
       }
-      // Mist
+      // Mist (level5)
       if(currentLevel===5){
         ctx.fillStyle='rgba(200,200,200,0.3)';
-        ctx.fillRect(0,0, canvas.width, canvas.height);
+        ctx.fillRect(0,0,canvas.width,canvas.height);
       }
-      // Donker overlay (level 6+)
+      // Donker overlay
       if(currentLevel>=6){
         ctx.fillStyle='rgba(0,0,0,0.4)';
-        ctx.fillRect(0,0, canvas.width, canvas.height);
+        ctx.fillRect(0,0,canvas.width,canvas.height);
       }
-      // Wolken 2
       for(let c of clouds2){
         drawCloud(c.x, c.y, c.size);
       }
-      // Regen (7+)
-      if(currentLevel>=7){
-        drawRain();
-      }
-      // Bliksem (8)
-      if(currentLevel>=8){
-        drawLightning();
-      }
+      // Regen
+      if(currentLevel>=7) drawRain();
+      // Bliksem
+      if(currentLevel>=8) drawLightning();
     }
-
     function drawCloud(cx, cy, size=1.0){
       ctx.fillStyle='#FFF';
       ctx.beginPath();
@@ -780,15 +710,13 @@
       ctx.arc(cx-15*size, cy+10*size, 25*size, 0, 2*Math.PI);
       ctx.fill();
     }
-
     function moveCloudsParallax(){
-      // Lagen bewegen met iets andere snelheden
       for(let c of clouds1){
-        c.x -= 0.2; 
+        c.x-= 0.2; 
         if(c.x< -50) c.x= canvas.width+30;
       }
       for(let c of clouds2){
-        c.x -= 0.4;
+        c.x-= 0.4;
         if(c.x< -70) c.x= canvas.width+50;
       }
     }
@@ -801,25 +729,25 @@
 
     /* Plat dak */
     function drawFlatRoof(){
-      ctx.fillStyle='#444';
+      ctx.fillStyle='#333'; /* duidelijk dak */
       ctx.fillRect(0,580, canvas.width,20);
     }
 
-    /* Vinky V + idle-animatie (ogen knipper, armen schommelen) */
+    /* Vinky + idle anim (knipper, armSwing) */
     function drawVinkyV(){
-      // Idle-anim: elke ~2 seconden knipperen
+      // Idle-blink
       blinkTimer--;
       if(blinkTimer<=0){
-        // een paar frames oogdicht
+        // even oogdicht
         vinkyCheerTimer=15; 
-        blinkTimer=240; // 4 sec tot de volgende knipper
+        blinkTimer= 240; 
       }
-      // Armen "ademen"
-      armSwing += 0.04; 
-      const armOffset = Math.sin(armSwing)*3; // ±3 px
+      // arm-swing
+      armSwing += 0.04;
+      let armOffset = Math.sin(armSwing)*3;
 
       ctx.save();
-      ctx.translate(vinkyX+ vinkyWidth/2, vinkyY+ vinkyHeight/2);
+      ctx.translate(vinkyX+vinkyWidth/2, vinkyY+vinkyHeight/2);
 
       // Oranje V
       ctx.fillStyle='#F36F21';
@@ -839,30 +767,25 @@
       ctx.closePath();
       ctx.fill();
 
-      // Ogen + handjes
-      const isCheer = (vinkyCheerTimer>0 && vinkyCheerTimer<9999); 
-      const isBlink = (blinkTimer<15); // net knipper
-      const eyesClosed = (isCheer || isBlink);
-      // Armen
-      const armY = -vinkyHeight/4 + armOffset;
+      let isBlink   = (blinkTimer<15);
+      let isCheer   = (vinkyCheerTimer>0 && vinkyCheerTimer<9999);
+      let eyesClosed= isBlink || isCheer;
+      let armY      = -vinkyHeight/4 + armOffset;
+
       if(eyesClosed){
         drawVinkyEyesClosed(-vinkyWidth*0.25, vinkyWidth*0.25, -vinkyHeight*0.1);
       } else {
         drawVinkyEyesOpen(-vinkyWidth*0.25, vinkyWidth*0.25, -vinkyHeight*0.1);
       }
       if(isCheer){
-        // Juich => handjes hoger
-        drawVinkyHands(-vinkyWidth/2, vinkyWidth/2, -vinkyHeight/2 -5 + armOffset);
+        drawVinkyHands(-vinkyWidth/2, vinkyWidth/2, -vinkyHeight/2-5 + armOffset);
       } else {
-        // Normaal
         drawVinkyHands(-vinkyWidth/2, vinkyWidth/2, armY);
       }
-
       ctx.restore();
 
       if(vinkyCheerTimer>0) vinkyCheerTimer--;
     }
-
     function getVinkyInsideColor(){
       if(currentLevel<5) return '#87CEEB';
       else if(currentLevel===5) return '#A0A0A0';
@@ -870,7 +793,6 @@
       else if(currentLevel===7) return '#2F2F2F';
       else return '#1C1C1C';
     }
-
     function drawVinkyEyesOpen(lx, rx, ey){
       ctx.fillStyle='#FFF';
       ctx.beginPath();
@@ -909,29 +831,29 @@
       for(let obj of objects){
         if(obj.type==='gasfles'){
           ctx.fillStyle='#A9A9A9';
-          ctx.fillRect(obj.x,obj.y,obj.width,obj.height);
+          ctx.fillRect(obj.x,obj.y, obj.width,obj.height);
           ctx.fillStyle='#7F7F7F';
           ctx.fillRect(obj.x+obj.width/4, obj.y-5, obj.width/2,5);
-
-        } else if(obj.type==='dakrol'){
+        }
+        else if(obj.type==='dakrol'){
           ctx.fillStyle='#000';
-          ctx.fillRect(obj.x,obj.y,obj.width,obj.height);
+          ctx.fillRect(obj.x,obj.y, obj.width,obj.height);
           ctx.fillStyle='#FFF';
           ctx.fillRect(obj.x, obj.y+obj.height/2-2, obj.width,4);
-
-        } else if(obj.type==='schroef'){
+        }
+        else if(obj.type==='schroef'){
           ctx.fillStyle='#00F';
           ctx.fillRect(obj.x,obj.y, obj.width, obj.height*0.4);
           ctx.fillStyle='#C0C0C0';
           ctx.fillRect(obj.x+obj.width/4, obj.y+obj.height*0.4, obj.width/2, obj.height*0.6);
-
-        } else if(obj.type==='pir'){
+        }
+        else if(obj.type==='pir'){
           ctx.fillStyle='#EEE8AA';
-          ctx.fillRect(obj.x,obj.y,obj.width,obj.height);
+          ctx.fillRect(obj.x,obj.y, obj.width,obj.height);
           ctx.strokeStyle='#BDB76B';
-          ctx.strokeRect(obj.x,obj.y,obj.width,obj.height);
-
-        } else if(obj.type==='powerUp'){ // Salaris
+          ctx.strokeRect(obj.x,obj.y, obj.width,obj.height);
+        }
+        else if(obj.type==='powerUp'){ // Salaris
           const cx=obj.x+obj.width/2, cy=obj.y+obj.height/2, r=obj.width/2;
           ctx.fillStyle='#8B4513';
           ctx.beginPath();
@@ -942,8 +864,8 @@
           ctx.fillStyle='#FF0';
           ctx.font='10px Arial';
           ctx.fillText('+1', cx-6, cy+4);
-
-        } else if(obj.type==='promotie'){
+        }
+        else if(obj.type==='promotie'){
           ctx.fillStyle='#FFD700';
           ctx.beginPath();
           ctx.fillRect(obj.x, obj.y+obj.height/2, obj.width, obj.height/2);
@@ -957,42 +879,39 @@
           ctx.fillStyle='#000';
           ctx.font='10px Arial';
           ctx.fillText('+1 life', obj.x-5, obj.y+obj.height/2 -2);
-
-        } else if(obj.type==='toxicBarrel'){
-          // giftig vat
+        }
+        else if(obj.type==='toxicBarrel'){
           ctx.fillStyle='#008000';
-          ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+          ctx.fillRect(obj.x,obj.y,obj.width,obj.height);
           ctx.fillStyle='#000';
           ctx.font='10px Arial';
           ctx.fillText('X', obj.x+3, obj.y+obj.height/2);
-
-        } else if(obj.type==='bomb'){
-          // Bom
+        }
+        else if(obj.type==='bomb'){
           ctx.fillStyle='#555';
           ctx.beginPath();
-          ctx.arc(obj.x+obj.width/2, obj.y+obj.height/2, obj.width/2, 0, 2*Math.PI);
+          ctx.arc(obj.x+obj.width/2, obj.y+obj.height/2, obj.width/2,0,2*Math.PI);
           ctx.fill();
           // lont
           ctx.strokeStyle='#000';
           ctx.beginPath();
           ctx.moveTo(obj.x+obj.width/2, obj.y+obj.height/2 - obj.width/2);
-          ctx.lineTo(obj.x+obj.width/2 -5, obj.y+obj.height/2 - obj.width/2 -5);
+          ctx.lineTo(obj.x+obj.width/2-5, obj.y+obj.height/2 - obj.width/2 -5);
           ctx.stroke();
-
           ctx.fillStyle='#FFF';
           ctx.font='10px Arial';
-          ctx.fillText('B', obj.x+5, obj.y+obj.height/2+2);
-
-        } else if(obj.type==='magnet'){
+          ctx.fillText('B', obj.x+4, obj.y+obj.height/2+3);
+        }
+        else if(obj.type==='magnet'){
           ctx.fillStyle='#FF0000';
           ctx.beginPath();
-          ctx.arc(obj.x+obj.width/2, obj.y+obj.height/2, obj.width/2, 0, 2*Math.PI);
+          ctx.arc(obj.x+obj.width/2, obj.y+obj.height/2, obj.width/2,0,2*Math.PI);
           ctx.fill();
           ctx.fillStyle='#FFF';
           ctx.font='10px Arial';
-          ctx.fillText('M', obj.x+3, obj.y+obj.height/2+3);
-
-        } else if(obj.type==='slowMo'){
+          ctx.fillText('M', obj.x+3, obj.y+obj.height/2+4);
+        }
+        else if(obj.type==='slowMo'){
           ctx.fillStyle='#00F';
           ctx.beginPath();
           ctx.ellipse(obj.x+obj.width/2, obj.y+obj.height/2, obj.width/2, obj.height/2, 0, 0, 2*Math.PI);
@@ -1005,9 +924,11 @@
     }
 
     function drawUI(){
-      document.getElementById('scoreSpan').textContent  = score;
-      document.getElementById('livesSpan').textContent  = lives;
-      document.getElementById('comboSpan').textContent  = comboCount;
+      document.getElementById('scoreSpan').textContent   = score;
+      document.getElementById('livesSpan').textContent   = lives;
+      document.getElementById('comboSpan').textContent   = comboCount;
+      document.getElementById('powerUpCount').textContent= powerUpCount;
+      document.getElementById('promotieCount').textContent= promotieCount;
     }
 
     function drawRestartButton(){
@@ -1018,13 +939,16 @@
       ctx.fillText('Opnieuw',165,305);
     }
 
-    /* Restart */
+    /* Tellers */
+    let powerUpCount=0;
+    let promotieCount=0;
+
+    /* Herstart-functie */
     function restartGame(){
       score=0; lives=3; comboCount=0;
       objects=[]; 
       gameOver=false;
-      currentLevel=1; previousLevel=1;
-      levelChangeTimer=0;
+      currentLevel=1; previousLevel=1; levelChangeTimer=0;
       vinkyCheerTimer=0; vinkyStunnedTimer=0;
       blinkTimer=120; armSwing=0;
 
@@ -1036,7 +960,7 @@
 
       vinkyWidth= originalVinkyWidth;
       vinkyHeight=originalVinkyHeight;
-      vinkyX=175; 
+      vinkyX=175;
 
       hookX=0; hookSpeed=2; hookDirection=1; randomCraneTimer=0;
       hook2X=380; hook2Speed=2; hook2Direction=-1;
@@ -1044,11 +968,15 @@
       windSpeed=0; windDirection=1; windChangeTimer=0;
       lightningActive=false; lightningTimer=0; randomLightningTimer=300;
 
-      gasflesCount=0; dakrolCount=0; schroefCount=0; pirCount=0; powerUpCount=0; promotieCount=0;
+      powerUpCount=0; promotieCount=0;
 
       waveTimer=600;
+      spawnChance=0.05;
+
+      // Muziek herstart
       bgMusic.currentTime=0;
       bgMusic.play().catch(()=>{});
+
       paused=false;
     }
   </script>
