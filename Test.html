@@ -1,26 +1,22 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Magische Toverstaf vs Piraten</title>
+    <title>Magical Wand vs Pirates</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
             margin: 0;
-            padding: 0;
+            padding: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
             background-color: #f0f0f0;
-        }
-        h1 {
-            margin: 20px;
-            color: #333;
+            font-family: Arial, sans-serif;
         }
         #game-container {
             position: relative;
-            width: 90vw;
+            width: 80vw;
             height: 60vh;
             max-width: 800px;
             max-height: 600px;
@@ -31,6 +27,13 @@
             width: 100%;
             height: 100%;
         }
+        #stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-size: 16px;
+        }
         #controls {
             position: absolute;
             bottom: 10px;
@@ -39,131 +42,137 @@
             display: flex;
             gap: 10px;
         }
-        #controls button {
+        #start-button, #pause-button {
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
-        #controls button:hover {
-            background-color: #45a049;
-        }
-        #stats {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: #fff;
-            font-size: 18px;
-        }
-        #instructions {
-            margin: 20px;
-            max-width: 800px;
-            text-align: center;
         }
         #mobile-controls {
             display: none;
-            justify-content: space-around;
             margin-top: 10px;
-            width: 90vw;
-            max-width: 800px;
+            gap: 20px;
         }
         #mobile-controls button {
-            padding: 15px 30px;
-            font-size: 16px;
-            background-color: #008CBA;
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
-        #mobile-controls button:active {
-            background-color: #006d9e;
+            padding: 15px 25px;
+            font-size: 18px;
+            cursor: pointer;
         }
         @media (max-width: 600px) {
             #mobile-controls {
                 display: flex;
+                justify-content: space-around;
+                width: 80vw;
             }
-            #controls {
-                bottom: 5px;
-            }
-            #stats {
-                font-size: 14px;
-            }
+        }
+        #instructions {
+            margin-top: 20px;
+            max-width: 800px;
+            text-align: center;
+            color: #333;
+        }
+        #game-over {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <h1>Magische Toverstaf vs Piraten</h1>
     <div id="game-container">
         <canvas id="game-canvas"></canvas>
-        <div id="controls">
-            <button id="start-button">Start</button>
-            <button id="pause-button">Pauze</button>
-        </div>
         <div id="stats">
             <p>Score: <span id="score">0</span></p>
-            <p>Levens: <span id="lives">3</span></p>
+            <p>Lives: <span id="lives">3</span></p>
             <p>Level: <span id="level">1</span></p>
-            <p>Hiscore: <span id="hiscore">0</span></p>
+            <p>High Score: <span id="high-score">0</span></p>
+        </div>
+        <div id="controls">
+            <button id="start-button">Start</button>
+            <button id="pause-button">Pause</button>
+        </div>
+        <div id="game-over">
+            <h2>Game Over</h2>
+            <p>Your Score: <span id="final-score">0</span></p>
+            <button id="restart-button">Restart</button>
         </div>
     </div>
     <div id="mobile-controls">
-        <button id="left-button">Links</button>
-        <button id="shoot-button">Schiet</button>
-        <button id="right-button">Rechts</button>
+        <button id="left-button">Left</button>
+        <button id="shoot-button">Shoot</button>
+        <button id="right-button">Right</button>
     </div>
     <div id="instructions">
-        <h2>Uitleg</h2>
-        <p>Bescherm de magische toverstaf tegen de piraten door spreuken af te schieten. Draai de toverstaf met de pijltjestoetsen (of touch-knoppen op mobiel) en schiet met de spatiebalk (of schietknop op mobiel). Versla piraten om punten te scoren: gewone piraten (10 punten), blauwe dikke piraten (20 punten), rode kapiteins (50 punten). Je hebt 3 levens. Het spel wordt moeilijker naarmate je level stijgt!</p>
+        <h2>How to Play</h2>
+        <p>Protect the magical wand from pirates by casting spells! Use the <strong>left</strong> and <strong>right arrow keys</strong> to rotate the wand and the <strong>spacebar</strong> to shoot spells (or use the on-screen buttons on mobile). Defeat pirates to earn points: <strong>regular pirates (10 points)</strong>, <strong>blue fat pirates with red hats (20 points)</strong>, and <strong>red pirate captains (50 points)</strong>. You start with <strong>3 lives</strong>. The game gets harder as you progress through levels. Survive as long as you can!</p>
     </div>
+
     <script>
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = canvas.offsetWidth;
         canvas.height = canvas.offsetHeight;
 
-        let wandAngle = 0;
-        const wandLength = 50;
-        let spells = [];
-        let pirates = [];
+        // Game state variables
         let score = 0;
         let lives = 3;
         let level = 1;
-        let defeatedPirates = 0;
-        let hiscore = localStorage.getItem('hiscore') || 0;
-        document.getElementById('hiscore').textContent = hiscore;
-        let gameRunning = false;
-        let gamePaused = false;
+        let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0;
+        let isRunning = false;
+        let isPaused = false;
+        let spells = [];
+        let pirates = [];
+        let wandAngle = 0;
+        let spawnChance = 0.01;
+        let piratesDefeated = 0;
 
+        // DOM elements
+        const scoreEl = document.getElementById('score');
+        const livesEl = document.getElementById('lives');
+        const levelEl = document.getElementById('level');
+        const highScoreEl = document.getElementById('high-score');
+        const gameOverEl = document.getElementById('game-over');
+        const finalScoreEl = document.getElementById('final-score');
+        highScoreEl.textContent = highScore;
+
+        // Draw the magical wand
         function drawWand() {
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
-            const tipX = centerX + wandLength * Math.cos(wandAngle);
-            const tipY = centerY + wandLength * Math.sin(wandAngle);
+            const wandLength = 30;
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(wandAngle);
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(tipX, tipY);
+            ctx.moveTo(0, 0);
+            ctx.lineTo(wandLength, 0);
             ctx.strokeStyle = 'green';
-            ctx.lineWidth = 5;
+            ctx.lineWidth = 4;
             ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(wandLength, 0, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = 'lime';
+            ctx.fill();
+            ctx.restore();
         }
 
+        // Shoot a spell
         function shootSpell() {
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
-            const speed = 5;
-            const velocityX = speed * Math.cos(wandAngle);
-            const velocityY = speed * Math.sin(wandAngle);
-            spells.push({
-                x: centerX,
-                y: centerY,
-                vx: velocityX,
-                vy: velocityY
-            });
+            const speed = 7;
+            const vx = speed * Math.cos(wandAngle);
+            const vy = speed * Math.sin(wandAngle);
+            spells.push({ x: centerX + 30 * Math.cos(wandAngle), y: centerY + 30 * Math.sin(wandAngle), vx, vy });
         }
 
+        // Draw spells
         function drawSpells() {
             ctx.fillStyle = 'yellow';
             spells.forEach(spell => {
@@ -173,66 +182,62 @@
             });
         }
 
+        // Update spells
         function updateSpells() {
-            spells.forEach(spell => {
+            spells = spells.filter(spell => {
                 spell.x += spell.vx;
                 spell.y += spell.vy;
+                return spell.x >= 0 && spell.x <= canvas.width && spell.y >= 0 && spell.y <= canvas.height;
             });
-            spells = spells.filter(spell => spell.x >= 0 && spell.x <= canvas.width && spell.y >= 0 && spell.y <= canvas.height);
         }
 
+        // Spawn a pirate
         function spawnPirate() {
+            const r = Math.random();
+            const type = r < 0.1 ? 'captain' : r < 0.3 ? 'fat' : 'regular';
             const side = Math.floor(Math.random() * 4);
-            let x, y, vx, vy;
-            const speed = 1 + level * 0.5;
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            if (side === 0) {
-                x = Math.random() * canvas.width;
-                y = 0;
-            } else if (side === 1) {
-                x = canvas.width;
-                y = Math.random() * canvas.height;
-            } else if (side === 2) {
-                x = Math.random() * canvas.width;
-                y = canvas.height;
-            } else {
-                x = 0;
-                y = Math.random() * canvas.height;
+            let x, y;
+            switch (side) {
+                case 0: x = Math.random() * canvas.width; y = -20; break;
+                case 1: x = canvas.width + 20; y = Math.random() * canvas.height; break;
+                case 2: x = Math.random() * canvas.width; y = canvas.height + 20; break;
+                case 3: x = -20; y = Math.random() * canvas.height; break;
             }
-            vx = (centerX - x) / 100;
-            vy = (centerY - y) / 100;
-            const type = Math.random() < 0.1 ? 'captain' : Math.random() < 0.2 ? 'fat' : 'normal';
-            pirates.push({
-                x,
-                y,
-                vx,
-                vy,
-                type
-            });
+            const speed = 1 + level * 0.2;
+            const angle = Math.atan2(canvas.height / 2 - y, canvas.width / 2 - x);
+            const vx = speed * Math.cos(angle);
+            const vy = speed * Math.sin(angle);
+            pirates.push({ x, y, vx, vy, type });
         }
 
+        // Draw pirates
         function drawPirates() {
             pirates.forEach(pirate => {
-                if (pirate.type === 'normal') {
+                ctx.save();
+                ctx.translate(pirate.x, pirate.y);
+                if (pirate.type === 'regular') {
                     ctx.beginPath();
-                    ctx.arc(pirate.x, pirate.y, 10, 0, 2 * Math.PI);
+                    ctx.arc(0, 0, 10, 0, 2 * Math.PI);
                     ctx.fillStyle = 'brown';
                     ctx.fill();
-                } else if (pirate.type === 'captain') {
-                    ctx.fillStyle = 'red';
-                    ctx.fillRect(pirate.x - 10, pirate.y - 10, 20, 20);
                 } else if (pirate.type === 'fat') {
                     ctx.beginPath();
-                    ctx.arc(pirate.x, pirate.y, 15, 0, 2 * Math.PI);
+                    ctx.arc(0, 0, 15, 0, 2 * Math.PI);
                     ctx.fillStyle = 'blue';
                     ctx.fill();
                     ctx.fillStyle = 'red';
-                    ctx.fillRect(pirate.x - 5, pirate.y - 20, 10, 5); // Rode muts
+                    ctx.fillRect(-5, -20, 10, 5);
+                } else if (pirate.type === 'captain') {
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(-10, -10, 20, 20);
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(-2, -15, 4, 5);
                 }
+                ctx.restore();
             });
         }
 
+        // Update pirates
         function updatePirates() {
             pirates.forEach(pirate => {
                 pirate.x += pirate.vx;
@@ -240,48 +245,75 @@
             });
         }
 
+        // Check collisions
         function checkCollisions() {
-            spells.forEach((spell, spellIndex) => {
-                pirates.forEach((pirate, pirateIndex) => {
+            for (let i = spells.length - 1; i >= 0; i--) {
+                for (let j = pirates.length - 1; j >= 0; j--) {
+                    const spell = spells[i];
+                    const pirate = pirates[j];
                     const dx = spell.x - pirate.x;
                     const dy = spell.y - pirate.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
-                    let pirateSize = pirate.type === 'fat' ? 15 : 10;
+                    const pirateSize = pirate.type === 'fat' ? 15 : 10;
                     if (distance < pirateSize) {
-                        spells.splice(spellIndex, 1);
-                        pirates.splice(pirateIndex, 1);
-                        score += pirate.type === 'normal' ? 10 : pirate.type === 'captain' ? 50 : 20;
-                        document.getElementById('score').textContent = score;
-                        defeatedPirates++;
-                        if (defeatedPirates % 10 === 0) {
+                        spells.splice(i, 1);
+                        pirates.splice(j, 1);
+                        const points = pirate.type === 'regular' ? 10 : pirate.type === 'fat' ? 20 : 50;
+                        score += points;
+                        scoreEl.textContent = score;
+                        piratesDefeated++;
+                        if (piratesDefeated % 10 === 0) {
                             level++;
-                            document.getElementById('level').textContent = level;
+                            levelEl.textContent = level;
+                            spawnChance = Math.min(spawnChance + 0.005, 0.05);
                         }
+                        if (score > highScore) {
+                            highScore = score;
+                            highScoreEl.textContent = highScore;
+                            localStorage.setItem('highScore', highScore);
+                        }
+                        break;
                     }
-                });
-            });
-        }
+                }
+            }
 
-        function checkWandHit() {
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
-            pirates.forEach((pirate, index) => {
+            for (let i = pirates.length - 1; i >= 0; i--) {
+                const pirate = pirates[i];
                 const dx = centerX - pirate.x;
                 const dy = centerY - pirate.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance < 10) {
-                    pirates.splice(index, 1);
+                if (distance < 20) {
+                    pirates.splice(i, 1);
                     lives--;
-                    document.getElementById('lives').textContent = lives;
+                    livesEl.textContent = lives;
                     if (lives <= 0) {
-                        gameOver();
+                        endGame();
                     }
                 }
-            });
+            }
         }
 
+        // End the game
+        function endGame() {
+            isRunning = false;
+            gameOverEl.style.display = 'block';
+            finalScoreEl.textContent = score;
+            document.getElementById('start-button').textContent = 'Start';
+        }
+
+        // Game loop
         function gameLoop() {
-            if (!gameRunning || gamePaused) return;
+            if (!isRunning) return;
+            if (isPaused) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.font = '30px Arial';
+                ctx.fillText('Paused', canvas.width / 2 - 50, canvas.height / 2);
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawWand();
             drawSpells();
@@ -289,69 +321,75 @@
             updateSpells();
             updatePirates();
             checkCollisions();
-            checkWandHit();
-            if (Math.random() < 0.02 * level) {
-                spawnPirate();
-            }
+            if (Math.random() < spawnChance) spawnPirate();
+
             requestAnimationFrame(gameLoop);
         }
 
-        function gameOver() {
-            gameRunning = false;
-            if (score > hiscore) {
-                hiscore = score;
-                localStorage.setItem('hiscore', hiscore);
-                document.getElementById('hiscore').textContent = hiscore;
-            }
-            alert('Game Over! Je score: ' + score);
-            score = 0;
-            lives = 3;
-            level = 1;
-            defeatedPirates = 0;
-            pirates = [];
-            spells = [];
-            document.getElementById('score').textContent = score;
-            document.getElementById('lives').textContent = lives;
-            document.getElementById('level').textContent = level;
-        }
-
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'ArrowLeft') {
-                wandAngle -= 0.1;
-            } else if (event.key === 'ArrowRight') {
-                wandAngle += 0.1;
-            } else if (event.key === ' ') {
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!isRunning || isPaused) return;
+            if (e.key === 'ArrowLeft') wandAngle -= 0.1;
+            if (e.key === 'ArrowRight') wandAngle += 0.1;
+            if (e.key === ' ') {
+                e.preventDefault();
                 shootSpell();
             }
         });
 
+        // Start game
         document.getElementById('start-button').addEventListener('click', () => {
-            if (!gameRunning) {
-                gameRunning = true;
+            if (!isRunning) {
+                isRunning = true;
+                isPaused = false;
+                score = 0;
+                lives = 3;
+                level = 1;
+                spells = [];
+                pirates = [];
+                spawnChance = 0.01;
+                piratesDefeated = 0;
+                scoreEl.textContent = score;
+                livesEl.textContent = lives;
+                levelEl.textContent = level;
+                gameOverEl.style.display = 'none';
                 gameLoop();
             }
         });
 
+        // Pause game
         document.getElementById('pause-button').addEventListener('click', () => {
-            gamePaused = !gamePaused;
-            if (!gamePaused) {
-                gameLoop();
+            if (isRunning) isPaused = !isPaused;
+        });
+
+        // Restart game
+        document.getElementById('restart-button').addEventListener('click', () => {
+            document.getElementById('start-button').click();
+        });
+
+        // Mobile controls
+        let rotatingLeft = false;
+        let rotatingRight = false;
+
+        function updateMobileRotation() {
+            if (isRunning && !isPaused) {
+                if (rotatingLeft) wandAngle -= 0.1;
+                if (rotatingRight) wandAngle += 0.1;
+                requestAnimationFrame(updateMobileRotation);
             }
-        });
+        }
 
-        document.getElementById('left-button').addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            wandAngle -= 0.1;
-        });
+        const leftBtn = document.getElementById('left-button');
+        leftBtn.addEventListener('touchstart', () => { rotatingLeft = true; updateMobileRotation(); });
+        leftBtn.addEventListener('touchend', () => { rotatingLeft = false; });
 
-        document.getElementById('right-button').addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            wandAngle += 0.1;
-        });
+        const rightBtn = document.getElementById('right-button');
+        rightBtn.addEventListener('touchstart', () => { rotatingRight = true; updateMobileRotation(); });
+        rightBtn.addEventListener('touchend', () => { rotatingRight = false; });
 
         document.getElementById('shoot-button').addEventListener('touchstart', (e) => {
             e.preventDefault();
-            shootSpell();
+            if (isRunning && !isPaused) shootSpell();
         });
     </script>
 </body>
