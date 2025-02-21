@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="nl">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vinky V Dakspel</title>
   <style>
     body {
@@ -27,18 +29,24 @@
     // Variabelen
     let vinkyX = 175; // Startpositie in het midden
     const vinkyY = 550; // Vinky V onderaan
-    const vinkyWidth = 50;
-    const vinkyHeight = 50;
+    const normalVinkyWidth = 50;
+    const normalVinkyHeight = 50;
+    let vinkyWidth = normalVinkyWidth;
+    let vinkyHeight = normalVinkyHeight;
     let objects = [];
     let score = 0;
     let lives = 3;
     let gameOver = false;
+    let powerUpActive = false;
+    let powerUpTimer = 0;
+    const powerUpDuration = 5000; // 5 seconden
 
     // Definieer objecttypes met snelheid en punten
     const objectTypes = {
       dakpan: { speed: 2, points: 10, width: 20, height: 20 },
       dakrol: { speed: 3, points: 20, width: 30, height: 30 },
-      schroef: { speed: 4, points: 5, width: 10, height: 10 }
+      schroef: { speed: 4, points: 5, width: 10, height: 10 },
+      powerup: { speed: 2, points: 0, width: 20, height: 20 }
     };
 
     // Besturing via touch (mobiel) of muis (desktop)
@@ -71,8 +79,13 @@
 
     // Functie om een nieuw object te spawnen
     function spawnObject() {
-      const types = ['dakpan', 'dakrol', 'schroef'];
-      const type = types[Math.floor(Math.random() * types.length)];
+      let type;
+      if (Math.random() < 0.1) { // 10% kans op power-up
+        type = 'powerup';
+      } else {
+        const types = ['dakpan', 'dakrol', 'schroef'];
+        type = types[Math.floor(Math.random() * types.length)];
+      }
       const x = Math.random() * (canvas.width - objectTypes[type].width);
       const object = {
         type: type,
@@ -95,12 +108,19 @@
         // Controleer of Vinky V het object vangt
         if (obj.y + obj.height > vinkyY && obj.y < vinkyY + vinkyHeight &&
             obj.x + obj.width > vinkyX && obj.x < vinkyX + vinkyWidth) {
-          score += obj.points;
+          if (obj.type === 'powerup') {
+            powerUpActive = true;
+            powerUpTimer = powerUpDuration;
+          } else {
+            score += obj.points;
+          }
           objects.splice(i, 1);
         } 
         // Controleer of het object de grond raakt
         else if (obj.y > canvas.height) {
-          lives--;
+          if (obj.type !== 'powerup') {
+            lives--;
+          }
           objects.splice(i, 1);
         }
       }
@@ -115,24 +135,60 @@
 
     // Teken de achtergrond (huisstijl Verkoelen Dakspecialisten)
     function drawBackground() {
-      ctx.fillStyle = '#003087'; // Blauwe achtergrond
+      ctx.fillStyle = '#D3D3D3'; // Lichtgrijs
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
     // Teken Vinky V
     function drawVinkyV() {
-      ctx.fillStyle = '#FFFFFF'; // Wit voor Vinky V
-      ctx.fillRect(vinkyX, vinkyY, vinkyWidth, vinkyHeight);
-      // Hier kun je een afbeelding toevoegen met ctx.drawImage
+      ctx.fillStyle = '#FFA500'; // Oranje
+      ctx.beginPath();
+      ctx.moveTo(vinkyX, vinkyY + vinkyHeight);
+      ctx.lineTo(vinkyX + vinkyWidth / 2, vinkyY);
+      ctx.lineTo(vinkyX + vinkyWidth, vinkyY + vinkyHeight);
+      ctx.closePath();
+      ctx.fill();
+
+      // Teken ogen
+      ctx.fillStyle = '#000000'; // Zwart
+      ctx.beginPath();
+      ctx.arc(vinkyX + vinkyWidth / 4, vinkyY + vinkyHeight / 2, 5, 0, Math.PI * 2);
+      ctx.arc(vinkyX + 3 * vinkyWidth / 4, vinkyY + vinkyHeight / 2, 5, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     // Teken de vallende objecten
     function drawObjects() {
       for (let obj of objects) {
-        if (obj.type === 'dakpan') ctx.fillStyle = '#8B4513'; // Bruin
-        else if (obj.type === 'dakrol') ctx.fillStyle = '#808080'; // Grijs
-        else if (obj.type === 'schroef') ctx.fillStyle = '#C0C0C0'; // Zilver
-        ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+        if (obj.type === 'dakpan') {
+          ctx.fillStyle = '#8B4513'; // Bruin
+          ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+        } else if (obj.type === 'dakrol') {
+          ctx.fillStyle = '#000000'; // Zwart
+          ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+          ctx.fillStyle = '#FFFFFF'; // Wit
+          ctx.fillRect(obj.x, obj.y + obj.height / 2 - 2, obj.width, 4); // Witte strook
+          // Simuleer Derbigum logo met tekst
+          ctx.fillStyle = '#000000';
+          ctx.font = '10px Arial';
+          ctx.fillText('Derbigum', obj.x + 2, obj.y + obj.height / 2 + 5);
+        } else if (obj.type === 'schroef') {
+          ctx.fillStyle = '#4682B4'; // Blauw-grijs
+          ctx.beginPath();
+          ctx.arc(obj.x + obj.width / 2, obj.y + obj.height / 2, obj.width / 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (obj.type === 'powerup') {
+          ctx.fillStyle = '#FFD700'; // Goud
+          // Teken een eenvoudige ster
+          ctx.beginPath();
+          ctx.moveTo(obj.x + obj.width / 2, obj.y);
+          ctx.lineTo(obj.x + obj.width, obj.y + obj.height);
+          ctx.lineTo(obj.x, obj.y + obj.height / 3);
+          ctx.lineTo(obj.x + obj.width, obj.y + obj.height / 3);
+          ctx.lineTo(obj.x, obj.y + obj.height);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
     }
 
@@ -146,6 +202,13 @@
     // Teken de levens
     function drawLives() {
       ctx.fillText('Levens: ' + lives, 10, 60);
+    }
+
+    // Teken de power-up status
+    function drawPowerUpStatus() {
+      if (powerUpActive) {
+        ctx.fillText('Power-Up Active!', 10, 90);
+      }
     }
 
     // Teken de opnieuw knop
@@ -163,6 +226,10 @@
       lives = 3;
       objects = [];
       vinkyX = 175;
+      vinkyWidth = normalVinkyWidth;
+      vinkyHeight = normalVinkyHeight;
+      powerUpActive = false;
+      powerUpTimer = 0;
       gameOver = false;
     }
 
@@ -181,6 +248,20 @@
         drawObjects();
         drawScore();
         drawLives();
+        drawPowerUpStatus();
+
+        // Update power-up timer
+        if (powerUpActive) {
+          powerUpTimer -= 16; // Aangenomen ~60fps
+          if (powerUpTimer <= 0) {
+            powerUpActive = false;
+            vinkyWidth = normalVinkyWidth;
+            vinkyHeight = normalVinkyHeight;
+          } else {
+            vinkyWidth = normalVinkyWidth * 1.5;
+            vinkyHeight = normalVinkyHeight * 1.5;
+          }
+        }
       } else {
         drawRestartButton();
       }
