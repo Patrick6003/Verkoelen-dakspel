@@ -110,7 +110,7 @@
     </div>
     <div id="instructions">
         <h2>How to Play</h2>
-        <p>Protect the magical wand from pirates by casting spells! Use the <strong>left</strong> and <strong>right arrow keys</strong> to rotate the wand and the <strong>spacebar</strong> to shoot spells (or use the on-screen buttons on mobile). Defeat pirates to earn points: <strong>regular pirates (10 points)</strong>, <strong>blue fat pirates with red hats (20 points)</strong>, and <strong>red pirate captains (50 points)</strong>. You start with <strong>3 lives</strong>. The game gets harder as you progress through levels. Survive as long as you can!</p>
+        <p>Protect the magical wand from pirates by casting spells! Use the <strong>left</strong> and <strong>right arrow keys</strong> to rotate the wand and the <strong>spacebar</strong> to shoot spells (or use the on-screen buttons on mobile). Defeat pirates to earn points: <strong>regular pirates (10 points)</strong>, <strong>blue fat pirates with stripes (20 points)</strong>, <strong>red pirate captains with hooks (50 points)</strong>, and <strong>green crocodiles (100 points)</strong>. You start with <strong>3 lives</strong>. The game gets harder as you level up. Survive as long as you can!</p>
     </div>
 
     <script>
@@ -119,7 +119,7 @@
         canvas.width = canvas.offsetWidth;
         canvas.height = canvas.offsetHeight;
 
-        // Game state variables
+        // Game state
         let score = 0;
         let lives = 3;
         let level = 1;
@@ -141,7 +141,30 @@
         const finalScoreEl = document.getElementById('final-score');
         highScoreEl.textContent = highScore;
 
-        // Draw the magical wand
+        // Draw star for wand tip
+        function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+            let rot = Math.PI / 2 * 3;
+            let x = cx;
+            let y = cy;
+            let step = Math.PI / spikes;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - outerRadius);
+            for (let i = 0; i < spikes; i++) {
+                x = cx + Math.cos(rot) * outerRadius;
+                y = cy + Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+                x = cx + Math.cos(rot) * innerRadius;
+                y = cy + Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+            }
+            ctx.lineTo(cx, cy - outerRadius);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Draw the wand
         function drawWand() {
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
@@ -149,20 +172,22 @@
             ctx.save();
             ctx.translate(centerX, centerY);
             ctx.rotate(wandAngle);
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            ctx.shadowBlur = 5;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
             ctx.beginPath();
             ctx.moveTo(0, 0);
             ctx.lineTo(wandLength, 0);
             ctx.strokeStyle = 'green';
             ctx.lineWidth = 4;
             ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(wandLength, 0, 5, 0, 2 * Math.PI);
             ctx.fillStyle = 'lime';
-            ctx.fill();
+            drawStar(wandLength, 0, 5, 10, 4);
             ctx.restore();
         }
 
-        // Shoot a spell
+        // Shoot spell
         function shootSpell() {
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
@@ -174,12 +199,15 @@
 
         // Draw spells
         function drawSpells() {
+            ctx.shadowColor = 'yellow';
+            ctx.shadowBlur = 10;
             ctx.fillStyle = 'yellow';
             spells.forEach(spell => {
                 ctx.beginPath();
                 ctx.arc(spell.x, spell.y, 3, 0, 2 * Math.PI);
                 ctx.fill();
             });
+            ctx.shadowBlur = 0;
         }
 
         // Update spells
@@ -191,10 +219,10 @@
             });
         }
 
-        // Spawn a pirate
+        // Spawn pirate or crocodile
         function spawnPirate() {
             const r = Math.random();
-            const type = r < 0.1 ? 'captain' : r < 0.3 ? 'fat' : 'regular';
+            const type = r < 0.05 ? 'crocodile' : r < 0.15 ? 'captain' : r < 0.35 ? 'fat' : 'regular';
             const side = Math.floor(Math.random() * 4);
             let x, y;
             switch (side) {
@@ -215,23 +243,66 @@
             pirates.forEach(pirate => {
                 ctx.save();
                 ctx.translate(pirate.x, pirate.y);
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 5;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
                 if (pirate.type === 'regular') {
+                    ctx.fillStyle = 'black';
+                    ctx.beginPath();
+                    ctx.moveTo(-10, -15);
+                    ctx.lineTo(10, -15);
+                    ctx.lineTo(0, -25);
+                    ctx.closePath();
+                    ctx.fill();
                     ctx.beginPath();
                     ctx.arc(0, 0, 10, 0, 2 * Math.PI);
                     ctx.fillStyle = 'brown';
+                    ctx.fill();
+                    ctx.fillStyle = 'black';
+                    ctx.beginPath();
+                    ctx.arc(-5, -2, 3, 0, 2 * Math.PI);
                     ctx.fill();
                 } else if (pirate.type === 'fat') {
                     ctx.beginPath();
                     ctx.arc(0, 0, 15, 0, 2 * Math.PI);
                     ctx.fillStyle = 'blue';
                     ctx.fill();
+                    ctx.fillStyle = 'white';
+                    for (let i = -10; i <= 10; i += 5) {
+                        ctx.fillRect(-15, i, 30, 2);
+                    }
                     ctx.fillStyle = 'red';
                     ctx.fillRect(-5, -20, 10, 5);
                 } else if (pirate.type === 'captain') {
                     ctx.fillStyle = 'red';
+                    ctx.beginPath();
+                    ctx.moveTo(-15, -20);
+                    ctx.lineTo(15, -20);
+                    ctx.lineTo(0, -30);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.fillStyle = 'red';
                     ctx.fillRect(-10, -10, 20, 20);
-                    ctx.fillStyle = 'black';
-                    ctx.fillRect(-2, -15, 4, 5);
+                    ctx.strokeStyle = 'grey';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(10, 10);
+                    ctx.lineTo(20, 20);
+                    ctx.arc(20, 25, 5, Math.PI, 0, true);
+                    ctx.stroke();
+                } else if (pirate.type === 'crocodile') {
+                    ctx.fillStyle = 'green';
+                    ctx.fillRect(-20, -10, 40, 20);
+                    ctx.fillStyle = 'white';
+                    for (let i = -15; i <= 15; i += 5) {
+                        ctx.beginPath();
+                        ctx.moveTo(i, -10);
+                        ctx.lineTo(i + 2, -15);
+                        ctx.lineTo(i + 4, -10);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
                 }
                 ctx.restore();
             });
@@ -254,11 +325,11 @@
                     const dx = spell.x - pirate.x;
                     const dy = spell.y - pirate.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
-                    const pirateSize = pirate.type === 'fat' ? 15 : 10;
+                    const pirateSize = pirate.type === 'fat' || pirate.type === 'crocodile' ? 15 : 10;
                     if (distance < pirateSize) {
                         spells.splice(i, 1);
                         pirates.splice(j, 1);
-                        const points = pirate.type === 'regular' ? 10 : pirate.type === 'fat' ? 20 : 50;
+                        const points = pirate.type === 'regular' ? 10 : pirate.type === 'fat' ? 20 : pirate.type === 'captain' ? 50 : 100;
                         score += points;
                         scoreEl.textContent = score;
                         piratesDefeated++;
@@ -276,7 +347,6 @@
                     }
                 }
             }
-
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             for (let i = pirates.length - 1; i >= 0; i--) {
@@ -288,14 +358,12 @@
                     pirates.splice(i, 1);
                     lives--;
                     livesEl.textContent = lives;
-                    if (lives <= 0) {
-                        endGame();
-                    }
+                    if (lives <= 0) endGame();
                 }
             }
         }
 
-        // End the game
+        // End game
         function endGame() {
             isRunning = false;
             gameOverEl.style.display = 'block';
@@ -313,8 +381,11 @@
                 requestAnimationFrame(gameLoop);
                 return;
             }
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#000033');
+            gradient.addColorStop(1, '#000066');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             drawWand();
             drawSpells();
             drawPirates();
@@ -322,7 +393,6 @@
             updatePirates();
             checkCollisions();
             if (Math.random() < spawnChance) spawnPirate();
-
             requestAnimationFrame(gameLoop);
         }
 
@@ -370,7 +440,6 @@
         // Mobile controls
         let rotatingLeft = false;
         let rotatingRight = false;
-
         function updateMobileRotation() {
             if (isRunning && !isPaused) {
                 if (rotatingLeft) wandAngle -= 0.1;
@@ -378,15 +447,12 @@
                 requestAnimationFrame(updateMobileRotation);
             }
         }
-
         const leftBtn = document.getElementById('left-button');
         leftBtn.addEventListener('touchstart', () => { rotatingLeft = true; updateMobileRotation(); });
         leftBtn.addEventListener('touchend', () => { rotatingLeft = false; });
-
         const rightBtn = document.getElementById('right-button');
         rightBtn.addEventListener('touchstart', () => { rotatingRight = true; updateMobileRotation(); });
         rightBtn.addEventListener('touchend', () => { rotatingRight = false; });
-
         document.getElementById('shoot-button').addEventListener('touchstart', (e) => {
             e.preventDefault();
             if (isRunning && !isPaused) shootSpell();
