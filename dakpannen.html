@@ -32,28 +32,18 @@
 <body>
     <div class="game-info">
         <h2>Welkom bij VInky Jump!</h2>
-        <p>Spring van dak naar dak als Vinky de dakspecialist! Gebruik de pijltjestoetsen of tik op het scherm (links/rechts) om te bewegen. Verzamel de dakdekkersbrander voor een jetpack-boost. Veel plezier!</p>
+        <p>Spring van dak naar dak als Vinky de dakspecialist! Gebruik pijltjestoetsen of tik op het scherm (links/rechts) om te bewegen. Verzamel de rode brander voor een jetpack-boost. Veel plezier!</p>
     </div>
     <script>
         // Variabelen
         let character;
         let platforms = [];
-        let gravity = 0.2;
+        let gravity = 0.25;
         let jumpSpeed = -12;
         let boostJumpSpeed = -18;
         let score = 0;
         let highScore = 0;
-        let gameState = 'start'; // 'start', 'playing', 'gameOver'
-        let characterImg;
-        let platformImg;
-        let torchImg;
-
-        // Afbeeldingen laden
-        function preload() {
-            characterImg = loadImage('character.png');
-            platformImg = loadImage('platform.png');
-            torchImg = loadImage('torch.png');
-        }
+        let gameState = 'playing'; // Start direct met spelen
 
         // Canvas en initiële setup
         function setup() {
@@ -71,9 +61,7 @@
         // Hoofdgame-loop
         function draw() {
             background(220, 220, 220); // Lichtgrijs
-            if (gameState === 'start') {
-                drawStartScreen();
-            } else if (gameState === 'playing') {
+            if (gameState === 'playing') {
                 updateCharacter();
                 updatePlatforms();
                 checkCollisions();
@@ -83,18 +71,6 @@
             } else if (gameState === 'gameOver') {
                 drawGameOverScreen();
             }
-        }
-
-        // Startscherm
-        function drawStartScreen() {
-            textAlign(CENTER);
-            fill(0);
-            textSize(32);
-            text('VInky Jump', width / 2, height / 2 - 50);
-            textSize(24);
-            text('Klik of tik om te starten', width / 2, height / 2);
-            textSize(18);
-            text('Hoogste Score: ' + highScore, width / 2, height / 2 + 50);
         }
 
         // Karakter bijwerken
@@ -122,9 +98,10 @@
 
         // Platforms bijwerken
         function updatePlatforms() {
-            for (let platform of platforms) platform.y += 1; // Langzamer bewegen
+            for (let platform of platforms) platform.y += 1.5; // Langzame opwaartse beweging
             platforms = platforms.filter(p => p.y < height);
-            while (platforms.length < 5) generatePlatform();
+            while (platforms.length < 6) generatePlatform();
+            score += 0.1; // Langzame scoretoename
         }
 
         // Botsingen controleren
@@ -139,7 +116,7 @@
                 ) {
                     character.velocity = character.hasBoost ? boostJumpSpeed : jumpSpeed;
                     character.hasBoost = false;
-                    score += 10;
+                    score += 10; // Extra punten bij landen
                     if (platform.hasPowerUp) {
                         character.hasBoost = true;
                         platform.hasPowerUp = false;
@@ -148,32 +125,61 @@
             }
         }
 
-        // Karakter tekenen
+        // Karakter tekenen (oranje "V" met ogen en armen)
         function drawCharacter() {
-            if (character.hasBoost) {
-                tint(255, 0, 0); // Rode tint voor boost
+            push();
+            translate(character.x, character.y);
+            scale(0.7);
+
+            // Oranje "V"
+            fill(255, 165, 0);
+            textSize(80);
+            textStyle(BOLD);
+            textAlign(CENTER, CENTER);
+            text('V', 0, -10);
+
+            // Witte ogen met zwarte pupillen
+            fill(255);
+            ellipse(-15, -20, 20, 20);
+            ellipse(15, -20, 20, 20);
+            fill(0);
+            ellipse(-15, -20, 8, 8);
+            ellipse(15, -20, 8, 8);
+
+            // Zwevende Mickey Mouse-achtige armen
+            fill(255);
+            if (character.velocity < 0) { // Armen zwaaien bij springen
+                arc(-40, 0, 40, 40, PI / 4, PI, CHORD);
+                arc(40, 0, 40, 40, 0, 3 * PI / 4, CHORD);
             } else {
-                noTint();
+                ellipse(-40, 0, 20, 20);
+                ellipse(40, 0, 20, 20);
             }
-            if (characterImg) {
-                image(characterImg, character.x - character.size / 2, character.y - character.size / 2, character.size, character.size);
-            } else {
-                fill(255, 165, 0); // Oranje fallback
-                rect(character.x - character.size / 2, character.y - character.size / 2, character.size, character.size);
+
+            pop();
+
+            // Rode gloed bij boost
+            if (character.hasBoost) {
+                fill(255, 0, 0, 100);
+                ellipse(character.x, character.y, character.size + 10, character.size + 10);
             }
         }
 
-        // Platforms tekenen
+        // Platforms tekenen (bruine hellende daken)
         function drawPlatforms() {
             for (let platform of platforms) {
-                if (platformImg) {
-                    image(platformImg, platform.x, platform.y, platform.width, platform.height);
-                } else {
-                    fill(139, 69, 19); // Bruin fallback
-                    rect(platform.x, platform.y, platform.width, platform.height);
-                }
-                if (platform.hasPowerUp && torchImg) {
-                    image(torchImg, platform.x + platform.width / 2 - 10, platform.y - 20, 20, 20);
+                fill(139, 69, 19); // Bruin
+                noStroke();
+                beginShape();
+                vertex(platform.x, platform.y + platform.height);
+                vertex(platform.x + platform.width / 2, platform.y);
+                vertex(platform.x + platform.width, platform.y + platform.height);
+                endShape(CLOSE);
+
+                // Power-up (rode brander)
+                if (platform.hasPowerUp) {
+                    fill(255, 0, 0);
+                    rect(platform.x + platform.width / 2 - 10, platform.y - 20, 20, 20);
                 }
             }
         }
@@ -183,7 +189,9 @@
             fill(0);
             textSize(18);
             textAlign(LEFT);
-            text('Score: ' + score, 10, 30);
+            text('Score: ' + floor(score), 10, 30);
+            textAlign(RIGHT);
+            text('Highscore: ' + floor(highScore), width - 10, 30);
         }
 
         // Game-over-scherm
@@ -193,7 +201,7 @@
             textSize(32);
             text('Spel Afgelopen', width / 2, height / 2 - 50);
             textSize(24);
-            text('Score: ' + score, width / 2, height / 2);
+            text('Score: ' + floor(score), width / 2, height / 2);
             textSize(18);
             text('Klik of tik om te herstarten', width / 2, height / 2 + 50);
         }
@@ -203,14 +211,14 @@
             platforms = [];
             let startY = height - 50;
             platforms.push({
-                x: random(width - 100),
+                x: width / 2 - 50,
                 y: startY,
                 width: 100,
                 height: 15,
                 hasPowerUp: false // Geen power-up op startplatform
             });
-            for (let i = 1; i < 5; i++) {
-                let y = startY - i * 150 + random(-20, 20);
+            for (let i = 1; i < 6; i++) {
+                let y = startY - i * 120 + random(-30, 30);
                 platforms.push({
                     x: random(width - 100),
                     y: y,
@@ -224,7 +232,7 @@
 
         function generatePlatform() {
             let highestPlatform = min(platforms.map(p => p.y));
-            let y = highestPlatform - 150 + random(-20, 20);
+            let y = highestPlatform - 120 + random(-30, 30);
             platforms.push({
                 x: random(width - 100),
                 y: y,
@@ -236,30 +244,21 @@
 
         // Bediening
         function mousePressed() {
-            if (gameState === 'start') startGame();
-            else if (gameState === 'gameOver') resetGame();
+            if (gameState === 'gameOver') resetGame();
         }
 
         function touchStarted() {
-            if (gameState === 'start') startGame();
-            else if (gameState === 'gameOver') resetGame();
+            if (gameState === 'gameOver') resetGame();
             return false;
         }
 
-        // Start en reset
-        function startGame() {
-            gameState = 'playing';
-            score = 0;
-            character.y = height - 50 - character.size / 2;
-            character.velocity = 0;
-            generateInitialPlatforms();
-        }
-
+        // Reset game
         function resetGame() {
             gameState = 'playing';
             score = 0;
             character.y = height - 50 - character.size / 2;
             character.velocity = 0;
+            character.hasBoost = false;
             generateInitialPlatforms();
         }
     </script>
