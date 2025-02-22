@@ -1,569 +1,441 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Magical Wand vs Pirates</title>
+    <title>DakVormCalculator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         body {
-            margin: 0;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #f0f0f0;
             font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f4f4f4;
         }
-        #game-container {
-            position: relative;
-            width: 80vw;
-            height: 60vh;
-            max-width: 800px;
-            max-height: 600px;
-            background-color: #000;
-            border: 2px solid #333;
-        }
-        #game-canvas {
-            width: 100%;
-            height: 100%;
-        }
-        #stats {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: #fff;
-            font-size: 16px;
-        }
-        #controls {
-            position: absolute;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 10px;
-        }
-        #start-button, #pause-button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        #mobile-controls {
-            display: none;
-            margin-top: 10px;
-            gap: 20px;
-        }
-        #mobile-controls button {
-            padding: 15px 25px;
-            font-size: 18px;
-            cursor: pointer;
-        }
-        @media (max-width: 600px) {
-            #mobile-controls {
-                display: flex;
-                justify-content: space-around;
-                width: 80vw;
-            }
-        }
-        #instructions {
-            margin-top: 20px;
-            max-width: 800px;
+        h1 {
             text-align: center;
             color: #333;
         }
-        #game-over {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
+        .container {
+            background: white;
             padding: 20px;
-            border-radius: 10px;
-            text-align: center;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .input-section, .schets-section {
+            flex: 1;
+            min-width: 300px;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #resultaat {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .vorm-specifiek {
+            display: none;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            width: 100%;
+            max-width: 400px;
+            height: 400px;
+        }
+        .detail-input {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .detail-input select, .detail-input input[type="text"] {
+            flex: 1;
+        }
+        .warning {
+            color: red;
+            font-size: 14px;
+            margin-top: -5px;
         }
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <canvas id="game-canvas"></canvas>
-        <div id="stats">
-            <p>Score: <span id="score">0</span></p>
-            <p>Lives: <span id="lives">3</span></p>
-            <p>Level: <span id="level">1</span></p>
-            <p>High Score: <span id="high-score">0</span></p>
+    <h1>DakVormCalculator</h1>
+    <div class="container">
+        <div class="input-section">
+            <form id="dakForm">
+                <label for="vorm">Dakvorm:</label>
+                <select id="vorm" onchange="updateAlles()">
+                    <option value="rechthoek">⬜ Rechthoek</option>
+                    <option value="l-vorm">🡒 L-vorm</option>
+                </select>
+
+                <!-- Rechthoek -->
+                <div id="rechthoek" class="vorm-specifiek">
+                    <label for="lengte">Lengte (m):</label>
+                    <input type="number" id="lengte" step="0.1" min="0" value="10" oninput="updateAlles()">
+                    <label for="breedte">Breedte (m):</label>
+                    <input type="number" id="breedte" step="0.1" min="0" value="5" oninput="updateAlles()">
+                    <label>Detailomschrijvingen (4 zijden):</label>
+                    <div class="detail-input">
+                        <select id="detail1" oninput="updateAlles()">
+                            <option value="">Kies detail</option>
+                            <option value="Lood">Lood</option>
+                            <option value="Afwerkstrook">Afwerkstrook</option>
+                            <option value="Lichtkoepel">Lichtkoepel</option>
+                            <option value="Opgaandwerk">Opgaandwerk</option>
+                        </select>
+                        <input type="text" id="oms1" placeholder="Extra omschrijving" oninput="updateAlles()">
+                    </div>
+                    <div class="detail-input">
+                        <select id="detail2" oninput="updateAlles()">
+                            <option value="">Kies detail</option>
+                            <option value="Lood">Lood</option>
+                            <option value="Afwerkstrook">Afwerkstrook</option>
+                            <option value="Lichtkoepel">Lichtkoepel</option>
+                            <option value="Opgaandwerk">Opgaandwerk</option>
+                        </select>
+                        <input type="text" id="oms2" placeholder="Extra omschrijving" oninput="updateAlles()">
+                    </div>
+                    <div class="detail-input">
+                        <select id="detail3" oninput="updateAlles()">
+                            <option value="">Kies detail</option>
+                            <option value="Lood">Lood</option>
+                            <option value="Afwerkstrook">Afwerkstrook</option>
+                            <option value="Lichtkoepel">Lichtkoepel</option>
+                            <option value="Opgaandwerk">Opgaandwerk</option>
+                        </select>
+                        <input type="text" id="oms3" placeholder="Extra omschrijving" oninput="updateAlles()">
+                    </div>
+                    <div class="detail-input">
+                        <select id="detail4" oninput="updateAlles()">
+                            <option value="">Kies detail</option>
+                            <option value="Lood">Lood</option>
+                            <option value="Afwerkstrook">Afwerkstrook</option>
+                            <option value="Lichtkoepel">Lichtkoepel</option>
+                            <option value="Opgaandwerk">Opgaandwerk</option>
+                        </select>
+                        <input type="text" id="oms4" placeholder="Extra omschrijving" oninput="updateAlles()">
+                    </div>
+                </div>
+
+                <!-- L-vorm -->
+                <div id="l-vorm" class="vorm-specifiek">
+                    <label for="lengte1">Lengte deel 1 (m):</label>
+                    <input type="number" id="lengte1" step="0.1" min="0" value="10" oninput="updateAlles()">
+                    <label for="breedte1">Breedte deel 1 (m):</label>
+                    <input type="number" id="breedte1" step="0.1" min="0" value="5" oninput="updateAlles()">
+                    <label for="lengte2">Lengte deel 2 (m):</label>
+                    <input type="number" id="lengte2" step="0.1" min="0" value="4" oninput="updateAlles()">
+                    <div id="l-vorm-warning" class="warning"></div>
+                    <label for="breedte2">Breedte deel 2 (m):</label>
+                    <input type="number" id="breedte2" step="0.1" min="0" value="3" oninput="updateAlles()">
+                    <label>Detailomschrijvingen (6 zijden):</label>
+                    <div class="detail-input">
+                        <select id="l-detail1" oninput="updateAlles()">
+                            <option value="">Kies detail</option>
+                            <option value="Lood">Lood</option>
+                            <option value="Afwerkstrook">Afwerkstrook</option>
+                            <option value="Lichtkoepel">Lichtkoepel</option>
+                            <option value="Opgaandwerk">Opgaandwerk</option>
+                        </select>
+                        <input type="text" id="l-oms1" placeholder="Extra omschrijving" oninput="updateAlles()">
+                    </div>
+                    <div class="detail-input">
+                        <select id="l-detail2" oninput="updateAlles()">
+                            <option value="">Kies detail</option>
+                            <option value="Lood">Lood</option>
+                            <option value="Afwerkstrook">Afwerkstrook</option>
+                            <option value="Lichtkoepel">Lichtkoepel</option>
+                            <option value="Opgaandwerk">Opgaandwerk</option>
+                        </select>
+                        <input type="text" id="l-oms2" placeholder="Extra omschrijving" oninput="updateAlles()">
+                    </div>
+                    <div class="detail-input">
+                        <select id="l-detail3" oninput="updateAlles()">
+                            <option value="">Kies detail</option>
+                            <option value="Lood">Lood</option>
+                            <option value="Afwerkstrook">Afwerkstrook</option>
+                            <option value="Lichtkoepel">Lichtkoepel</option>
+                            <option value="Opgaandwerk">Opgaandwerk</option>
+                        </select>
+                        <input type="text" id="l-oms3" placeholder="Extra omschrijving" oninput="updateAlles()">
+                    </div>
+                    <div class="detail-input">
+                        <select id="l-detail4" oninput="updateAlles()">
+                            <option value="">Kies detail</option>
+                            <option value="Lood">Lood</option>
+                            <option value="Afwerkstrook">Afwerkstrook</option>
+                            <option value="Lichtkoepel">Lichtkoepel</option>
+                            <option value="Opgaandwerk">Opgaandwerk</option>
+                        </select>
+                        <input type="text" id="l-oms4" placeholder="Extra omschrijving" oninput="updateAlles()">
+                    </div>
+                    <div class="detail-input">
+                        <select id="l-detail5" oninput="updateAlles()">
+                            <option value="">Kies detail</option>
+                            <option value="Lood">Lood</option>
+                            <option value="Afwerkstrook">Afwerkstrook</option>
+                            <option value="Lichtkoepel">Lichtkoepel</option>
+                            <option value="Opgaandwerk">Opgaandwerk</option>
+                        </select>
+                        <input type="text" id="l-oms5" placeholder="Extra omschrijving" oninput="updateAlles()">
+                    </div>
+                    <div class="detail-input">
+                        <select id="l-detail6" oninput="updateAlles()">
+                            <option value="">Kies detail</option>
+                            <option value="Lood">Lood</option>
+                            <option value="Afwerkstrook">Afwerkstrook</option>
+                            <option value="Lichtkoepel">Lichtkoepel</option>
+                            <option value="Opgaandwerk">Opgaandwerk</option>
+                        </select>
+                        <input type="text" id="l-oms6" placeholder="Extra omschrijving" oninput="updateAlles()">
+                    </div>
+                </div>
+
+                <label for="hellingsgraad">Hellingsgraad (°):</label>
+                <input type="number" id="hellingsgraad" step="0.1" min="0" max="90" value="0" oninput="updateAlles()">
+                <button type="button" onclick="resetForm()">Reset</button>
+                <button type="button" onclick="exportPNG()">Export PNG</button>
+                <button type="button" onclick="exportPDF()">Export PDF</button>
+                <button type="button" onclick="zoomIn()">Zoom In</button>
+                <button type="button" onclick="zoomOut()">Zoom Uit</button>
+            </form>
+            <div id="resultaat"></div>
         </div>
-        <div id="controls">
-            <button id="start-button">Start</button>
-            <button id="pause-button">Pause</button>
+        <div class="schets-section">
+            <h3>Schets</h3>
+            <canvas id="dakCanvas"></canvas>
         </div>
-        <div id="game-over">
-            <h2>Game Over</h2>
-            <p>Your Score: <span id="final-score">0</span></p>
-            <button id="restart-button">Restart</button>
-        </div>
-    </div>
-    <div id="mobile-controls">
-        <button id="left-button">Left</button>
-        <button id="shoot-button">Shoot</button>
-        <button id="right-button">Right</button>
-    </div>
-    <div id="instructions">
-        <h2>How to Play</h2>
-        <p>Protect the magical wand from pirates by casting spells! Use the <strong>left</strong> and <strong>right arrow keys</strong> to rotate the wand and the <strong>spacebar</strong> to shoot spells (or use the on-screen buttons on mobile). Defeat pirates to earn points: <strong>regular pirates (10 points)</strong>, <strong>blue fat pirates with stripes (20 points)</strong>, <strong>red pirate captains with hooks (50 points)</strong>, and <strong>green crocodiles (100 points)</strong>. You start with <strong>3 lives</strong>. The game gets harder as you level up. Survive as long as you can!</p>
     </div>
 
     <script>
-        const canvas = document.getElementById('game-canvas');
+        const { jsPDF } = window.jspdf;
+        const canvas = document.getElementById('dakCanvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
+        canvas.width = 400;
+        canvas.height = 400;
+        let zoom = 1;
 
-        // Game state
-        let score = 0;
-        let lives = 3;
-        let level = 1;
-        let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0;
-        let isRunning = false;
-        let isPaused = false;
-        let spells = [];
-        let pirates = [];
-        let treasureChests = [];
-        let powerUps = [];
-        let wandAngle = 0;
-        let spawnChance = 0.01;
-        let piratesDefeated = 0;
-        let spellCooldown = 200; // milliseconds
-        let lastSpellTime = 0;
-        let invincibilityEndTime = 0;
-        let fasterSpellsEndTime = 0;
+        const kleuren = {
+            "Lood": "#FF0000",
+            "Afwerkstrook": "#00FF00",
+            "Lichtkoepel": "#0000FF",
+            "Opgaandwerk": "#FFA500",
+            "": "#000000"
+        };
 
-        // DOM elements
-        const scoreEl = document.getElementById('score');
-        const livesEl = document.getElementById('lives');
-        const levelEl = document.getElementById('level');
-        const highScoreEl = document.getElementById('high-score');
-        const gameOverEl = document.getElementById('game-over');
-        const finalScoreEl = document.getElementById('final-score');
-        highScoreEl.textContent = highScore;
+        function updateAlles() {
+            const vorm = document.getElementById('vorm').value;
+            const hellingsgraad = parseFloat(document.getElementById('hellingsgraad').value) || 0;
+            let oppervlakte = 0, omtrek = 0, lengtes = [], omschrijvingen = [], detailsList = [];
 
-        // Draw star for wand tip
-        function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
-            let rot = Math.PI / 2 * 3;
-            let x = cx;
-            let y = cy;
-            let step = Math.PI / spikes;
-            ctx.beginPath();
-            ctx.moveTo(cx, cy - outerRadius);
-            for (let i = 0; i < spikes; i++) {
-                x = cx + Math.cos(rot) * outerRadius;
-                y = cy + Math.sin(rot) * outerRadius;
-                ctx.lineTo(x, y);
-                rot += step;
-                x = cx + Math.cos(rot) * innerRadius;
-                y = cy + Math.sin(rot) * innerRadius;
-                ctx.lineTo(x, y);
-                rot += step;
+            document.getElementById('rechthoek').style.display = vorm === 'rechthoek' ? 'block' : 'none';
+            document.getElementById('l-vorm').style.display = vorm === 'l-vorm' ? 'block' : 'none';
+
+            if (vorm === 'rechthoek') {
+                const lengte = parseFloat(document.getElementById('lengte').value) || 0;
+                const breedte = parseFloat(document.getElementById('breedte').value) || 0;
+                oppervlakte = lengte * breedte;
+                omtrek = 2 * (lengte + breedte);
+                lengtes = [lengte, breedte, lengte, breedte];
+                detailsList = [1, 2, 3, 4].map(i => ({
+                    detail: document.getElementById(`detail${i}`).value,
+                    oms: document.getElementById(`oms${i}`).value || ''
+                }));
+                omschrijvingen = detailsList.map(d => d.detail + (d.oms ? ` - ${d.oms}` : ''));
+                tekenRechthoek(lengte, breedte, detailsList);
+            } else if (vorm === 'l-vorm') {
+                const lengte1 = parseFloat(document.getElementById('lengte1').value) || 0;
+                const breedte1 = parseFloat(document.getElementById('breedte1').value) || 0;
+                const lengte2 = parseFloat(document.getElementById('lengte2').value) || 0;
+                const breedte2 = parseFloat(document.getElementById('breedte2').value) || 0;
+                const warningDiv = document.getElementById('l-vorm-warning');
+                if (lengte2 > lengte1) {
+                    warningDiv.textContent = "Waarschuwing: Lengte deel 2 mag niet groter zijn dan Lengte deel 1!";
+                    return;
+                } else {
+                    warningDiv.textContent = "";
+                }
+                oppervlakte = (lengte1 * breedte1) + (lengte2 * breedte2);
+                omtrek = lengte1 + breedte1 + lengte2 + (breedte1 + breedte2) + (lengte1 - lengte2) + breedte2;
+                lengtes = [lengte1, breedte1, lengte2, breedte1 + breedte2, lengte1 - lengte2, breedte2];
+                detailsList = [1, 2, 3, 4, 5, 6].map(i => ({
+                    detail: document.getElementById(`l-detail${i}`).value,
+                    oms: document.getElementById(`l-oms${i}`).value || ''
+                }));
+                omschrijvingen = detailsList.map(d => d.detail + (d.oms ? ` - ${d.oms}` : ''));
+                tekenLVorm(lengte1, breedte1, lengte2, breedte2, detailsList);
             }
-            ctx.lineTo(cx, cy - outerRadius);
-            ctx.closePath();
-            ctx.fill();
+
+            if (hellingsgraad > 0) {
+                const cosinus = Math.cos(hellingsgraad * Math.PI / 180);
+                oppervlakte = oppervlakte / cosinus;
+            }
+
+            const details = somDetailnummers(lengtes, omschrijvingen);
+
+            const resultaatDiv = document.getElementById('resultaat');
+            let detailText = '<h4>Details:</h4><ul>';
+            for (const [oms, lengte] of Object.entries(details)) {
+                detailText += `<li>${oms}: ${lengte.toFixed(2)} m</li>`;
+            }
+            detailText += '</ul>';
+            resultaatDiv.innerHTML = `
+                <h3>Resultaat</h3>
+                <p>Oppervlakte: ${oppervlakte.toFixed(2)} m²</p>
+                <p>Totale omtrek: ${omtrek.toFixed(2)} m</p>
+                ${detailText}
+            `;
         }
 
-        // Draw the wand
-        function drawWand() {
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const wandLength = 30;
-            ctx.save();
-            ctx.translate(centerX, centerY);
-            ctx.rotate(wandAngle);
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-            ctx.shadowBlur = 5;
-            ctx.shadowOffsetX = 2;
-            ctx.shadowOffsetY = 2;
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(wandLength, 0);
-            ctx.strokeStyle = 'green';
-            ctx.lineWidth = 4;
-            ctx.stroke();
-            ctx.fillStyle = 'lime';
-            drawStar(wandLength, 0, 5, 10, 4);
-            ctx.restore();
+        function somDetailnummers(lengtes, omschrijvingen) {
+            const details = {};
+            lengtes.forEach((lengte, index) => {
+                const oms = omschrijvingen[index];
+                details[oms] = (details[oms] || 0) + lengte;
+            });
+            return details;
         }
 
-        // Shoot spell
-        function shootSpell() {
-            const now = Date.now();
-            if (now - lastSpellTime < spellCooldown) return;
-            lastSpellTime = now;
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const speed = fasterSpellsEndTime > now ? 10 : 7;
-            const vx = speed * Math.cos(wandAngle);
-            const vy = speed * Math.sin(wandAngle);
-            spells.push({ x: centerX + 30 * Math.cos(wandAngle), y: centerY + 30 * Math.sin(wandAngle), vx, vy });
-        }
-
-        // Draw spells
-        function drawSpells() {
-            ctx.shadowColor = 'yellow';
-            ctx.shadowBlur = 10;
-            ctx.fillStyle = 'yellow';
-            spells.forEach(spell => {
+        function tekenRechthoek(lengte, breedte, detailsList) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const schaal = Math.min(350 / lengte, 350 / breedte) * zoom || zoom;
+            const x = (canvas.width - lengte * schaal) / 2;
+            const y = (canvas.height - breedte * schaal) / 2;
+            const lijnen = [
+                [x, y, x + lengte * schaal, y, lengte], // Boven
+                [x + lengte * schaal, y, x + lengte * schaal, y + breedte * schaal, breedte], // Rechts
+                [x + lengte * schaal, y + breedte * schaal, x, y + breedte * schaal, lengte], // Onder
+                [x, y + breedte * schaal, x, y, breedte] // Links
+            ];
+            lijnen.forEach((lijn, i) => {
                 ctx.beginPath();
-                ctx.arc(spell.x, spell.y, 3, 0, 2 * Math.PI);
-                ctx.fill();
+                ctx.moveTo(lijn[0], lijn[1]);
+                ctx.lineTo(lijn[2], lijn[3]);
+                ctx.strokeStyle = kleuren[detailsList[i].detail] || '#000000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
             });
-            ctx.shadowBlur = 0;
+            tekenNummersEnLabels(lijnen, detailsList);
         }
 
-        // Update spells
-        function updateSpells() {
-            spells = spells.filter(spell => {
-                spell.x += spell.vx;
-                spell.y += spell.vy;
-                return spell.x >= 0 && spell.x <= canvas.width && spell.y >= 0 && spell.y <= canvas.height;
+        function tekenLVorm(lengte1, breedte1, lengte2, breedte2, detailsList) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const schaal = Math.min(350 / lengte1, 350 / (breedte1 + breedte2)) * zoom || zoom;
+            const x = (canvas.width - lengte1 * schaal) / 2;
+            const y = (canvas.height - (breedte1 + breedte2) * schaal) / 2;
+            const lijnen = [
+                [x, y, x + lengte1 * schaal, y, lengte1],
+                [x + lengte1 * schaal, y, x + lengte1 * schaal, y + breedte1 * schaal, breedte1],
+                [x + lengte1 * schaal, y + breedte1 * schaal, x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal, lengte2],
+                [x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal, x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal, breedte1 + breedte2],
+                [x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal, x, y + (breedte1 + breedte2) * schaal, lengte1 - lengte2],
+                [x, y + (breedte1 + breedte2) * schaal, x, y, breedte2]
+            ];
+            lijnen.forEach((lijn, i) => {
+                ctx.beginPath();
+                ctx.moveTo(lijn[0], lijn[1]);
+                ctx.lineTo(lijn[2], lijn[3]);
+                ctx.strokeStyle = kleuren[detailsList[i].detail] || '#000000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
             });
+            tekenNummersEnLabels(lijnen, detailsList);
         }
 
-        // Spawn pirate or treasure chest
-        function spawnPirate() {
-            const r = Math.random();
-            if (r < 0.01) {
-                const type = 'treasure';
-                const side = Math.floor(Math.random() * 4);
-                let x, y;
-                switch (side) {
-                    case 0: x = Math.random() * canvas.width; y = -20; break;
-                    case 1: x = canvas.width + 20; y = Math.random() * canvas.height; break;
-                    case 2: x = Math.random() * canvas.width; y = canvas.height + 20; break;
-                    case 3: x = -20; y = Math.random() * canvas.height; break;
-                }
-                const speed = 0.5;
-                const angle = Math.atan2(canvas.height / 2 - y, canvas.width / 2 - x);
-                const vx = speed * Math.cos(angle);
-                const vy = speed * Math.sin(angle);
-                treasureChests.push({ x, y, vx, vy, type });
-            } else {
-                const type = r < 0.05 ? 'crocodile' : r < 0.15 ? 'captain' : r < 0.35 ? 'fat' : 'regular';
-                const side = Math.floor(Math.random() * 4);
-                let x, y;
-                switch (side) {
-                    case 0: x = Math.random() * canvas.width; y = -20; break;
-                    case 1: x = canvas.width + 20; y = Math.random() * canvas.height; break;
-                    case 2: x = Math.random() * canvas.width; y = canvas.height + 20; break;
-                    case 3: x = -20; y = Math.random() * canvas.height; break;
-                }
-                const speed = 0.8 + level * 0.1;
-                const angle = Math.atan2(canvas.height / 2 - y, canvas.width / 2 - x);
-                const vx = speed * Math.cos(angle);
-                const vy = speed * Math.sin(angle);
-                pirates.push({ x, y, vx, vy, type });
-            }
-        }
-
-        // Draw pirates and treasure chests
-        function drawPirates() {
-            pirates.forEach(pirate => {
-                ctx.save();
-                ctx.translate(pirate.x, pirate.y);
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-                ctx.shadowBlur = 5;
-                ctx.shadowOffsetX = 2;
-                ctx.shadowOffsetY = 2;
-                if (pirate.type === 'regular') {
-                    ctx.fillStyle = 'black';
-                    ctx.beginPath();
-                    ctx.moveTo(-10, -15);
-                    ctx.lineTo(10, -15);
-                    ctx.lineTo(0, -25);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 10, 0, 2 * Math.PI);
-                    ctx.fillStyle = '#8B4513';
-                    ctx.fill();
-                    ctx.fillStyle = 'black';
-                    ctx.beginPath();
-                    ctx.arc(-5, -2, 3, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(5, -2, 3, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(0, 5, 5, 0, Math.PI);
-                    ctx.stroke();
-                } else if (pirate.type === 'fat') {
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 15, 0, 2 * Math.PI);
-                    ctx.fillStyle = 'blue';
-                    ctx.fill();
-                    ctx.fillStyle = 'white';
-                    for (let i = -10; i <= 10; i += 5) {
-                        ctx.fillRect(-15, i, 30, 2);
-                    }
-                    ctx.fillStyle = 'red';
-                    ctx.fillRect(-7, -25, 14, 10);
-                    ctx.beginPath();
-                    ctx.arc(-5, -2, 3, 0, 2 * Math.PI);
-                    ctx.fillStyle = 'black';
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(5, -2, 3, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(0, 5, 5, 0, Math.PI);
-                    ctx.stroke();
-                } else if (pirate.type === 'captain') {
-                    ctx.fillStyle = 'red';
-                    ctx.beginPath();
-                    ctx.moveTo(-15, -20);
-                    ctx.lineTo(15, -20);
-                    ctx.lineTo(0, -30);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.fillStyle = 'red';
-                    ctx.fillRect(-10, -10, 20, 20);
-                    ctx.strokeStyle = 'grey';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(10, 10);
-                    ctx.lineTo(20, 20);
-                    ctx.arc(20, 25, 5, Math.PI, 0, true);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.arc(-5, -2, 3, 0, 2 * Math.PI);
-                    ctx.fillStyle = 'black';
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(5, -2, 3, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(0, 5, 5, 0, Math.PI);
-                    ctx.stroke();
-                } else if (pirate.type === 'crocodile') {
-                    ctx.fillStyle = 'green';
-                    ctx.fillRect(-20, -10, 40, 20);
-                    ctx.fillStyle = 'white';
-                    for (let i = -15; i <= 15; i += 5) {
-                        ctx.beginPath();
-                        ctx.moveTo(i, -10);
-                        ctx.lineTo(i + 2, -15);
-                        ctx.lineTo(i + 4, -10);
-                        ctx.closePath();
-                        ctx.fill();
-                    }
-                    ctx.beginPath();
-                    ctx.arc(-15, 0, 5, 0, 2 * Math.PI);
-                    ctx.fillStyle = 'black';
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(15, 0, 5, 0, 2 * Math.PI);
-                    ctx.fill();
-                }
-                ctx.restore();
-            });
-            treasureChests.forEach(chest => {
-                ctx.save();
-                ctx.translate(chest.x, chest.y);
-                ctx.fillStyle = 'brown';
-                ctx.fillRect(-10, -10, 20, 20);
-                ctx.fillStyle = 'yellow';
-                ctx.fillRect(-5, -5, 10, 10);
-                ctx.restore();
+        function tekenNummersEnLabels(lijnen, detailsList) {
+            ctx.font = '12px Arial';
+            ctx.fillStyle = 'black';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            lijnen.forEach((lijn, i) => {
+                const middenX = (lijn[0] + lijn[2]) / 2;
+                const middenY = (lijn[1] + lijn[3]) / 2;
+                ctx.fillStyle = 'red';
+                ctx.fillText(i + 1, middenX, middenY - 10);
+                ctx.fillStyle = 'black';
+                ctx.fillText(`${lijn[4].toFixed(1)}m`, middenX, middenY + 10);
             });
         }
 
-        // Update pirates and treasure chests
-        function updatePirates() {
-            pirates.forEach(pirate => {
-                pirate.x += pirate.vx;
-                pirate.y += pirate.vy;
+        function zoomIn() {
+            zoom *= 1.2;
+            updateAlles();
+        }
+
+        function zoomOut() {
+            zoom /= 1.2;
+            if (zoom < 0.5) zoom = 0.5;
+            updateAlles();
+        }
+
+        function exportPNG() {
+            html2canvas(document.querySelector('.container')).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'dakvorm.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
             });
-            treasureChests.forEach(chest => {
-                chest.x += chest.vx;
-                chest.y += chest.vy;
+        }
+
+        function exportPDF() {
+            html2canvas(document.querySelector('.container')).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF();
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save('dakvorm.pdf');
             });
         }
 
-        // Check collisions
-        function checkCollisions() {
-            for (let i = spells.length - 1; i >= 0; i--) {
-                for (let j = pirates.length - 1; j >= 0; j--) {
-                    const spell = spells[i];
-                    const pirate = pirates[j];
-                    const dx = spell.x - pirate.x;
-                    const dy = spell.y - pirate.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const pirateSize = pirate.type === 'fat' || pirate.type === 'crocodile' ? 15 : 10;
-                    if (distance < pirateSize) {
-                        spells.splice(i, 1);
-                        pirates.splice(j, 1);
-                        const points = pirate.type === 'regular' ? 10 : pirate.type === 'fat' ? 20 : pirate.type === 'captain' ? 50 : 100;
-                        score += points;
-                        scoreEl.textContent = score;
-                        piratesDefeated++;
-                        if (piratesDefeated % 10 === 0) {
-                            level++;
-                            levelEl.textContent = level;
-                            spawnChance = Math.min(spawnChance + 0.005, 0.05);
-                        }
-                        if (score > highScore) {
-                            highScore = score;
-                            highScoreEl.textContent = highScore;
-                            localStorage.setItem('highScore', highScore);
-                        }
-                        break;
-                    }
-                }
-                for (let j = treasureChests.length - 1; j >= 0; j--) {
-                    const spell = spells[i];
-                    const chest = treasureChests[j];
-                    const dx = spell.x - chest.x;
-                    const dy = spell.y - chest.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance < 10) {
-                        spells.splice(i, 1);
-                        treasureChests.splice(j, 1);
-                        const powerUp = Math.random() < 0.33 ? 'extraLife' : Math.random() < 0.66 ? 'fasterSpells' : 'invincibility';
-                        powerUps.push({ type: powerUp, time: Date.now() });
-                        if (powerUp === 'extraLife') {
-                            lives++;
-                            livesEl.textContent = lives;
-                        } else if (powerUp === 'fasterSpells') {
-                            fasterSpellsEndTime = Date.now() + 10000;
-                        } else if (powerUp === 'invincibility') {
-                            invincibilityEndTime = Date.now() + 5000;
-                        }
-                        break;
-                    }
-                }
-            }
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            for (let i = pirates.length - 1; i >= 0; i--) {
-                const pirate = pirates[i];
-                const dx = centerX - pirate.x;
-                const dy = centerY - pirate.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance < 20 && invincibilityEndTime < Date.now()) {
-                    pirates.splice(i, 1);
-                    lives--;
-                    livesEl.textContent = lives;
-                    if (lives <= 0) endGame();
-                }
-            }
+        function resetForm() {
+            document.getElementById('dakForm').reset();
+            document.getElementById('lengte').value = 10;
+            document.getElementById('breedte').value = 5;
+            document.getElementById('lengte1').value = 10;
+            document.getElementById('breedte1').value = 5;
+            document.getElementById('lengte2').value = 4;
+            document.getElementById('breedte2').value = 3;
+            document.getElementById('hellingsgraad').value = 0;
+            document.getElementById('l-vorm-warning').textContent = '';
+            zoom = 1;
+            updateAlles();
         }
 
-        // End game
-        function endGame() {
-            isRunning = false;
-            gameOverEl.style.display = 'block';
-            finalScoreEl.textContent = score;
-            document.getElementById('start-button').textContent = 'Start';
-            // Explosion effect
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            for (let i = 0; i < 50; i++) {
-                const angle = Math.random() * 2 * Math.PI;
-                const speed = Math.random() * 5;
-                const vx = speed * Math.cos(angle);
-                const vy = speed * Math.sin(angle);
-                const particle = { x: centerX, y: centerY, vx, vy, life: 50 };
-                powerUps.push(particle);
-            }
-        }
-
-        // Game loop
-        function gameLoop() {
-            if (!isRunning) return;
-            if (isPaused) {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                ctx.font = '30px Arial';
-                ctx.fillText('Paused', canvas.width / 2 - 50, canvas.height / 2);
-                requestAnimationFrame(gameLoop);
-                return;
-            }
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#000033');
-            gradient.addColorStop(1, '#000066');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            drawWand();
-            drawSpells();
-            drawPirates();
-            updateSpells();
-            updatePirates();
-            checkCollisions();
-            if (Math.random() < spawnChance) spawnPirate();
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Keyboard controls
-        document.addEventListener('keydown', (e) => {
-            if (!isRunning || isPaused) return;
-            if (e.key === 'ArrowLeft') wandAngle -= 0.07;
-            if (e.key === 'ArrowRight') wandAngle += 0.07;
-            if (e.key === ' ') {
-                e.preventDefault();
-                shootSpell();
-            }
-        });
-
-        // Start game
-        document.getElementById('start-button').addEventListener('click', () => {
-            if (!isRunning) {
-                isRunning = true;
-                isPaused = false;
-                score = 0;
-                lives = 3;
-                level = 1;
-                spells = [];
-                pirates = [];
-                treasureChests = [];
-                powerUps = [];
-                spawnChance = 0.01;
-                piratesDefeated = 0;
-                scoreEl.textContent = score;
-                livesEl.textContent = lives;
-                levelEl.textContent = level;
-                gameOverEl.style.display = 'none';
-                gameLoop();
-            }
-        });
-
-        // Pause game
-        document.getElementById('pause-button').addEventListener('click', () => {
-            if (isRunning) isPaused = !isPaused;
-        });
-
-        // Restart game
-        document.getElementById('restart-button').addEventListener('click', () => {
-            document.getElementById('start-button').click();
-        });
-
-        // Mobile controls
-        let rotatingLeft = false;
-        let rotatingRight = false;
-        function updateMobileRotation() {
-            if (isRunning && !isPaused) {
-                if (rotatingLeft) wandAngle -= 0.07;
-                if (rotatingRight) wandAngle += 0.07;
-                requestAnimationFrame(updateMobileRotation);
-            }
-        }
-        const leftBtn = document.getElementById('left-button');
-        leftBtn.addEventListener('touchstart', () => { rotatingLeft = true; updateMobileRotation(); });
-        leftBtn.addEventListener('touchend', () => { rotatingLeft = false; });
-        const rightBtn = document.getElementById('right-button');
-        rightBtn.addEventListener('touchstart', () => { rotatingRight = true; updateMobileRotation(); });
-        rightBtn.addEventListener('touchend', () => { rotatingRight = false; });
-        document.getElementById('shoot-button').addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (isRunning && !isPaused) shootSpell();
-        });
+        // Initiele weergave
+        updateAlles();
     </script>
 </body>
 </html>
