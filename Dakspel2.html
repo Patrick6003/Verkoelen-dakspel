@@ -8,9 +8,10 @@
         body {
             background-color: #DCDCDC; /* Lichtgrijs */
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             font-family: Arial, sans-serif;
         }
@@ -18,16 +19,12 @@
             border: 2px solid #FFA500; /* Oranje */
         }
         .game-info {
-            position: absolute;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
             color: #000;
             text-align: center;
             max-width: 80%;
-            display: none; /* Verberg op mobiel */
+            margin-top: 10px;
         }
-        .info-button {
+        .pause-button {
             position: absolute;
             top: 10px;
             right: 10px;
@@ -41,10 +38,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
 </head>
 <body>
-    <button class="info-button" onclick="toggleInfo()">Info</button>
-    <div class="game-info" id="gameInfo">
-        <h2>Welkom bij VInky Jump!</h2>
-        <p>Spring van dak naar dak als Vinky de dakspecialist! Gebruik pijltjestoetsen of tik op het scherm (links/rechts) om te bewegen. Verzamel de gasfles voor een jetpack-boost. Veel plezier!</p>
+    <button class="pause-button" onclick="togglePause()">Pauze</button>
+    <div class="game-info">
+        <h2>VInky Jump</h2>
+        <p>Spring met Vinky van dak naar dak! Beweeg met pijltjestoetsen of tik (links/rechts). Grijp een ladder voor een turbo-sprong, en repareer lekkende daken (met druppel) voor bonuspunten. Hoe hoger, hoe stoerder!</p>
     </div>
     <script>
         // Variabelen
@@ -57,6 +54,7 @@
         let highScore = 0;
         let gameState = 'playing'; // Start direct met spelen
         let cameraY = 0; // Camera scroll
+        let isPaused = false;
 
         // Canvas en initiële setup
         function setup() {
@@ -73,8 +71,8 @@
 
         // Hoofdgame-loop
         function draw() {
-            background(220, 220, 220); // Lichtgrijs
-            if (gameState === 'playing') {
+            drawBackground();
+            if (gameState === 'playing' && !isPaused) {
                 updateCharacter();
                 updatePlatforms();
                 checkCollisions();
@@ -85,6 +83,21 @@
             } else if (gameState === 'gameOver') {
                 drawGameOverScreen();
             }
+        }
+
+        // Achtergrond tekenen
+        function drawBackground() {
+            background(135, 206, 235); // Blauwe lucht
+            // Zonnetje
+            fill(255, 215, 0);
+            ellipse(50, 50, 50, 50);
+            // Wolkjes
+            fill(255);
+            noStroke();
+            ellipse(100, 100, 60, 40);
+            ellipse(130, 90, 70, 50);
+            ellipse(300, 150, 80, 50);
+            ellipse(270, 140, 60, 40);
         }
 
         // Karakter bijwerken
@@ -112,7 +125,8 @@
 
         // Platforms bijwerken
         function updatePlatforms() {
-            for (let platform of platforms) platform.y += 1.5; // Langzame opwaartse beweging
+            let speed = min(1.5 + score / 1000, 3); // Snelheid stijgt met score
+            for (let platform of platforms) platform.y += speed;
             platforms = platforms.filter(p => p.y - cameraY < height);
             while (platforms.length < 6) generatePlatform();
             score += 0.1; // Langzame scoretoename
@@ -128,6 +142,7 @@
         // Botsingen controleren
         function checkCollisions() {
             for (let platform of platforms) {
+                // Botsing met platform
                 if (
                     character.x > platform.x &&
                     character.x < platform.x + platform.width &&
@@ -137,11 +152,19 @@
                 ) {
                     character.velocity = character.hasBoost ? boostJumpSpeed : jumpSpeed;
                     character.hasBoost = false;
-                    score += 10; // Extra punten bij landen
-                    if (platform.hasPowerUp) {
-                        character.hasBoost = true;
-                        platform.hasPowerUp = false;
-                    }
+                    score += platform.isBroken ? 50 : 10; // Extra punten voor kapot dak
+                    if (platform.isBroken) platform.isBroken = false; // Dak gerepareerd
+                }
+                // Botsing met ladder (power-up)
+                if (
+                    platform.hasPowerUp &&
+                    character.x + character.size / 2 > platform.x + platform.width / 2 - 10 &&
+                    character.x - character.size / 2 < platform.x + platform.width / 2 + 10 &&
+                    character.y + character.size / 2 > platform.y - 40 &&
+                    character.y - character.size / 2 < platform.y
+                ) {
+                    character.hasBoost = true;
+                    platform.hasPowerUp = false;
                 }
             }
         }
@@ -179,9 +202,9 @@
 
             pop();
 
-            // Rode gloed bij boost
+            // Blauwe gloed bij boost
             if (character.hasBoost) {
-                fill(255, 0, 0, 100);
+                fill(0, 0, 255, 100);
                 ellipse(character.x, character.y - cameraY, character.size + 10, character.size + 10);
             }
         }
@@ -191,15 +214,31 @@
             for (let platform of platforms) {
                 push();
                 translate(0, -cameraY);
-                fill(139, 69, 19); // Bruin
-                noStroke();
-                beginShape();
-                vertex(platform.x, platform.y + platform.height);
-                vertex(platform.x + platform.width / 2, platform.y);
-                vertex(platform.x + platform.width, platform.y + platform.height);
-                endShape(CLOSE);
+                if (platform.isBroken) {
+                    // Kapot dak met waterdruppel
+                    fill(139, 69, 19); // Bruin
+                    noStroke();
+                    beginShape();
+                    vertex(platform.x, platform.y + platform.height);
+                    vertex(platform.x + platform.width / 4, platform.y + platform.height / 2);
+                    vertex(platform.x + platform.width / 2, platform.y + platform.height);
+                    vertex(platform.x + 3 * platform.width / 4, platform.y + platform.height / 2);
+                    vertex(platform.x + platform.width, platform.y + platform.height);
+                    endShape(CLOSE);
+                    fill(0, 191, 255); // Waterdruppel
+                    ellipse(platform.x + platform.width / 2, platform.y + platform.height + 10, 10, 15);
+                } else {
+                    // Normaal dak
+                    fill(139, 69, 19); // Bruin
+                    noStroke();
+                    beginShape();
+                    vertex(platform.x, platform.y + platform.height);
+                    vertex(platform.x + platform.width / 2, platform.y);
+                    vertex(platform.x + platform.width, platform.y + platform.height);
+                    endShape(CLOSE);
+                }
 
-                // Power-up (gasflesje met vuur)
+                // Ladder (power-up)
                 if (platform.hasPowerUp) {
                     drawPowerUp(platform.x + platform.width / 2, platform.y - 20);
                 }
@@ -207,29 +246,16 @@
             }
         }
 
-        // Power-up tekenen (gasflesje met vuur)
+        // Power-up tekenen (grijze ladder)
         function drawPowerUp(x, y) {
             push();
             translate(x, y);
-
-            // Gasflesje
             fill(169, 169, 169); // Grijs
-            rect(-10, -20, 20, 20, 5);
-
-            // Stok
-            stroke(169, 169, 169);
-            strokeWeight(3);
-            line(0, -20, 0, -40);
-
-            // Trechter
-            noStroke();
-            fill(169, 169, 169);
-            triangle(-5, -40, 5, -40, 0, -50);
-
-            // Vuur
-            fill(255, 0, 0);
-            ellipse(0, -50, 10, 10);
-
+            rect(-10, -40, 5, 40); // Linker stijl
+            rect(5, -40, 5, 40); // Rechter stijl
+            for (let i = 0; i < 4; i++) {
+                rect(-8, -35 + i * 10, 16, 3); // Horizontale treden
+            }
             pop();
         }
 
@@ -264,16 +290,18 @@
                 y: startY,
                 width: 100,
                 height: 15,
-                hasPowerUp: false // Geen power-up op startplatform
+                hasPowerUp: false,
+                isBroken: false // Geen kapot dak bij start
             });
             for (let i = 1; i < 6; i++) {
-                let y = startY - i * 120 + random(-30, 30);
+                let y = startY - i * (120 + score / 100) + random(-30, 30); // Grotere afstand bij hogere score
                 platforms.push({
                     x: random(width - 100),
                     y: y,
                     width: 100,
                     height: 15,
-                    hasPowerUp: random() < 0.1 // 10% kans
+                    hasPowerUp: random() < 0.1, // 10% kans
+                    isBroken: random() < 0.1 // 10% kans op kapot dak
                 });
             }
             character.y = startY - character.size / 2;
@@ -281,13 +309,14 @@
 
         function generatePlatform() {
             let highestPlatform = min(platforms.map(p => p.y));
-            let y = highestPlatform - 120 + random(-30, 30);
+            let y = highestPlatform - (120 + score / 100) + random(-30, 30); // Grotere afstand bij hogere score
             platforms.push({
                 x: random(width - 100),
                 y: y,
                 width: 100,
                 height: 15,
-                hasPowerUp: random() < 0.1 // 10% kans
+                hasPowerUp: random() < 0.1, // 10% kans
+                isBroken: random() < 0.1 // 10% kans op kapot dak
             });
         }
 
@@ -301,6 +330,12 @@
             return false;
         }
 
+        // Pauze functie
+        function togglePause() {
+            isPaused = !isPaused;
+            document.querySelector('.pause-button').textContent = isPaused ? 'Hervat' : 'Pauze';
+        }
+
         // Reset game
         function resetGame() {
             gameState = 'playing';
@@ -310,12 +345,8 @@
             character.hasBoost = false;
             cameraY = 0;
             generateInitialPlatforms();
-        }
-
-        // Informatieknop
-        function toggleInfo() {
-            const info = document.getElementById('gameInfo');
-            info.style.display = info.style.display === 'block' ? 'none' : 'block';
+            isPaused = false;
+            document.querySelector('.pause-button').textContent = 'Pauze';
         }
     </script>
 </body>
