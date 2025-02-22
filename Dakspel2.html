@@ -38,7 +38,7 @@
 <body>
     <div class="popup" id="gamePopup" onclick="hidePopup()">
         <h2>Vinky V Jump</h2>
-        <p>Spring met Vinky V van dak naar dak! Beweeg met pijltjestoetsen of tik (links/rechts). Grijp een ladder of magneet (rood) voor een turbo-sprong, pak een schild (groen) tegen vleermuizen, repareer lekkende daken voor bonuspunten, een superboost en een extra leven na 5 fixes. Stoer dakwerk gegarandeerd!</p>
+        <p>Spring met Vinky V van dak naar dak! Beweeg met pijltjestoetsen of tik (links/rechts). Grijp een ladder voor een turbo-sprong, pak een schild (groen, vanaf 300 punten) tegen vleermuizen, repareer lekkende daken voor bonuspunten, een superboost en een extra leven na 5 fixes. Stoer dakwerk gegarandeerd!</p>
     </div>
     <!-- Geluidseffecten -->
     <audio id="jumpSound" src="https://www.soundjay.com/buttons/sounds/button-1.mp3"></audio>
@@ -64,9 +64,8 @@
         let cameraY = 0;
         let bonusActive = false;
         let bonusTimer = 0;
-        let magneetActive = false;
-        let magneetTimer = 0;
         let shieldActive = false;
+        let shieldBlinkTimer = 0;
         let repairEffect = [];
         let boostEffect = [];
         let fireworkEffect = [];
@@ -100,7 +99,7 @@
                 checkCollisions();
                 updateCamera();
                 updateBonus();
-                updateMagneet();
+                updateShield();
                 updateMultiplier();
                 drawStars();
                 drawPlatforms();
@@ -212,18 +211,7 @@
         // Platforms bijwerken
         function updatePlatforms() {
             let speed = min(1.5 + score / 1000, 3);
-            for (let platform of platforms) {
-                platform.y += speed;
-                // Magneet-effect: ladders bewegen naar Vinky
-                if (magneetActive && platform.hasPowerUp) {
-                    let dx = character.x - (platform.x + platform.width / 2);
-                    let dy = character.y - (platform.y - 20);
-                    let distance = sqrt(dx * dx + dy * dy);
-                    if (distance < 100) {
-                        platform.x += dx * 0.05;
-                    }
-                }
-            }
+            for (let platform of platforms) platform.y += speed;
             platforms = platforms.filter(p => p.y - cameraY < height);
             let maxPlatforms = max(3, 6 - floor(score / 500)); // Minder platforms
             while (platforms.length < maxPlatforms) generatePlatform();
@@ -265,11 +253,10 @@
             }
         }
 
-        // Magneet bijwerken
-        function updateMagneet() {
-            if (magneetActive) {
-                magneetTimer--;
-                if (magneetTimer <= 0) magneetActive = false;
+        // Schild bijwerken (knipperen)
+        function updateShield() {
+            if (shieldActive && shieldBlinkTimer > 0) {
+                shieldBlinkTimer--;
             }
         }
 
@@ -321,7 +308,10 @@
                         } else {
                             score += 10;
                         }
-                        if (platform.hasBat && shieldActive) shieldActive = false; // Schild breekt na één vleermuis
+                        if (platform.hasBat && shieldActive) {
+                            shieldActive = false;
+                            shieldBlinkTimer = 60; // Knippert 1 seconde
+                        }
                         document.getElementById('jumpSound').play();
                     }
                 }
@@ -338,19 +328,6 @@
                     for (let i = 0; i < 5; i++) {
                         boostEffect.push({ x: character.x, y: character.y, timer: 20 });
                     }
-                    document.getElementById('boostSound').play();
-                }
-                // Botsing met magneet
-                if (
-                    platform.hasMagneet &&
-                    character.x + character.size / 2 > platform.x + platform.width / 2 - 10 &&
-                    character.x - character.size / 2 < platform.x + platform.width / 2 + 10 &&
-                    character.y + character.size / 2 > platform.y - 40 &&
-                    character.y - character.size / 2 < platform.y
-                ) {
-                    magneetActive = true;
-                    magneetTimer = 300; // 5 seconden
-                    platform.hasMagneet = false;
                     document.getElementById('boostSound').play();
                 }
                 // Botsing met schild
@@ -401,18 +378,17 @@
 
             pop();
 
-            // Boost of schild effect
+            // Boost effect
             if (character.hasBoost || character.hasSuperBoost) {
                 fill(0, 0, 255, 100);
                 ellipse(character.x, character.y - cameraY, character.size + 10, character.size + 10);
             }
+            // Schild effect met knipperen
             if (shieldActive) {
-                fill(0, 255, 0, 100);
-                ellipse(character.x, character.y - cameraY, character.size + 20, character.size + 20);
-            }
-            if (magneetActive) {
-                fill(255, 0, 0, 50);
-                ellipse(character.x, character.y - cameraY, 100, 100); // Magneetstraal
+                if (shieldBlinkTimer == 0 || shieldBlinkTimer > 60 || (shieldBlinkTimer % 20 < 10)) {
+                    fill(0, 255, 0, 100);
+                    ellipse(character.x, character.y - cameraY, character.size + 20, character.size + 20);
+                }
             }
 
             // Boost-effect (vonken)
@@ -456,9 +432,6 @@
                 if (platform.hasPowerUp) {
                     drawPowerUp(platform.x + platform.width / 2, platform.y - 20); // Ladder
                 }
-                if (platform.hasMagneet) {
-                    drawMagneet(platform.x + platform.width / 2, platform.y - 20); // Magneet
-                }
                 if (platform.hasShield) {
                     drawShield(platform.x + platform.width / 2, platform.y - 20); // Schild
                 }
@@ -498,25 +471,17 @@
             pop();
         }
 
-        // Magneet tekenen (rood met grijze magneet)
-        function drawMagneet(x, y) {
-            push();
-            translate(x, y);
-            fill(255, 0, 0);
-            rect(-10, -20, 20, 20); // Rode basis
-            fill(169, 169, 169);
-            arc(0, -20, 20, 20, PI, 0); // Grijze magneet
-            pop();
-        }
-
-        // Schild tekenen (groen schild op dakje)
+        // Schild tekenen (groen ridderschild)
         function drawShield(x, y) {
             push();
             translate(x, y);
-            fill(139, 69, 19);
-            rect(-10, -10, 20, 5); // Dakje
             fill(0, 255, 0);
-            arc(0, -10, 20, 20, PI, 0); // Groen schild
+            beginShape();
+            vertex(-10, -20);
+            vertex(10, -20);
+            vertex(5, 0);
+            vertex(-5, 0);
+            endShape(CLOSE);
             pop();
         }
 
@@ -555,7 +520,6 @@
                 width: 100,
                 height: 15,
                 hasPowerUp: false,
-                hasMagneet: false,
                 hasShield: false,
                 isBroken: false,
                 hasBat: false
@@ -563,17 +527,15 @@
             for (let i = 1; i < 6; i++) {
                 let y = startY - i * (120 + min(score / 15, 80)) + random(-30, 30); // Max afstand 200
                 let hasPowerUp = random() < 0.1;
-                let hasMagneet = !hasPowerUp && random() < 0.1;
-                let hasShield = !hasPowerUp && !hasMagneet && random() < 0.1;
-                let isBroken = !hasPowerUp && !hasMagneet && !hasShield && random() < 0.1;
-                let hasBat = !hasPowerUp && !hasMagneet && !hasShield && !isBroken && score > 300 && random() < 0.1;
+                let hasShield = !hasPowerUp && score > 300 && random() < 0.1;
+                let isBroken = !hasPowerUp && !hasShield && random() < 0.1;
+                let hasBat = !hasPowerUp && !hasShield && !isBroken && score > 300 && random() < 0.1;
                 platforms.push({
                     x: random(width - 100),
                     y: y,
                     width: 100,
                     height: 15,
                     hasPowerUp: hasPowerUp,
-                    hasMagneet: hasMagneet,
                     hasShield: hasShield,
                     isBroken: isBroken,
                     hasBat: hasBat
@@ -585,7 +547,6 @@
                         width: 100,
                         height: 15,
                         hasPowerUp: false,
-                        hasMagneet: false,
                         hasShield: false,
                         isBroken: false,
                         hasBat: false
@@ -599,17 +560,15 @@
             let highestPlatform = min(platforms.map(p => p.y));
             let y = highestPlatform - (120 + min(score / 15, 80)) + random(-30, 30); // Max afstand 200
             let hasPowerUp = random() < 0.1;
-            let hasMagneet = !hasPowerUp && random() < 0.1;
-            let hasShield = !hasPowerUp && !hasMagneet && random() < 0.1;
-            let isBroken = !hasPowerUp && !hasMagneet && !hasShield && random() < 0.1;
-            let hasBat = !hasPowerUp && !hasMagneet && !hasShield && !isBroken && score > 300 && random() < 0.1;
+            let hasShield = !hasPowerUp && score > 300 && random() < 0.1;
+            let isBroken = !hasPowerUp && !hasShield && random() < 0.1;
+            let hasBat = !hasPowerUp && !hasShield && !isBroken && score > 300 && random() < 0.1;
             platforms.push({
                 x: random(width - 100),
                 y: y,
                 width: 100,
                 height: 15,
                 hasPowerUp: hasPowerUp,
-                hasMagneet: hasMagneet,
                 hasShield: hasShield,
                 isBroken: isBroken,
                 hasBat: hasBat
@@ -621,7 +580,6 @@
                     width: 100,
                     height: 15,
                     hasPowerUp: false,
-                    hasMagneet: false,
                     hasShield: false,
                     isBroken: false,
                     hasBat: false
@@ -652,9 +610,8 @@
             character.hasSuperBoost = false;
             bonusActive = false;
             bonusTimer = 0;
-            magneetActive = false;
-            magneetTimer = 0;
             shieldActive = false;
+            shieldBlinkTimer = 0;
             multiplier = 1;
             multiplierTimer = 0;
             cameraY = 0;
