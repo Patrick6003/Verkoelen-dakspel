@@ -109,6 +109,7 @@
             max-width: 400px;
             height: 400px;
             background-color: #fff;
+            cursor: crosshair;
         }
         .detail-input {
             display: flex;
@@ -137,12 +138,6 @@
         .checkbox-group {
             display: flex;
             align-items: center;
-            gap: 5px;
-            margin-bottom: 10px;
-        }
-        .checkbox-group-vertical {
-            display: flex;
-            flex-direction: column;
             gap: 5px;
             margin-bottom: 10px;
         }
@@ -332,8 +327,8 @@
                         <input type="checkbox" id="spiegel" oninput="updateAlles()" aria-label="Spiegel de L-vorm schets horizontaal">
                     </div>
 
-                    <label for="hellingsgraad">Hellingsgraad (°):</label>
-                    <input type="number" id="hellingsgraad" step="0.1" min="0" max="90" value="0" oninput="validateInput(this, true); updateAlles()" aria-label="Hellingsgraad van het dak in graden">
+                    <label for="hellingsgraad">Hellingsgraad t.o.v. dakranden (°):</label>
+                    <input type="number" id="hellingsgraad" step="0.1" min="0" max="90" value="0" oninput="validateInput(this, true); updateAlles()" aria-label="Hellingsgraad ten opzichte van dakranden in graden">
                     <div id="hellingsgraad-error" class="error">Voer een getal tussen 0 en 90 in</div>
                     <button type="button" onclick="resetForm()" aria-label="Formulier resetten">Reset</button>
                     <button type="button" onclick="exportPNG('invoer')" aria-label="Exporteren als PNG">Export PNG</button>
@@ -358,9 +353,14 @@
                 <textarea id="situatie-omgeving" rows="3" placeholder="Bijv. Nabij bomen, stedelijk gebied" aria-label="Opmerkingen over situatie en omgeving"></textarea>
                 <label for="waarnemingen-extra">Extra waarnemingen:</label>
                 <textarea id="waarnemingen-extra" rows="3" placeholder="Bijv. Toegankelijkheid, bijzonderheden" aria-label="Extra waarnemingen over het dak"></textarea>
-                <div class="checkbox-group-vertical">
+                <div class="checkbox-group">
                     <label>Grind zit vast <input type="checkbox" id="grind-vast" aria-label="Grind zit vast"></label>
+                </div>
+                <div class="checkbox-group">
                     <label>Isolatie is nat <input type="checkbox" id="isolatie-nat" aria-label="Isolatie is nat"></label>
+                </div>
+                <div class="checkbox-group">
+                    <label>Plasvorming <input type="checkbox" id="plasvorming" aria-label="Plasvorming aanwezig"></label>
                 </div>
                 <label for="toestand">Algemene onderhoudsstaat (NEN 2767):</label>
                 <select id="toestand" aria-label="Algemene onderhoudsstaat van het dak volgens NEN 2767">
@@ -392,6 +392,8 @@
         canvas.width = 400;
         canvas.height = 400;
         let zoom = 1;
+        let detailsLocaties = [];
+        let lijnen = [];
 
         const kleuren = {
             "Lood": "#FF4136",
@@ -403,6 +405,48 @@
             "Opgaandwerk": "#FF851B",
             "": "#333333"
         };
+
+        canvas.addEventListener('click', handleClick);
+
+        function handleClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const opmerking = prompt("Voer een opmerking in voor dit detail (bijv. 'Afvoer'):");
+            if (opmerking) {
+                let dichtstbijzijndeZijde = null;
+                let minAfstand = Infinity;
+                lijnen.forEach((lijn, i) => {
+                    const afstand = isPointNearLine(x, y, lijn[0], lijn[1], lijn[2], lijn[3]);
+                    if (afstand < minAfstand) {
+                        minAfstand = afstand;
+                        dichtstbijzijndeZijde = i + 1;
+                    }
+                });
+                if (minAfstand < 20) { // Tolerantie van 20px
+                    detailsLocaties.push({ x, y, opmerking, zijde: dichtstbijzijndeZijde });
+                    updateAlles();
+                    updateDetailsTextarea();
+                }
+            }
+        }
+
+        function isPointNearLine(px, py, x1, y1, x2, y2) {
+            const dist = Math.abs((y2 - y1) * px - (x2 - x1) * py + x2 * y1 - y2 * x1) / Math.sqrt(Math.pow(y2 - y1, 2) + Math.pow(x2 - x1, 2));
+            return dist;
+        }
+
+        function updateDetailsTextarea() {
+            const detailsTextarea = document.getElementById('details');
+            let text = detailsTextarea.value.trim();
+            detailsLocaties.forEach((loc, index) => {
+                const existing = text.split('\n').some(line => line.includes(`Detail ${index + 1}: ${loc.opmerking} (Zijde ${loc.zijde})`));
+                if (!existing) {
+                    text += (text ? '\n' : '') + `Detail ${index + 1}: ${loc.opmerking} (Zijde ${loc.zijde})`;
+                }
+            });
+            detailsTextarea.value = text;
+        }
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -435,7 +479,9 @@
             ctx.beginPath();
             ctx.strokeStyle = '#e0e0e0';
             ctx.lineWidth = 0.5;
-            const stap = Math.max(5, Math.round(maxLengte / 5)) * schaal; // Dynamische stap (bijv. 5m of 10m)
+            const maxAfmeting = Math.max(maxLengte, maxBreedte);
+            const stapMeter = maxAfmeting <= 10 ? 1 : maxAfmeting <= 50 ? 5 : 10;
+            const stap = stapMeter * schaal;
             for (let i = 0; i <= canvas.width; i += stap) {
                 ctx.moveTo(i, 0);
                 ctx.lineTo(i, canvas.height);
@@ -450,16 +496,7 @@
             ctx.fillStyle = '#666';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
-            for (let i = 0; i <= canvas.width; i += stap) {
-                const meter = (i / schaal).toFixed(0);
-                if (i === 0 || i + stap <= canvas.width) ctx.fillText(`${meter}m`, i + 2, 2);
-            }
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'middle';
-            for (let i = 0; i <= canvas.height; i += stap) {
-                const meter = (i / schaal).toFixed(0);
-                if (i === 0 || i + stap <= canvas.height) ctx.fillText(`${meter}m`, canvas.width - 2, i + 2);
-            }
+            ctx.fillText(`${stapMeter}m`, stap + 2, 2);
         }
 
         function updateAlles() {
@@ -485,6 +522,10 @@
                 const breedte = parseFloat(document.getElementById('breedte').value) || 0;
                 oppervlakte = lengte * breedte;
                 omtrek = 2 * (lengte + breedte);
+                if (hellingsgraad > 0) {
+                    const cosinus = Math.cos(hellingsgraad * Math.PI / 180);
+                    oppervlakte = oppervlakte / cosinus;
+                }
                 lengtes = [lengte, breedte, lengte, breedte];
                 detailsList = [1, 2, 3, 4].map(i => ({
                     detail: document.getElementById(`detail${i}`).value,
@@ -501,6 +542,10 @@
                 const lengte4 = breedte2;
                 oppervlakte = (lengte1 * lengte2) + (lengte5 * lengte4);
                 omtrek = lengte1 + breedte1 + lengte2 + breedte2 + lengte5 + (breedte1 + breedte2);
+                if (hellingsgraad > 0) {
+                    const cosinus = Math.cos(hellingsgraad * Math.PI / 180);
+                    oppervlakte = oppervlakte / cosinus;
+                }
                 lengtes = [lengte1, breedte1, lengte2, breedte2, lengte5, breedte1 + breedte2];
                 detailsList = [1, 2, 3, 4, 5, 6].map(i => ({
                     detail: document.getElementById(`l-detail${i}`).value,
@@ -508,11 +553,6 @@
                 }));
                 omschrijvingen = detailsList.map(d => d.detail + (d.oms ? ` - ${d.oms}` : ''));
                 tekenLVorm(lengte1, breedte1, lengte2, breedte2, detailsList, spiegel, oppervlakte, omtrek, hellingsgraad);
-            }
-
-            if (hellingsgraad > 0) {
-                const cosinus = Math.cos(hellingsgraad * Math.PI / 180);
-                oppervlakte = oppervlakte / cosinus;
             }
 
             const resultaatDiv = document.getElementById('resultaat');
@@ -530,7 +570,6 @@
             `;
 
             updateLegenda(detailsList, lengtes);
-            updateSchetsBeschrijving(vorm, lengtes, omschrijvingen, daknaam, spiegel, indicatief);
         }
 
         function somDetailnummers(lengtes, omschrijvingen) {
@@ -546,7 +585,9 @@
             ctx.beginPath();
             ctx.strokeStyle = '#e0e0e0';
             ctx.lineWidth = 0.5;
-            const stap = Math.max(5, Math.round(Math.max(maxLengte, maxBreedte) / 5)) * schaal; // Dynamische stap
+            const maxAfmeting = Math.max(maxLengte, maxBreedte);
+            const stapMeter = maxAfmeting <= 10 ? 1 : maxAfmeting <= 50 ? 5 : 10;
+            const stap = stapMeter * schaal;
             for (let i = 0; i <= canvas.width; i += stap) {
                 ctx.moveTo(i, 0);
                 ctx.lineTo(i, canvas.height);
@@ -561,16 +602,7 @@
             ctx.fillStyle = '#666';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
-            for (let i = 0; i <= canvas.width; i += stap) {
-                const meter = (i / schaal).toFixed(0);
-                if (i === 0 || i + stap <= canvas.width) ctx.fillText(`${meter}m`, i + 2, 2);
-            }
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'middle';
-            for (let i = 0; i <= canvas.height; i += stap) {
-                const meter = (i / schaal).toFixed(0);
-                if (i === 0 || i + stap <= canvas.height) ctx.fillText(`${meter}m`, canvas.width - 2, i + 2);
-            }
+            ctx.fillText(`${stapMeter}m`, stap + 2, 2);
         }
 
         function tekenRechthoek(lengte, breedte, detailsList, oppervlakte, omtrek, hellingsgraad) {
@@ -579,7 +611,7 @@
             drawGrid(schaal, lengte, breedte);
             const x = (canvas.width - lengte * schaal) / 2;
             const y = (canvas.height - breedte * schaal) / 2;
-            const lijnen = [
+            lijnen = [
                 [x, y, x + lengte * schaal, y, lengte], // 1: Boven
                 [x + lengte * schaal, y, x + lengte * schaal, y + breedte * schaal, breedte], // 2: Rechts
                 [x + lengte * schaal, y + breedte * schaal, x, y + breedte * schaal, lengte], // 3: Onder
@@ -594,6 +626,12 @@
                 ctx.stroke();
             });
             tekenNummersEnLabels(lijnen, detailsList);
+            detailsLocaties.forEach(loc => {
+                ctx.beginPath();
+                ctx.arc(loc.x, loc.y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#00F';
+                ctx.fill();
+            });
             const fontSize = Math.max(16 * zoom, 12);
             ctx.font = `${fontSize}px Arial`;
             ctx.fillStyle = '#000';
@@ -611,7 +649,6 @@
             drawGrid(schaal, lengte1, breedte1 + breedte2);
             const x = (canvas.width - lengte1 * schaal) / 2;
             const y = (canvas.height - (breedte1 + breedte2) * schaal) / 2;
-            let lijnen;
             if (!spiegel) {
                 lijnen = [
                     [x, y, x + lengte1 * schaal, y, lengte1], // 1: Lengte deel 1 (boven)
@@ -640,6 +677,12 @@
                 ctx.stroke();
             });
             tekenNummersEnLabels(lijnen, detailsList);
+            detailsLocaties.forEach(loc => {
+                ctx.beginPath();
+                ctx.arc(loc.x, loc.y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#00F';
+                ctx.fill();
+            });
             const fontSize = Math.max(16 * zoom, 12);
             ctx.font = `${fontSize}px Arial`;
             ctx.fillStyle = '#000';
@@ -682,15 +725,6 @@
                 html += `<div class="legenda-item"><span class="legenda-kleur" style="background-color: ${data.kleur}"></span> ${data.zijden.join(', ')}: ${oms} - ${data.lengte.toFixed(2)} m</div>`;
             }
             legendaContent.innerHTML = html;
-        }
-
-        function updateSchetsBeschrijving(vorm, lengtes, omschrijvingen, daknaam, spiegel, indicatief) {
-            const beschrijving = document.getElementById('schets-beschrijving');
-            let text = `Schets van ${daknaam}, een ${vorm === 'rechthoek' ? 'rechthoekig' : 'L-vormig'} dak${vorm === 'l-vorm' && spiegel ? ' (gespiegeld)' : ''}${indicatief ? ' met indicatieve afmetingen' : ''}. `;
-            lengtes.forEach((lengte, i) => {
-                text += `Zijde ${i + 1}: ${lengte.toFixed(1)} meter, detail: ${omschrijvingen[i]}. `;
-            });
-            beschrijving.textContent = text;
         }
 
         function zoomIn() {
@@ -758,7 +792,9 @@
             document.getElementById('indicatief').checked = false;
             document.getElementById('grind-vast').checked = false;
             document.getElementById('isolatie-nat').checked = false;
+            document.getElementById('plasvorming').checked = false;
             document.querySelectorAll('.error').forEach(e => e.style.display = 'none');
+            detailsLocaties = [];
             zoom = 1;
             updateAlles();
         }
