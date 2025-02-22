@@ -20,7 +20,7 @@
             padding: 20px 0;
         }
         main {
-            max-width: 900px;
+            max-width: 1200px;
             margin: 20px auto;
             padding: 0 20px;
             display: flex;
@@ -28,7 +28,7 @@
             gap: 20px;
         }
         form {
-            background-color: #D3D3D3;
+            background-color: #E8ECEF;
             padding: 20px;
             border-radius: 5px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -53,6 +53,14 @@
             box-sizing: border-box;
             font-size: 16px;
         }
+        input.invalid {
+            border-color: red;
+        }
+        .warning {
+            color: red;
+            font-size: 14px;
+            margin-top: 5px;
+        }
         button {
             background-color: #F28C38;
             color: white;
@@ -62,41 +70,67 @@
             cursor: pointer;
             margin: 10px 5px;
             font-size: 16px;
+            transition: background-color 0.3s, box-shadow 0.3s;
         }
         button:hover {
             background-color: #E07B30;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        #resultaatContainer {
+            flex: 2;
+            min-width: 300px;
         }
         #resultaat {
             padding: 20px;
             background-color: #FFFFFF;
             border-radius: 5px;
             box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-            flex: 2;
-            min-width: 300px;
+        }
+        .besteOptie {
+            border: 3px solid green;
+            padding: 10px;
+            margin: 10px 0;
         }
         #schetsContainer {
-            text-align: center;
-            flex: 100%;
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
         .schetsOption {
-            margin: 20px 0;
+            margin: 0;
+            position: relative;
         }
         canvas {
             border: none;
             max-width: 100%;
             background-color: #FFFFFF;
         }
+        .tooltip {
+            display: none;
+            position: absolute;
+            background-color: #333;
+            color: white;
+            padding: 5px;
+            border-radius: 3px;
+            font-size: 12px;
+            z-index: 10;
+        }
+        .schetsOption:hover .tooltip {
+            display: block;
+        }
         #legenda {
             margin-top: 10px;
             font-size: 14px;
         }
-        @media (max-width: 600px) {
+        @media (max-width: 900px) {
+            main {
+                flex-direction: column;
+            }
             input, select {
                 width: 100%;
                 margin: 5px 0;
-            }
-            main {
-                flex-direction: column;
             }
             canvas {
                 width: 100%;
@@ -115,54 +149,55 @@
         <form id="dakForm">
             <h3>Invoer Dakgegevens</h3>
             <label>Maateenheid:</label>
-            <select id="unitToggle">
-                <option value="m">Meters (m)</option>
-                <option value="cm">Centimeters (cm)</option>
-                <option value="mm">Millimeters (mm)</option>
+            <select id="unitToggle" title="Kies de eenheid voor alle afmetingen" aria-label="Maateenheid">
+                <option value="m" title="Meters (m)">Meters (m)</option>
+                <option value="cm" title="Centimeters (cm)">Centimeters (cm)</option>
+                <option value="mm" title="Millimeters (mm)" selected>Millimeters (mm)</option>
             </select><br>
             <label>Naam dakbedekking:</label><br>
-            <input type="text" id="dakNaam" value="Derbigum SP"><br>
+            <input type="text" id="dakNaam" value="Derbigum SP" title="Voer de naam van de dakbedekking in"><br>
             <label>Baanafmetingen:</label><br>
-            <input type="number" id="baanLengte" value="5.5" step="any" required>
-            <input type="number" id="baanBreedte" value="1" step="any" required><br>
+            <input type="number" id="baanLengte" value="5.5" step="any" required placeholder="Lengte (m)" title="Baanlengte in gekozen eenheid">
+            <input type="number" id="baanBreedte" value="1" step="any" required placeholder="Breedte (m)" title="Baanbreedte in gekozen eenheid"><br>
             <label>Overlap:</label><br>
-            <input type="number" id="kopOverlap" value="0.15" step="any" required>
-            <input type="number" id="langsOverlap" value="0.1" step="any" required><br>
+            <input type="number" id="kopOverlap" value="150" step="any" required placeholder="Kop (mm)" title="Kopoverlap in gekozen eenheid (max < baanlengte)">
+            <input type="number" id="langsOverlap" value="100" step="any" required placeholder="Langs (mm)" title="Langsoverlap in gekozen eenheid (max < baanbreedte)"><br>
             <label>Dakvlak:</label><br>
-            <input type="number" id="dakLengte" value="10" step="any" required>
-            <input type="number" id="dakBreedte" value="5" step="any" required><br>
+            <input type="number" id="dakLengte" value="10" step="any" required placeholder="Lengte (m)" title="Daklengte in gekozen eenheid">
+            <input type="number" id="dakBreedte" value="5" step="any" required placeholder="Breedte (m)" title="Dakbreedte in gekozen eenheid"><br>
             <label>Minimale restlengte:</label><br>
-            <input type="number" id="minRestLengte" value="0.3" step="any" required><br>
+            <input type="number" id="minRestLengte" value="0.3" step="any" required placeholder="Min. lengte (m)" title="Minimale lengte reststuk in gekozen eenheid"><br>
             <label>Inkoopprijs per m² (€):</label><br>
-            <input type="number" id="inkoopPrijs" value="20" step="0.01"><br>
-            <label>Alternatieve schets:</label>
-            <select id="schetsSelect">
-                <option value="halfsteensNormaal">Halfsteens Normaal</option>
-                <option value="halfsteensGedraaid">Halfsteens Gedraaid</option>
-                <option value="blokNormaal">Blok Normaal</option>
-                <option value="blokGedraaid">Blok Gedraaid</option>
-            </select><br>
+            <input type="number" id="inkoopPrijs" value="20" step="0.01" placeholder="Prijs (€/m²)" title="Inkoopprijs per vierkante meter"><br>
+            <div id="warning" class="warning"></div>
             <button type="button" onclick="exportPNG()">Export PNG</button>
             <button type="button" onclick="exportPDF()">Export PDF</button>
             <button type="button" onclick="window.print()">Print</button>
         </form>
-        <div id="resultaat"></div>
+        <div id="resultaatContainer">
+            <div id="resultaat"></div>
+        </div>
         <div id="schetsContainer">
             <div class="schetsOption">
                 <h4>Halfsteens Normaal</h4>
-                <canvas id="schetsHalfsteensNormaal" width="400" height="300"></canvas>
+                <canvas id="schetsHalfsteensNormaal" width="300" height="200"></canvas>
+                <div class="tooltip" id="tooltipHalfsteensNormaal"></div>
             </div>
             <div class="schetsOption">
                 <h4>Halfsteens Gedraaid</h4>
-                <canvas id="schetsHalfsteensGedraaid" width="400" height="300"></canvas>
+                <canvas id="schetsHalfsteensGedraaid" width="300" height="200"></canvas>
+                <div class="tooltip" id="tooltipHalfsteensGedraaid"></div>
             </div>
             <div class="schetsOption">
                 <h4>Blok Normaal</h4>
-                <canvas id="schetsBlokNormaal" width="400" height="300"></canvas>
+                <canvas id="schetsBlokNormaal" width="300" height="200"></canvas>
+                <div class="tooltip" id="tooltipBlokNormaal"></div>
             </div>
             <div class="schetsOption">
                 <h4>Blok Gedraaid</h4>
-                <canvas id="schetsBlokGedraaid" width="400" height="300"></canvas>
+                <canvas id="schetsBlokGedraaid" width="300" height="200"></canvas>
+                <div class="schetsOption">
+                <div class="tooltip" id="tooltipBlokGedraaid"></div>
             </div>
             <div id="legenda">
                 <span style="color: red;">■</span> Dakvlak (rood) |
@@ -174,13 +209,12 @@
     </main>
     <script>
         const { jsPDF } = window.jspdf;
+        const SLUITBAAN_OVERLAP = 0.3; // Vast overlapverlies bij blokverband (30cm)
 
         function exportPNG() {
-            const selected = document.getElementById('schetsSelect').value;
-            const canvasId = `schets${selected.charAt(0).toUpperCase() + selected.slice(1)}`;
-            html2canvas(document.getElementById(canvasId)).then(canvas => {
+            html2canvas(document.body).then(canvas => {
                 const link = document.createElement('a');
-                link.download = `dak_schets_${selected}.png`;
+                link.download = `dak_berekening_${new Date().toISOString().slice(0,10)}.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             });
@@ -193,10 +227,11 @@
                 const width = pdf.internal.pageSize.getWidth();
                 const height = pdf.internal.pageSize.getHeight();
                 pdf.addImage(imgData, 'PNG', 0, 0, width, height);
-                pdf.save('dak_berekening.pdf');
+                pdf.save(`dak_berekening_${new Date().toISOString().slice(0,10)}.pdf`);
             });
         }
 
+        // Bereken materiaalgebruik inclusief overlap en snijverlies
         function berekenMateriaal(dakLengte, dakBreedte, baanLengte, baanBreedte, kopOverlap, langsOverlap, minRestLengte, verband) {
             const effectieveBaanLengte = baanLengte - kopOverlap;
             const effectieveBaanBreedte = baanBreedte - langsOverlap;
@@ -231,49 +266,88 @@
             } else { // blokverband
                 aantalBanenBreedte = Math.ceil(dakBreedte / effectieveBaanBreedte);
                 aantalBanenLengte = Math.ceil(dakLengte / effectieveBaanLengte);
-                materiaalOppervlakte = aantalBanenLengte * aantalBanenBreedte * baanLengte * baanBreedte;
-                overlapOppervlakte = (aantalBanenBreedte * aantalBanenLengte * kopOverlap * baanBreedte) + (aantalBanenLengte * langsOverlap * dakBreedte);
-                snijverlies = materiaalOppervlakte - nettoDakOppervlakte - overlapOppervlakte;
+                let totaleBaanLengte = 0;
                 for (let i = 0; i < aantalBanenBreedte; i++) {
+                    let resterendeLengte = dakLengte;
                     let banenInRij = [];
-                    for (let j = 0; j < aantalBanenLengte; j++) {
-                        banenInRij.push(baanLengte);
+                    while (resterendeLengte > 0) {
+                        if (resterendeLengte >= effectieveBaanLengte) {
+                            banenInRij.push(baanLengte);
+                            resterendeLengte -= effectieveBaanLengte;
+                        } else if (resterendeLengte >= minRestLengte) {
+                            banenInRij.push(resterendeLengte + kopOverlap);
+                            resterendeLengte = 0;
+                        } else {
+                            break;
+                        }
                     }
                     banenPerRij.push(banenInRij);
+                    totaleBaanLengte += banenInRij.reduce((sum, len) => sum + len, 0) + (banenInRij.length > 1 ? SLUITBAAN_OVERLAP * (banenInRij.length - 1) : 0);
                 }
+                materiaalOppervlakte = totaleBaanLengte * baanBreedte;
+                overlapOppervlakte = (aantalBanenBreedte * aantalBanenLengte * kopOverlap * baanBreedte) + (langsOverlap * dakLengte * aantalBanenBreedte) + (SLUITBAAN_OVERLAP * (aantalBanenLengte - 1) * aantalBanenBreedte * baanBreedte);
+                snijverlies = materiaalOppervlakte - nettoDakOppervlakte - overlapOppervlakte;
+                aantalBanenLengte = Math.max(...banenPerRij.map(row => row.length));
             }
 
             return { materiaalOppervlakte, overlapOppervlakte, snijverlies, aantalBanenLengte, aantalBanenBreedte, banenPerRij };
         }
 
+        function validateInput() {
+            const unit = document.getElementById('unitToggle').value;
+            const factor = unit === 'mm' ? 1000 : unit === 'cm' ? 100 : 1;
+            const inputs = [
+                { id: 'baanLengte', min: 0, max: 1000 },
+                { id: 'baanBreedte', min: 0, max: 1000 },
+                { id: 'kopOverlap', min: 0, max: parseFloat(document.getElementById('baanLengte').value) / factor },
+                { id: 'langsOverlap', min: 0, max: parseFloat(document.getElementById('baanBreedte').value) / factor },
+                { id: 'dakLengte', min: 0, max: 1000 },
+                { id: 'dakBreedte', min: 0, max: 1000 },
+                { id: 'minRestLengte', min: 0, max: 1000 },
+                { id: 'inkoopPrijs', min: 0, max: 10000 }
+            ];
+            let isValid = true;
+            let warningMessage = '';
+
+            inputs.forEach(input => {
+                const element = document.getElementById(input.id);
+                const value = parseFloat(element.value) || 0;
+                if (isNaN(value) || value < input.min || value > input.max) {
+                    element.classList.add('invalid');
+                    isValid = false;
+                    warningMessage += `${input.id === 'inkoopPrijs' ? 'Inkoopprijs' : input.id.replace(/([A-Z])/g, ' $1').toLowerCase()}: Voer een geldige waarde in (${input.min} - ${input.max} ${unit === 'mm' ? 'mm' : unit === 'cm' ? 'cm' : 'm'}).<br>`;
+                } else {
+                    element.classList.remove('invalid');
+                }
+            });
+
+            document.getElementById('warning').innerHTML = warningMessage;
+            return isValid;
+        }
+
         function updateBerekening() {
+            if (!validateInput()) {
+                document.getElementById('resultaat').innerHTML = '<div class="warning">Vul alle verplichte velden correct in om de berekening te starten.</div>';
+                return;
+            }
+
             const unit = document.getElementById('unitToggle').value;
             const factor = unit === 'mm' ? 1000 : unit === 'cm' ? 100 : 1;
             const dakNaam = document.getElementById('dakNaam').value || 'Onbekend';
-            const baanLengte = (parseFloat(document.getElementById('baanLengte').value) || 0) / factor;
-            const baanBreedte = (parseFloat(document.getElementById('baanBreedte').value) || 0) / factor;
-            const kopOverlap = (parseFloat(document.getElementById('kopOverlap').value) || 0) / factor;
-            const langsOverlap = (parseFloat(document.getElementById('langsOverlap').value) || 0) / factor;
-            const dakLengte = (parseFloat(document.getElementById('dakLengte').value) || 0) / factor;
-            const dakBreedte = (parseFloat(document.getElementById('dakBreedte').value) || 0) / factor;
-            const minRestLengte = (parseFloat(document.getElementById('minRestLengte').value) || 0) / factor;
+            const baanLengte = parseFloat(document.getElementById('baanLengte').value) / factor;
+            const baanBreedte = parseFloat(document.getElementById('baanBreedte').value) / factor;
+            const kopOverlap = parseFloat(document.getElementById('kopOverlap').value) / factor;
+            const langsOverlap = parseFloat(document.getElementById('langsOverlap').value) / factor;
+            const dakLengte = parseFloat(document.getElementById('dakLengte').value) / factor;
+            const dakBreedte = parseFloat(document.getElementById('dakBreedte').value) / factor;
+            const minRestLengte = parseFloat(document.getElementById('minRestLengte').value) / factor;
             const inkoopPrijs = parseFloat(document.getElementById('inkoopPrijs').value) || 0;
-
-            // Validatie
-            if ([baanLengte, baanBreedte, kopOverlap, langsOverlap, dakLengte, dakBreedte, minRestLengte].some(val => val <= 0) || inkoopPrijs < 0) {
-                document.getElementById('resultaat').innerHTML = 'Vul alle velden in met een positief getal (inkoopprijs mag 0 zijn)!';
-                return;
-            }
-            if (kopOverlap >= baanLengte || langsOverlap >= baanBreedte) {
-                document.getElementById('resultaat').innerHTML = 'Overlap moet kleiner zijn dan de baanafmetingen!';
-                return;
-            }
 
             // Bereken alle opties
             const halfsteensNormaal = berekenMateriaal(dakLengte, dakBreedte, baanLengte, baanBreedte, kopOverlap, langsOverlap, minRestLengte, 'halfsteens');
-            const halfsteensGedraaid = berekenMateriaal(dakLengte, dakBreedte, baanBreedte, baanLengte, langsOverlap, kopOverlap, minRestLengte, 'halfsteens');
+            const halfsteensGedraaid = berekenMateriaal(dakBreedte, dakLengte, baanBreedte, baanLengte, langsOverlap, kopOverlap, minRestLengte, 'halfsteens');
             const blokNormaal = berekenMateriaal(dakLengte, dakBreedte, baanLengte, baanBreedte, kopOverlap, langsOverlap, minRestLengte, 'blok');
-            const blokGedraaid = berekenMateriaal(dakLengte, dakBreedte, baanBreedte, baanLengte, langsOverlap, kopOverlap, minRestLengte, 'blok');
+            const blokGedraaid = berekenMateriaal(dakBreedte, dakLengte, baanBreedte, baanLengte, langsOverlap, kopOverlap, minRestLengte, 'blok');
 
             const nettoDakOppervlakte = dakLengte * dakBreedte;
             const opties = [
@@ -286,29 +360,37 @@
             // Beste keuze bepalen
             const besteOptie = opties.reduce((min, cur) => cur.data.materiaalOppervlakte < min.data.materiaalOppervlakte ? cur : min, opties[0]);
             const besteKosten = besteOptie.data.materiaalOppervlakte * inkoopPrijs;
+            const besteKostenZonderSnijverlies = (besteOptie.data.materiaalOppervlakte - besteOptie.data.snijverlies) * inkoopPrijs;
 
             // Resultaat weergeven
             let resultaatHTML = `<strong>Resultaat (${dakNaam}):</strong><br>Dakoppervlakte: ${nettoDakOppervlakte.toFixed(2)} m²<br>`;
             opties.forEach(optie => {
                 const isBeste = optie.naam === besteOptie.naam;
                 const kosten = optie.data.materiaalOppervlakte * inkoopPrijs;
+                const kostenZonderSnijverlies = (optie.data.materiaalOppervlakte - optie.data.snijverlies) * inkoopPrijs;
                 const besparing = besteKosten - kosten;
+                const besparingZonderSnijverlies = besteKostenZonderSnijverlies - kostenZonderSnijverlies;
                 resultaatHTML += `
-                    <br><strong>${optie.naam}${isBeste ? ' (Beste keuze)' : ''}:</strong><br>
-                    Materiaaloppervlakte: ${optie.data.materiaalOppervlakte.toFixed(2)} m² (incl. overlap en snijverlies)<br>
-                    Overlap: ${optie.data.overlapOppervlakte.toFixed(2)} m² (deel van materiaaloppervlakte)<br>
-                    Snijverlies: ${optie.data.snijverlies.toFixed(2)} m² (deel van materiaaloppervlakte, kleiner dan ${minRestLengte}m)<br>
-                    <strong>Overlapfactor: ${(optie.data.materiaalOppervlakte / nettoDakOppervlakte).toFixed(2)}</strong><br>
-                    Totale kosten: €${kosten.toFixed(2)} (bij €${inkoopPrijs.toFixed(2)}/m²)${!isBeste ? `<br>Besparing t.o.v. beste: €${besparing.toFixed(2)} (${besparing > 0 ? 'voordeliger' : 'duurder'})` : ''}<br>
+                    <div${isBeste ? ' class="besteOptie"' : ''}>
+                        <strong>${optie.naam}${isBeste ? ' (Beste keuze)' : ''}:</strong><br>
+                        Materiaaloppervlakte: ${optie.data.materiaalOppervlakte.toFixed(2)} m² (incl. overlap en snijverlies)<br>
+                        Overlap: ${optie.data.overlapOppervlakte.toFixed(2)} m² (deel van materiaaloppervlakte)<br>
+                        Snijverlies: ${optie.data.snijverlies.toFixed(2)} m² (deel van materiaaloppervlakte, kleiner dan ${minRestLengte}m)<br>
+                        <strong>Overlapfactor: ${(optie.data.materiaalOppervlakte / nettoDakOppervlakte).toFixed(2)}</strong><br>
+                        Overlapfactor (excl. snijverlies): ${((optie.data.materiaalOppervlakte - optie.data.snijverlies) / nettoDakOppervlakte).toFixed(2)}<br>
+                        Totale kosten: €${kosten.toFixed(2)} (bij €${inkoopPrijs.toFixed(2)}/m²)<br>
+                        Besparing t.o.v. beste: €${besparing.toFixed(2)} (${besparing > 0 ? 'voordeliger' : 'duurder'})<br>
+                        Besparing excl. snijverlies: €${besparingZonderSnijverlies.toFixed(2)}<br>
+                    </div><br>
                 `;
             });
             document.getElementById('resultaat').innerHTML = resultaatHTML;
 
             // Schetsen tekenen
             tekenSchets(dakLengte, dakBreedte, baanLengte, baanBreedte, kopOverlap, langsOverlap, minRestLengte, 'halfsteens', 'schetsHalfsteensNormaal', halfsteensNormaal);
-            tekenSchets(dakLengte, dakBreedte, baanBreedte, baanLengte, langsOverlap, kopOverlap, minRestLengte, 'halfsteens', 'schetsHalfsteensGedraaid', halfsteensGedraaid);
+            tekenSchets(dakBreedte, dakLengte, baanBreedte, baanLengte, langsOverlap, kopOverlap, minRestLengte, 'halfsteens', 'schetsHalfsteensGedraaid', halfsteensGedraaid);
             tekenSchets(dakLengte, dakBreedte, baanLengte, baanBreedte, kopOverlap, langsOverlap, minRestLengte, 'blok', 'schetsBlokNormaal', blokNormaal);
-            tekenSchets(dakLengte, dakBreedte, baanBreedte, baanLengte, langsOverlap, kopOverlap, minRestLengte, 'blok', 'schetsBlokGedraaid', blokGedraaid);
+            tekenSchets(dakBreedte, dakLengte, baanBreedte, baanLengte, langsOverlap, kopOverlap, minRestLengte, 'blok', 'schetsBlokGedraaid', blokGedraaid);
         }
 
         function tekenSchets(dakLengte, dakBreedte, baanLengte, baanBreedte, kopOverlap, langsOverlap, minRestLengte, verband, canvasId, resultaat) {
@@ -317,7 +399,7 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Schaal berekenen
-            const schaal = Math.min(380 / dakLengte, 280 / dakBreedte);
+            const schaal = Math.min(280 / dakLengte, 180 / dakBreedte);
             const cDakLengte = dakLengte * schaal;
             const cDakBreedte = dakBreedte * schaal;
             const cBaanLengte = baanLengte * schaal;
@@ -345,9 +427,13 @@
                 }
             } else { // blokverband
                 for (let i = 0; i < resultaat.aantalBanenBreedte; i++) {
-                    for (let j = 0; j < resultaat.aantalBanenLengte; j++) {
-                        ctx.fillRect(10 + j * effectieveBaanLengte, 10 + i * effectieveBaanBreedte, cBaanLengte, cBaanBreedte);
-                        ctx.strokeRect(10 + j * effectieveBaanLengte, 10 + i * effectieveBaanBreedte, cBaanLengte, cBaanBreedte);
+                    const banen = resultaat.banenPerRij[i] || [];
+                    let xOffset = 10;
+                    for (let j = 0; j < banen.length; j++) {
+                        const cBaanLengteSpecifiek = banen[j] * schaal;
+                        ctx.fillRect(xOffset, 10 + i * effectieveBaanBreedte, cBaanLengteSpecifiek, cBaanBreedte);
+                        ctx.strokeRect(xOffset, 10 + i * effectieveBaanBreedte, cBaanLengteSpecifiek, cBaanBreedte);
+                        xOffset += cBaanLengteSpecifiek - cKopOverlap;
                     }
                 }
             }
@@ -367,8 +453,11 @@
                 }
             } else { // blokverband
                 for (let i = 0; i < resultaat.aantalBanenBreedte; i++) {
-                    for (let j = 0; j < resultaat.aantalBanenLengte - 1; j++) {
-                        ctx.fillRect(10 + j * effectieveBaanLengte + effectieveBaanLengte, 10 + i * effectieveBaanBreedte, cKopOverlap, cBaanBreedte);
+                    const banen = resultaat.banenPerRij[i] || [];
+                    let xOffset = 10;
+                    for (let j = 0; j < banen.length - 1; j++) {
+                        ctx.fillRect(xOffset + banen[j] * schaal - cKopOverlap, 10 + i * effectieveBaanBreedte, cKopOverlap, cBaanBreedte);
+                        xOffset += banen[j] * schaal - cKopOverlap;
                     }
                     if (i > 0) {
                         ctx.fillRect(10, 10 + i * effectieveBaanBreedte - cLangsOverlap, cDakLengte, cLangsOverlap);
@@ -386,12 +475,23 @@
                     if (laatsteBaanX + banen[banen.length - 1] * schaal > 10 + cDakLengte) {
                         ctx.fillRect(10 + cDakLengte, 10 + i * effectieveBaanBreedte, (laatsteBaanX + banen[banen.length - 1] * schaal) - (10 + cDakLengte), cBaanBreedte);
                     }
+                    if (i * effectieveBaanBreedte + cBaanBreedte > cDakBreedte) {
+                        ctx.fillRect(xOffset, 10 + cDakBreedte, cDakLengte, (i * effectieveBaanBreedte + cBaanBreedte) - cDakBreedte);
+                    }
                 }
             } else { // blokverband
                 for (let i = 0; i < resultaat.aantalBanenBreedte; i++) {
-                    const laatsteBaanX = 10 + (resultaat.aantalBanenLengte - 1) * effectieveBaanLengte;
-                    if (laatsteBaanX + cBaanLengte > 10 + cDakLengte) {
-                        ctx.fillRect(10 + cDakLengte, 10 + i * effectieveBaanBreedte, (laatsteBaanX + cBaanLengte) - (10 + cDakLengte), cBaanBreedte);
+                    const banen = resultaat.banenPerRij[i] || [];
+                    let xOffset = 10;
+                    for (let j = 0; j < banen.length; j++) {
+                        const cBaanLengteSpecifiek = banen[j] * schaal;
+                        if (xOffset + cBaanLengteSpecifiek > 10 + cDakLengte) {
+                            ctx.fillRect(10 + cDakLengte, 10 + i * effectieveBaanBreedte, (xOffset + cBaanLengteSpecifiek) - (10 + cDakLengte), cBaanBreedte);
+                        }
+                        xOffset += cBaanLengteSpecifiek - cKopOverlap;
+                    }
+                    if (i * effectieveBaanBreedte + cBaanBreedte > cDakBreedte) {
+                        ctx.fillRect(10, 10 + cDakBreedte, cDakLengte, (i * effectieveBaanBreedte + cBaanBreedte) - cDakBreedte);
                     }
                 }
             }
@@ -401,10 +501,15 @@
             ctx.lineWidth = 3;
             ctx.strokeRect(10, 10, cDakLengte, cDakBreedte);
 
-            // Labels
+            // Labels en tooltip
             ctx.fillStyle = '#F28C38';
-            ctx.font = '14px Arial';
+            ctx.font = '12px Arial';
             ctx.fillText(`Dak: ${dakLengte}m x ${dakBreedte}m`, 15, 25);
+            document.getElementById(`tooltip${canvasId.replace('schets', '')}`).innerHTML = `
+                Materiaal: ${resultaat.materiaalOppervlakte.toFixed(2)} m²<br>
+                Overlap: ${resultaat.overlapOppervlakte.toFixed(2)} m²<br>
+                Snijverlies: ${resultaat.snijverlies.toFixed(2)} m²
+            `;
         }
 
         // Automatisch updaten bij invoer
