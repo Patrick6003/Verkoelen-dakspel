@@ -1,443 +1,326 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" 
-        content="width=device-width, initial-scale=1.0, 
-                 user-scalable=no, 
-                 maximum-scale=1.0, 
-                 minimum-scale=1.0" />
-  <title>Magazijn Man vs. Dakdekkers</title>
-  <style>
-    html, body {
-      margin: 0; 
-      padding: 0;
-      overflow: hidden; /* Voorkom scrollbalken op mobiel */
-      font-family: sans-serif;
-      background: #ddd;
-    }
-    #gameCanvas {
-      background: #87CEEB; /* Hemelsblauwe achtergrond */
-      display: block;
-      margin: 0 auto;     /* Canvas centreren */
-      touch-action: none; /* Voorkomt  scroll/swipe-issues op mobiel */
-    }
-    #info {
-      text-align: center;
-      margin: 5px 0;
-    }
-    .btn-controls {
-      display: none; /* Standaard verborgen, we tonen ze op small screens */
-      width: 100%;
-      text-align: center;
-      margin: 5px 0;
-    }
-    .btn-controls button {
-      font-size: 18px;
-      padding: 10px 20px;
-      margin: 0 5px;
-    }
-    @media (max-width: 768px) {
-      /* Toon besturing voor mobiele schermen */
-      .btn-controls {
-        display: block;
-      }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vinky Jump</title>
+    <style>
+        body {
+            background-color: #DCDCDC; /* Lichtgrijs */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 2px solid #FFA500; /* Oranje */
+        }
+        .game-info {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #000;
+            text-align: center;
+            max-width: 80%;
+        }
+        #info-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background-color: #FFA500;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #instructions {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: white;
+            padding: 10px;
+            border: 1px solid #FFA500;
+            max-width: 80%;
+            text-align: center;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
 </head>
 <body>
+    <div class="game-info">
+        <h2>Vinky Jump</h2>
+    </div>
+    <button id="info-button">Info</button>
+    <div id="instructions" style="display: none;">
+        <p>Spring van dak naar dak als Vinky de dakspecialist! Gebruik pijltjestoetsen of tik op het scherm (links/rechts) om te bewegen. Verzamel de gasfles voor een jetpack-boost.</p>
+    </div>
+    <script>
+        // Variabelen
+        let character;
+        let platforms = [];
+        let gravity = 0.25;
+        let jumpSpeed = -12;
+        let boostJumpSpeed = -18;
+        let score = 0;
+        let highScore = 0;
+        let gameState = 'playing';
+        let cameraY = 0;
+        let startPlatform;
 
-<div id="info">
-  <h2>Magazijn Man vs. Dakdekkers</h2>
-  <p>Besturing (desktop): pijltjestoetsen en spatiebalk.<br />
-     Besturing (mobiel): druk op de knoppen hieronder.</p>
-  <p id="score"></p>
-  <p id="level"></p>
-  <p id="lives"></p>
-</div>
+        // Canvas en initiële setup
+        function setup() {
+            createCanvas(400, 600);
+            character = {
+                x: width / 2,
+                y: height - 50 - 30, // Start op eerste platform
+                size: 60,
+                velocity: 0,
+                hasBoost: false
+            };
+            generateInitialPlatforms();
+            startPlatform = {
+                x: width / 2 - 50,
+                y: height - 50,
+                width: 100,
+                height: 15,
+                hasPowerUp: false
+            };
+            platforms.push(startPlatform);
+            character.y = startPlatform.y - character.size / 2;
+        }
 
-<div class="btn-controls">
-  <button id="btnLeft">&#9664;</button>
-  <button id="btnRight">&#9654;</button>
-  <button id="btnThrow">GOOI</button>
-</div>
+        // Hoofdgame-loop
+        function draw() {
+            background(220, 220, 220); // Lichtgrijs
+            if (gameState === 'playing') {
+                updateCharacter();
+                updatePlatforms();
+                checkCollisions();
+                drawCharacter();
+                drawPlatforms();
+                drawScore();
+            } else if (gameState === 'gameOver') {
+                drawGameOverScreen();
+            }
+        }
 
-<canvas id="gameCanvas"></canvas>
+        // Karakter bijwerken
+        function updateCharacter() {
+            character.velocity += gravity;
+            character.y += character.velocity;
 
-<script>
-/* 
-  Eenvoudige Canvas-game:
-  - Oranje V (Magazijn Man) beweegt horizontaal langs de onderkant.
-  - Druk op spatie (of button) om dakrollen te gooien.
-  - Dakdekkers komen van boven/links/rechts.
-  - Als een dakdekker geraakt wordt, verdwijnt hij en scoor je punten.
-  - Meerdere levels op basis van score.
-  - Snelheid en aantal dakdekkers nemen toe in hogere levels.
-  - Als een dakdekker de onderrand raakt (jou passeert), verlies je een leven.
-*/
+            if (character.y > height + cameraY) {
+                gameState = 'gameOver';
+                if (score > highScore) highScore = score;
+            }
 
-/////////////////////////////////////////////////////
-// Canvas Setup
-/////////////////////////////////////////////////////
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+            // Beweging met pijltjestoetsen of touch
+            if (keyIsDown(LEFT_ARROW) || (touches.length > 0 && touches[0].x < width / 2)) {
+                character.x -= 5;
+            }
+            if (keyIsDown(RIGHT_ARROW) || (touches.length > 0 && touches[0].x >= width / 2)) {
+                character.x += 5;
+            }
 
-// Volledige breedte van het scherm, en hoogte in 16:9 verhouding
-function resizeCanvas() {
-  canvas.width = Math.min(window.innerWidth, 900); // evt. max 900px breed
-  canvas.height = Math.round(canvas.width * 16/9);
-}
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
+            // Schermranden omkeren
+            if (character.x < 0) character.x = width;
+            else if (character.x > width) character.x = 0;
 
-/////////////////////////////////////////////////////
-// Game-variabelen
-/////////////////////////////////////////////////////
-let gameRunning = false;
+            // Camera volgt Vinky V
+            if (character.y < height / 2) {
+                cameraY += (height / 2 - character.y);
+                character.y = height / 2;
+                for (let platform of platforms) {
+                    platform.y += (height / 2 - character.y);
+                }
+            }
+        }
 
-let score = 0;
-let level = 1;
-let lives = 3;
+        // Platforms bijwerken
+        function updatePlatforms() {
+            for (let platform of platforms) {
+                if (platform !== startPlatform) platform.y += 1.5; // Langzame opwaartse beweging
+            }
+            platforms = platforms.filter(p => p.y < height + cameraY);
+            while (platforms.length < 6) generatePlatform();
+            score += 0.1; // Langzame scoretoename
+        }
 
-let keys = {}; // Voor desktop controls
+        // Botsingen controleren
+        function checkCollisions() {
+            for (let platform of platforms) {
+                if (
+                    character.x > platform.x &&
+                    character.x < platform.x + platform.width &&
+                    character.y + character.size / 2 > platform.y &&
+                    character.y + character.size / 2 < platform.y + platform.height &&
+                    character.velocity > 0
+                ) {
+                    character.velocity = character.hasBoost ? boostJumpSpeed : jumpSpeed;
+                    character.hasBoost = false;
+                    score += 10; // Extra punten bij landen
+                    if (platform.hasPowerUp) {
+                        character.hasBoost = true;
+                        platform.hasPowerUp = false;
+                    }
+                }
+            }
+        }
 
-// Voor touchscreen-knoppen
-let moveLeft = false;
-let moveRight = false;
-let wantToThrow = false;
+        // Karakter tekenen (oranje "V" met ogen en armen)
+        function drawCharacter() {
+            push();
+            translate(character.x, character.y - cameraY);
+            scale(0.7);
 
-// Spelerobject
-const player = {
-  x: canvas.width/2,
-  y: canvas.height - 80,  // Boven wat marge
-  width: 50,  // Breedte ‘V’
-  height: 60, // Hoogte ‘V’ + oogjes
-  speed: 6
-};
+            // Oranje "V"
+            fill(255, 165, 0);
+            textSize(80);
+            textStyle(BOLD);
+            textAlign(CENTER, CENTER);
+            text('V', 0, -10);
 
-// Dakrollen (projectielen)
-let rolls = []; // {x, y, radius, speedY}
+            // Witte ogen met zwarte pupillen
+            fill(255);
+            ellipse(-15, -20, 20, 20);
+            ellipse(15, -20, 20, 20);
+            fill(0);
+            ellipse(-15, -20, 8, 8);
+            ellipse(15, -20, 8, 8);
 
-// Dakdekkers (vijanden)
-let roofers = []; // {x, y, width, height, speedX, speedY}
+            // Zwevende Mickey Mouse-achtige armen
+            fill(255);
+            if (character.velocity < 0) { // Armen zwaaien bij springen
+                arc(-40, 0, 40, 40, PI / 4, PI, CHORD);
+                arc(40, 0, 40, 40, 0, 3 * PI / 4, CHORD);
+            } else {
+                ellipse(-40, 0, 20, 20);
+                ellipse(40, 0, 20, 20);
+            }
 
-// Instellingen
-const rollSpeed = 7;
-let roferSpeedMin = 1;
-let roferSpeedMax = 3;
-const spawnIntervalBase = 120; // elke X frames
-let spawnCount = 0;            // teller om dakdekkers te spawnen
+            pop();
 
-/////////////////////////////////////////////////////
-// Event Listeners (keyboard & mobile)
-/////////////////////////////////////////////////////
-// Toetsenbord-gebeurtenissen
-document.addEventListener('keydown', (e) => {
-  keys[e.code] = true;
-  if (!gameRunning) startGame();
-});
-document.addEventListener('keyup', (e) => {
-  keys[e.code] = false;
-});
+            // Rode gloed bij boost
+            if (character.hasBoost) {
+                fill(255, 0, 0, 100);
+                ellipse(character.x, character.y - cameraY, character.size + 10, character.size + 10);
+            }
+        }
 
-// Mobiele knoppen
-document.getElementById('btnLeft').addEventListener('touchstart', () => moveLeft = true);
-document.getElementById('btnLeft').addEventListener('touchend',   () => moveLeft = false);
+        // Platforms tekenen (bruine hellende daken)
+        function drawPlatforms() {
+            for (let platform of platforms) {
+                fill(139, 69, 19); // Bruin
+                noStroke();
+                beginShape();
+                vertex(platform.x, platform.y - cameraY + platform.height);
+                vertex(platform.x + platform.width / 2, platform.y - cameraY);
+                vertex(platform.x + platform.width, platform.y - cameraY + platform.height);
+                endShape(CLOSE);
 
-document.getElementById('btnRight').addEventListener('touchstart', () => moveRight = true);
-document.getElementById('btnRight').addEventListener('touchend',   () => moveRight = false);
+                // Power-up (gasflesje met vuur)
+                if (platform.hasPowerUp) {
+                    // Gasflesje
+                    fill(169, 169, 169); // Grijs
+                    rect(platform.x + platform.width / 2 - 5, platform.y - cameraY - 20, 10, 15);
+                    // Stok
+                    fill(169, 169, 169);
+                    rect(platform.x + platform.width / 2 - 1, platform.y - cameraY - 25, 2, 10);
+                    // Trechter
+                    fill(169, 169, 169);
+                    beginShape();
+                    vertex(platform.x + platform.width / 2 - 3, platform.y - cameraY - 25);
+                    vertex(platform.x + platform.width / 2 + 3, platform.y - cameraY - 25);
+                    vertex(platform.x + platform.width / 2 + 1, platform.y - cameraY - 30);
+                    vertex(platform.x + platform.width / 2 - 1, platform.y - cameraY - 30);
+                    endShape(CLOSE);
+                    // Vuur
+                    fill(255, 0, 0);
+                    ellipse(platform.x + platform.width / 2, platform.y - cameraY - 32, 5, 5);
+                }
+            }
+        }
 
-document.getElementById('btnThrow').addEventListener('touchstart', () => { wantToThrow = true; });
-document.getElementById('btnThrow').addEventListener('touchend',   () => { wantToThrow = false; });
+        // Score tekenen
+        function drawScore() {
+            fill(0);
+            textSize(18);
+            textAlign(LEFT);
+            text('Score: ' + floor(score), 10, 30);
+            textAlign(RIGHT);
+            text('Highscore: ' + floor(highScore), width - 10, 30);
+        }
 
-// (Voor mobiel ‘click’/‘mousedown’ valt samen met ‘touchstart’)
-document.getElementById('btnLeft').addEventListener('mousedown', () => moveLeft = true);
-document.getElementById('btnLeft').addEventListener('mouseup',   () => moveLeft = false);
-document.getElementById('btnRight').addEventListener('mousedown', () => moveRight = true);
-document.getElementById('btnRight').addEventListener('mouseup',   () => moveRight = false);
-document.getElementById('btnThrow').addEventListener('mousedown', () => { wantToThrow = true; });
-document.getElementById('btnThrow').addEventListener('mouseup',   () => { wantToThrow = false; });
+        // Game-over-scherm
+        function drawGameOverScreen() {
+            textAlign(CENTER);
+            fill(0);
+            textSize(32);
+            text('Spel Afgelopen', width / 2, height / 2 - 50);
+            textSize(24);
+            text('Score: ' + floor(score), width / 2, height / 2);
+            textSize(18);
+            text('Klik of tik om te herstarten', width / 2, height / 2 + 50);
+        }
 
-// Spatiebalk gooien (desktop)
-function handleThrowKey() {
-  if (!gameRunning) return;
-  // Dakrolprojectiel maken
-  rolls.push({
-    x: player.x,
-    y: player.y - 10,
-    radius: 8,
-    speedY: rollSpeed
-  });
-}
+        // Platforms genereren
+        function generateInitialPlatforms() {
+            platforms = [];
+            for (let i = 1; i < 6; i++) {
+                let y = height - i * 120 + random(-30, 30);
+                platforms.push({
+                    x: random(width - 100),
+                    y: y,
+                    width: 100,
+                    height: 15,
+                    hasPowerUp: random() < 0.1 // 10% kans op power-up
+                });
+            }
+            cameraY = 0;
+        }
 
-// Start het spel
-function startGame() {
-  if (gameRunning) return;
-  gameRunning = true;
-  score = 0;
-  level = 1;
-  lives = 3;
-  rolls = [];
-  roofers = [];
-  spawnCount = 0;
-  animate();
-}
+        function generatePlatform() {
+            let highestPlatform = min(platforms.map(p => p.y));
+            let y = highestPlatform - 120 + random(-30, 30);
+            platforms.push({
+                x: random(width - 100),
+                y: y,
+                width: 100,
+                height: 15,
+                hasPowerUp: random() < 0.1 // 10% kans op power-up
+            });
+        }
 
-// Updaten van level op basis van score
-function updateLevel() {
-  // Bijv. elke 300 punten +1 level
-  // Pas ook rofer-snelheid hierop aan
-  level = Math.floor(score / 300) + 1;
-  roferSpeedMin = 1 + level*0.3;
-  roferSpeedMax = 3 + level*0.5;
-  if (level > 8) level = 8; // Max level
-}
+        // Bediening
+        function mousePressed() {
+            if (gameState === 'gameOver') resetGame();
+        }
 
-// Verlies 1 leven
-function loseLife() {
-  lives--;
-  if (lives <= 0) {
-    lives = 0;
-    gameOver();
-  }
-}
+        function touchStarted() {
+            if (gameState === 'gameOver') resetGame();
+            return false;
+        }
 
-// Einde spel
-function gameOver() {
-  gameRunning = false;
-  alert("Game Over! Je score: " + score);
-}
+        // Reset game
+        function resetGame() {
+            gameState = 'playing';
+            score = 0;
+            character.y = height - 50 - character.size / 2;
+            character.velocity = 0;
+            character.hasBoost = false;
+            cameraY = 0;
+            generateInitialPlatforms();
+        }
 
-// Tekst-updates
-function updateHUD() {
-  document.getElementById('score').innerText = "Score: " + score;
-  document.getElementById('level').innerText = "Level: " + level;
-  document.getElementById('lives').innerText = "Levens: " + lives;
-}
-
-/////////////////////////////////////////////////////
-// Game-lus (requestAnimationFrame)
-/////////////////////////////////////////////////////
-function animate() {
-  if (!gameRunning) {
-    updateHUD();
-    return;  // Stop de loop als het spel afgelopen is
-  }
-  // Vraagt volgende frame aan
-  requestAnimationFrame(animate);
-  
-  // Canvas schoonvegen
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-  // 1) Input verwerken
-  processInput();
-
-  // 2) Objecten updaten
-  updateRolls();
-  updateRoofers();
-  updateCollisions();
-
-  // 3) Tekenen
-  drawPlayer();
-  drawRolls();
-  drawRoofers();
-
-  // 4) HUD bijwerken
-  updateHUD();
-
-  spawnCount++;
-  maybeSpawnRoofer();
-  updateLevel();
-}
-
-// Leest toetsen of touch
-function processInput() {
-  // Desktop
-  if (keys['ArrowLeft'] || keys['KeyA']) player.x -= player.speed;
-  if (keys['ArrowRight'] || keys['KeyD']) player.x += player.speed;
-  if (keys['Space']) {
-    // om te voorkomen dat we elke frame talloze dakrollen schieten,
-    // kun je hier evt. een ‘fire rate limiter’ toevoegen
-    handleThrowKey();
-    // Verwijder de toetsaanslag of houd track in code
-    keys['Space'] = false; 
-  }
-  // Mobiel
-  if (moveLeft) player.x -= player.speed;
-  if (moveRight) player.x += player.speed;
-  if (wantToThrow) {
-    handleThrowKey();
-    wantToThrow = false; 
-  }
-  // Grenzen
-  if (player.x < player.width/2) player.x = player.width/2;
-  if (player.x > canvas.width - player.width/2) {
-    player.x = canvas.width - player.width/2;
-  }
-}
-
-// Updaten dakrollen
-function updateRolls() {
-  for (let i = 0; i < rolls.length; i++) {
-    rolls[i].y -= rolls[i].speedY;
-  }
-  // Verwijder projectielen buiten beeld
-  rolls = rolls.filter(r => r.y + r.radius > 0);
-}
-
-// Updaten dakdekkers
-function updateRoofers() {
-  for (let i = 0; i < roofers.length; i++) {
-    roofers[i].x += roofers[i].speedX;
-    roofers[i].y += roofers[i].speedY;
-
-    // Als dakdekker onderkant raakt -> leven kwijtraakt
-    if (roofers[i].y > canvas.height) {
-      loseLife();
-      // Verwijderen
-      roofers.splice(i, 1);
-      i--;
-    }
-  }
-}
-
-// Spawnen van dakdekkers
-function maybeSpawnRoofer() {
-  const interval = spawnIntervalBase - level*10; 
-  if (spawnCount > interval) {
-    spawnCount = 0;
-    let side = Math.floor(Math.random()*4); 
-    // 0 = top, 1 = left, 2 = right, 3 = random top
-    let x, y, speedX, speedY;
-    const w = 30;
-    const h = 50;
-    switch(side) {
-      case 0: // top
-        x = Math.random() * (canvas.width - w);
-        y = -h;
-        speedX = 0;
-        speedY = randomRange(roferSpeedMin, roferSpeedMax);
-        break;
-      case 1: // left
-        x = -w;
-        y = Math.random() * (canvas.height/2);
-        speedX = randomRange(roferSpeedMin, roferSpeedMax);
-        speedY = randomRange(roferSpeedMin/2, roferSpeedMax/2);
-        break;
-      case 2: // right
-        x = canvas.width + w;
-        y = Math.random() * (canvas.height/2);
-        speedX = -randomRange(roferSpeedMin, roferSpeedMax);
-        speedY = randomRange(roferSpeedMin/2, roferSpeedMax/2);
-        break;
-      default: // top again
-        x = Math.random() * (canvas.width - w);
-        y = -h;
-        speedX = 0;
-        speedY = randomRange(roferSpeedMin, roferSpeedMax);
-        break;
-    }
-    roofers.push({x, y, width:w, height:h, speedX, speedY});
-  }
-}
-
-function randomRange(min, max) {
-  return Math.random()*(max-min)+min;
-}
-
-// Botsingen
-function updateCollisions() {
-  for (let i = 0; i < roofers.length; i++) {
-    const r = roofers[i];
-    for (let j = 0; j < rolls.length; j++) {
-      const roll = rolls[j];
-      // Vierkante rofer vs. cirkel
-      if (circleRectCollision(roll.x, roll.y, roll.radius, 
-                              r.x, r.y, r.width, r.height)) {
-        // Geraakt
-        score += 30;   // 30 punten per dakdekker
-        roofers.splice(i, 1);
-        rolls.splice(j, 1);
-        i--;  // omdat we roofers[i] weghalen
-        break;
-      }
-    }
-  }
-}
-
-function circleRectCollision(cx, cy, cr, rx, ry, rw, rh) {
-  // Hulpvariabelen om na te gaan wat het dichtsbijzijnde punt in de rect is
-  let closestX = clamp(cx, rx, rx + rw);
-  let closestY = clamp(cy, ry, ry + rh);
-  let distX = cx - closestX;
-  let distY = cy - closestY;
-  let distanceSq = distX*distX + distY*distY;
-  return distanceSq < (cr*cr);
-}
-
-function clamp(value, min, max) {
-  return (value < min) ? min : (value > max) ? max : value;
-}
-
-/////////////////////////////////////////////////////
-// Tekenfuncties
-/////////////////////////////////////////////////////
-function drawPlayer() {
-  // Teken oranje V
-  ctx.save();
-  ctx.translate(player.x, player.y);
-
-  // Teken handjes (witte rondjes)
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.arc(-player.width/2+5, 0, 5, 0, Math.PI*2);
-  ctx.arc(player.width/2-5, 0, 5, 0, Math.PI*2);
-  ctx.fill();
-
-  // Teken grote V
-  ctx.fillStyle = "orange";
-  ctx.beginPath();
-  ctx.moveTo(-player.width/2, 0);
-  ctx.lineTo(0, player.height-10);
-  ctx.lineTo(player.width/2, 0);
-  ctx.closePath();
-  ctx.fill();
-
-  // Teken oogjes
-  ctx.fillStyle = "blue";
-  ctx.beginPath();
-  ctx.arc(-player.width*0.15, -5, 3, 0, Math.PI*2);
-  ctx.arc( player.width*0.15, -5, 3, 0, Math.PI*2);
-  ctx.fill();
-
-  ctx.restore();
-}
-
-function drawRolls() {
-  ctx.fillStyle = "brown";
-  rolls.forEach((roll) => {
-    ctx.beginPath();
-    ctx.arc(roll.x, roll.y, roll.radius, 0, Math.PI*2);
-    ctx.fill();
-  });
-}
-
-function drawRoofers() {
-  ctx.fillStyle = "black";
-  roofers.forEach(r => {
-    ctx.fillRect(r.x, r.y, r.width, r.height);
-    // Eventueel simpel hoofdje?
-    ctx.fillStyle = "pink";
-    ctx.fillRect(r.x + r.width/4, r.y - 10, r.width/2, 10);
-    ctx.fillStyle = "black";
-  });
-}
-
-/////////////////////////////////////////////////////
-// Start
-/////////////////////////////////////////////////////
-updateHUD(); // Toon startinfo
-
-</script>
+        // Info-knop functionaliteit
+        document.getElementById('info-button').addEventListener('click', () => {
+            const instructions = document.getElementById('instructions');
+            instructions.style.display = instructions.style.display === 'none' ? 'block' : 'none';
+        });
+    </script>
 </body>
 </html>
