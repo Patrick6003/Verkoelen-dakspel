@@ -66,9 +66,6 @@
         button:hover {
             background-color: #E07B30;
         }
-        #resultaatContainer {
-            display: none; /* Niet meer nodig, resultaat zit nu bij schetsen */
-        }
         #schetsContainer {
             flex: 2;
             min-width: 300px;
@@ -81,13 +78,17 @@
             padding: 10px;
             border-radius: 5px;
             box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
         }
         .besteOptie {
             border: 3px solid green;
         }
         canvas {
             border: 1px solid #ccc;
-            max-width: 100%;
+            width: 300px;
+            height: 200px;
             background-color: #FFFFFF;
         }
         #legenda {
@@ -95,7 +96,7 @@
             font-size: 14px;
         }
         .resultaat {
-            margin-top: 10px;
+            flex: 1;
             font-size: 14px;
         }
         @media (max-width: 900px) {
@@ -105,6 +106,9 @@
             input, select {
                 width: 100%;
                 margin: 5px 0;
+            }
+            .schetsOption {
+                flex-direction: column;
             }
             canvas {
                 width: 100%;
@@ -144,34 +148,33 @@
             <input type="number" id="dakBreedte" value="5" step="any" required placeholder="Breedte"><br>
             <label>Inkoopprijs per m² (€):</label><br>
             <input type="number" id="inkoopPrijs" value="20" step="0.01" min="0"><br>
+            <label>Hergebruik snijverlies (%):</label><br>
+            <input type="number" id="hergebruikPercentage" value="20" step="1" min="0" max="100"><br>
             <button type="button" onclick="exportPNG()">Export PNG</button>
             <button type="button" onclick="exportPDF()">Export PDF</button>
             <button type="button" onclick="window.print()">Print</button>
             <button type="button" onclick="resetForm()">Reset</button>
         </form>
-        <div id="resultaatContainer">
-            <div id="resultaat"></div>
-        </div>
         <div id="schetsContainer">
             <div class="schetsOption" id="halfsteensNormaal">
                 <h4>Halfsteens Normaal</h4>
-                <canvas id="schetsHalfsteensNormaal" width="400" height="200"></canvas>
                 <div class="resultaat" id="resultaatHalfsteensNormaal"></div>
+                <canvas id="schetsHalfsteensNormaal"></canvas>
             </div>
             <div class="schetsOption" id="halfsteensGedraaid">
                 <h4>Halfsteens Gedraaid</h4>
-                <canvas id="schetsHalfsteensGedraaid" width="400" height="200"></canvas>
                 <div class="resultaat" id="resultaatHalfsteensGedraaid"></div>
+                <canvas id="schetsHalfsteensGedraaid"></canvas>
             </div>
             <div class="schetsOption" id="blokNormaal">
                 <h4>Blok Normaal</h4>
-                <canvas id="schetsBlokNormaal" width="400" height="200"></canvas>
                 <div class="resultaat" id="resultaatBlokNormaal"></div>
+                <canvas id="schetsBlokNormaal"></canvas>
             </div>
             <div class="schetsOption" id="blokGedraaid">
                 <h4>Blok Gedraaid</h4>
-                <canvas id="schetsBlokGedraaid" width="400" height="200"></canvas>
                 <div class="resultaat" id="resultaatBlokGedraaid"></div>
+                <canvas id="schetsBlokGedraaid"></canvas>
             </div>
             <div id="legenda">
                 <span style="color: red;">■</span> Dakvlak (rood kader) |
@@ -195,6 +198,7 @@
             document.getElementById('dakLengte').value = '10';
             document.getElementById('dakBreedte').value = '5';
             document.getElementById('inkoopPrijs').value = '20';
+            document.getElementById('hergebruikPercentage').value = '20';
             updateUnitLabels();
         }
 
@@ -228,7 +232,7 @@
             updateBerekening();
         }
 
-        function berekenMateriaal(dakLengte, dakBreedte, baanLengte, baanBreedte, kopOverlap, langsOverlap, sluitbaanBreedte, verband) {
+        function berekenMateriaal(dakLengte, dakBreedte, baanLengte, baanBreedte, kopOverlap, langsOverlap, sluitbaanBreedte, verband, hergebruikPercentage) {
             const effectieveBaanLengte = baanLengte - kopOverlap;
             const effectieveBaanBreedte = baanBreedte - langsOverlap;
             const nettoDakOppervlakte = dakLengte * dakBreedte;
@@ -262,12 +266,15 @@
                         }
                     }
                     banenPerRij.push(banenInRij);
-                    totaleBaanLengte += banenInRij.reduce((sum, len) => sum + Math.min(len, lengteRichting + cKopOverlap), 0); // Alleen binnen dakvlak
+                    totaleBaanLengte += banenInRij.reduce((sum, len) => sum + Math.min(len, lengteRichting + cKopOverlap), 0);
                 }
                 materiaalOppervlakte = totaleBaanLengte * cBaanBreedte;
                 overlapOppervlakte = Math.max(0, (aantalBanenBreedte - 1) * cLangsOverlap * lengteRichting) + 
                                    banenPerRij.reduce((sum, row) => sum + Math.max(0, (row.length - 1)) * cKopOverlap * cBaanBreedte, 0);
                 snijverlies = Math.max(0, materiaalOppervlakte - nettoDakOppervlakte - overlapOppervlakte);
+                const hergebruiktSnijverlies = (hergebruikPercentage / 100) * snijverlies;
+                snijverlies -= hergebruiktSnijverlies;
+                materiaalOppervlakte -= hergebruiktSnijverlies;
                 aantalBanenLengte = Math.max(...banenPerRij.map(row => row.length));
             } else { // blokverband
                 aantalBanenBreedte = Math.ceil(dakBreedte / effectieveBaanBreedte);
@@ -286,13 +293,16 @@
                         }
                     }
                     banenPerRij.push(banenInRij);
-                    totaleBaanLengte += banenInRij.reduce((sum, len) => sum + Math.min(len, dakLengte + kopOverlap), 0); // Binnen dakvlak
+                    totaleBaanLengte += banenInRij.reduce((sum, len) => sum + Math.min(len, dakLengte + kopOverlap), 0);
                 }
                 const sluitbaanOppervlakte = sluitbaanBreedte * dakLengte;
                 materiaalOppervlakte = totaleBaanLengte * baanBreedte + sluitbaanOppervlakte;
                 overlapOppervlakte = Math.max(0, (aantalBanenBreedte - 1) * langsOverlap * dakLengte) + 
                                     Math.max(0, (aantalBanenLengte - 1) * kopOverlap * dakBreedte) + sluitbaanOppervlakte;
                 snijverlies = Math.max(0, materiaalOppervlakte - nettoDakOppervlakte - overlapOppervlakte);
+                const hergebruiktSnijverlies = (hergebruikPercentage / 100) * snijverlies;
+                snijverlies -= hergebruiktSnijverlies;
+                materiaalOppervlakte -= hergebruiktSnijverlies;
             }
 
             const totaleDekking = materiaalOppervlakte - snijverlies;
@@ -370,6 +380,7 @@
             const dakLengte = parseFloat(document.getElementById('dakLengte').value) / factor || 0;
             const dakBreedte = parseFloat(document.getElementById('dakBreedte').value) / factor || 0;
             const inkoopPrijs = parseFloat(document.getElementById('inkoopPrijs').value) || 0;
+            const hergebruikPercentage = Math.min(100, Math.max(0, parseFloat(document.getElementById('hergebruikPercentage').value) || 0));
 
             // Validatie
             if ([baanLengte, baanBreedte, kopOverlap, langsOverlap, dakLengte, dakBreedte, sluitbaanBreedte].some(val => val <= 0) || inkoopPrijs < 0) {
@@ -394,10 +405,10 @@
             }
 
             // Bereken alle opties
-            const halfsteensNormaal = berekenMateriaal(dakLengte, dakBreedte, baanLengte, baanBreedte, kopOverlap, langsOverlap, sluitbaanBreedte, 'halfsteens');
-            const halfsteensGedraaid = berekenMateriaal(dakLengte, dakBreedte, baanBreedte, baanLengte, langsOverlap, kopOverlap, sluitbaanBreedte, 'halfsteens');
-            const blokNormaal = berekenMateriaal(dakLengte, dakBreedte, baanLengte, baanBreedte, kopOverlap, langsOverlap, sluitbaanBreedte, 'blok');
-            const blokGedraaid = berekenMateriaal(dakLengte, dakBreedte, baanBreedte, baanLengte, langsOverlap, kopOverlap, sluitbaanBreedte, 'blok');
+            const halfsteensNormaal = berekenMateriaal(dakLengte, dakBreedte, baanLengte, baanBreedte, kopOverlap, langsOverlap, sluitbaanBreedte, 'halfsteens', hergebruikPercentage);
+            const halfsteensGedraaid = berekenMateriaal(dakLengte, dakBreedte, baanBreedte, baanLengte, langsOverlap, kopOverlap, sluitbaanBreedte, 'halfsteens', hergebruikPercentage);
+            const blokNormaal = berekenMateriaal(dakLengte, dakBreedte, baanLengte, baanBreedte, kopOverlap, langsOverlap, sluitbaanBreedte, 'blok', hergebruikPercentage);
+            const blokGedraaid = berekenMateriaal(dakLengte, dakBreedte, baanBreedte, baanLengte, langsOverlap, kopOverlap, sluitbaanBreedte, 'blok', hergebruikPercentage);
 
             const nettoDakOppervlakte = dakLengte * dakBreedte;
             const opties = [
@@ -409,12 +420,14 @@
 
             // Beste keuze bepalen
             const besteOptie = opties.reduce((min, cur) => cur.data.snijverlies < min.data.snijverlies ? cur : min, opties[0]);
+            const besteKosten = besteOptie.data.materiaalOppervlakte * inkoopPrijs;
 
             // Resultaten weergeven
             opties.forEach(optie => {
                 const isBeste = optie.naam === besteOptie.naam;
                 const kosten = optie.data.materiaalOppervlakte * inkoopPrijs;
                 const kostenExclSnijverlies = (optie.data.materiaalOppervlakte - optie.data.snijverlies) * inkoopPrijs;
+                const besparing = besteKosten - kosten;
                 const resultaatHTML = `
                     Materiaaloppervlakte: ${optie.data.materiaalOppervlakte.toFixed(2)} m²<br>
                     Overlap: ${optie.data.overlapOppervlakte.toFixed(2)} m²<br>
@@ -422,6 +435,7 @@
                     Overlapfactor: ${(optie.data.materiaalOppervlakte / nettoDakOppervlakte).toFixed(2)}<br>
                     Totale kosten: €${kosten.toFixed(2)}<br>
                     Kosten excl. snijverlies: €${kostenExclSnijverlies.toFixed(2)}<br>
+                    Verschil t.o.v. beste: €${besparing.toFixed(2)} (${besparing >= 0 ? 'voordeliger' : 'duurder'})<br>
                     ${optie.data.isVolledigBedekt ? '' : '<span style="color: red;">Waarschuwing: Dakvlak niet volledig bedekt!</span>'}
                 `;
                 const resultaatDiv = document.getElementById(`resultaat${optie.id.charAt(0).toUpperCase() + optie.id.slice(1)}`);
