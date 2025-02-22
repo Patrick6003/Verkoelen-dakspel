@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DakVormCalculator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 20px auto;
             padding: 20px;
             background-color: #f4f4f4;
@@ -21,9 +23,29 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .tabs {
             display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #ddd;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+        }
+        .tab.active {
+            background-color: #007BFF;
+            color: white;
+        }
+        .dak-container {
+            display: none;
             flex-wrap: wrap;
             gap: 20px;
+        }
+        .dak-container.active {
+            display: flex;
         }
         .input-section, .schets-section {
             flex: 1;
@@ -45,10 +67,11 @@
         button {
             background-color: #007BFF;
             color: white;
-            padding: 10px 20px;
+            padding: 8px 16px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            margin-right: 5px;
         }
         button:hover {
             background-color: #0056b3;
@@ -71,111 +94,275 @@
             height: 400px;
         }
         .detail-input {
+            display: flex;
+            gap: 5px;
             margin-bottom: 10px;
+            align-items: center;
+        }
+        .detail-input span {
+            width: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .detail-input select, .detail-input input[type="text"] {
+            flex: 1;
+        }
+        .warning {
+            color: red;
+            font-size: 14px;
+            margin-top: -5px;
+        }
+        #legenda {
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
     <h1>DakVormCalculator</h1>
     <div class="container">
-        <div class="input-section">
-            <form id="dakForm">
-                <label for="vorm">Dakvorm:</label>
-                <select id="vorm" onchange="updateAlles()">
-                    <option value="rechthoek">⬜ Rechthoek</option>
-                    <option value="l-vorm">🡒 L-vorm</option>
-                </select>
-
-                <!-- Rechthoek -->
-                <div id="rechthoek" class="vorm-specifiek">
-                    <label for="lengte">Lengte (m):</label>
-                    <input type="number" id="lengte" step="0.1" min="0" value="10" oninput="updateAlles()">
-                    <label for="breedte">Breedte (m):</label>
-                    <input type="number" id="breedte" step="0.1" min="0" value="5" oninput="updateAlles()">
-                    <label>Detailomschrijvingen (4 zijden):</label>
-                    <div class="detail-input"><input type="text" id="oms1" placeholder="Omschrijving zijde 1" oninput="updateAlles()"></div>
-                    <div class="detail-input"><input type="text" id="oms2" placeholder="Omschrijving zijde 2" oninput="updateAlles()"></div>
-                    <div class="detail-input"><input type="text" id="oms3" placeholder="Omschrijving zijde 3" oninput="updateAlles()"></div>
-                    <div class="detail-input"><input type="text" id="oms4" placeholder="Omschrijving zijde 4" oninput="updateAlles()"></div>
-                </div>
-
-                <!-- L-vorm -->
-                <div id="l-vorm" class="vorm-specifiek">
-                    <label for="lengte1">Lengte deel 1 (m):</label>
-                    <input type="number" id="lengte1" step="0.1" min="0" value="10" oninput="updateAlles()">
-                    <label for="breedte1">Breedte deel 1 (m):</label>
-                    <input type="number" id="breedte1" step="0.1" min="0" value="5" oninput="updateAlles()">
-                    <label for="lengte2">Lengte deel 2 (m):</label>
-                    <input type="number" id="lengte2" step="0.1" min="0" value="4" oninput="updateAlles()">
-                    <label for="breedte2">Breedte deel 2 (m):</label>
-                    <input type="number" id="breedte2" step="0.1" min="0" value="3" oninput="updateAlles()">
-                    <label>Detailomschrijvingen (6 zijden):</label>
-                    <div class="detail-input"><input type="text" id="l-oms1" placeholder="Omschrijving zijde 1" oninput="updateAlles()"></div>
-                    <div class="detail-input"><input type="text" id="l-oms2" placeholder="Omschrijving zijde 2" oninput="updateAlles()"></div>
-                    <div class="detail-input"><input type="text" id="l-oms3" placeholder="Omschrijving zijde 3" oninput="updateAlles()"></div>
-                    <div class="detail-input"><input type="text" id="l-oms4" placeholder="Omschrijving zijde 4" oninput="updateAlles()"></div>
-                    <div class="detail-input"><input type="text" id="l-oms5" placeholder="Omschrijving zijde 5" oninput="updateAlles()"></div>
-                    <div class="detail-input"><input type="text" id="l-oms6" placeholder="Omschrijving zijde 6" oninput="updateAlles()"></div>
-                </div>
-
-                <label for="hellingsgraad">Hellingsgraad (°):</label>
-                <input type="number" id="hellingsgraad" step="0.1" min="0" max="90" value="0" oninput="updateAlles()">
-                <button type="button" onclick="resetForm()">Reset</button>
-            </form>
-            <div id="resultaat"></div>
+        <div class="tabs" id="tabs">
+            <div class="tab active" onclick="switchTab(0)">Dak 1</div>
+            <div class="tab" onclick="switchTab(1)">Dak 2</div>
+            <div class="tab" onclick="switchTab(2)">Dak 3</div>
+            <div class="tab" onclick="switchTab(3)">Dak 4</div>
+            <div class="tab" onclick="switchTab(4)">Dak 5</div>
         </div>
-        <div class="schets-section">
-            <h3>Schets</h3>
-            <canvas id="dakCanvas"></canvas>
+        <div id="dak-containers">
+            <!-- Dak 1 -->
+            <div class="dak-container active" data-dak="0">
+                <div class="input-section">
+                    <form id="dakForm0">
+                        <label for="dakNaam0">Daknaam:</label>
+                        <input type="text" id="dakNaam0" value="Dak 1" oninput="updateAlles(0)">
+                        <label for="vorm0">Dakvorm:</label>
+                        <select id="vorm0" onchange="updateAlles(0)">
+                            <option value="rechthoek">⬜ Rechthoek</option>
+                            <option value="l-vorm">🡒 L-vorm</option>
+                        </select>
+                        <div id="rechthoek0" class="vorm-specifiek">
+                            <label for="lengte0">Lengte (m):</label>
+                            <input type="number" id="lengte0" step="0.1" min="0" value="10" oninput="updateAlles(0)">
+                            <label for="breedte0">Breedte (m):</label>
+                            <input type="number" id="breedte0" step="0.1" min="0" value="5" oninput="updateAlles(0)">
+                            <label>Detailomschrijvingen (4 zijden):</label>
+                            <div class="detail-input"><span>1</span><select id="detail0-1" oninput="updateAlles(0)"><option value="">Kies detail</option><option value="Lood">Lood</option><option value="Afwerkstrook">Afwerkstrook</option><option value="Opgaandwerk">Opgaandwerk</option><option value="Dilatatie">Dilatatie</option><option value="Knelstrip">Knelstrip</option><option value="Overige">Overige</option></select><input type="text" id="oms0-1" placeholder="Extra omschrijving" oninput="updateAlles(0)"></div>
+                            <div class="detail-input"><span>2</span><select id="detail0-2" oninput="updateAlles(0)"><option value="">Kies detail</option><option value="Lood">Lood</option><option value="Afwerkstrook">Afwerkstrook</option><option value="Opgaandwerk">Opgaandwerk</option><option value="Dilatatie">Dilatatie</option><option value="Knelstrip">Knelstrip</option><option value="Overige">Overige</option></select><input type="text" id="oms0-2" placeholder="Extra omschrijving" oninput="updateAlles(0)"></div>
+                            <div class="detail-input"><span>3</span><select id="detail0-3" oninput="updateAlles(0)"><option value="">Kies detail</option><option value="Lood">Lood</option><option value="Afwerkstrook">Afwerkstrook</option><option value="Opgaandwerk">Opgaandwerk</option><option value="Dilatatie">Dilatatie</option><option value="Knelstrip">Knelstrip</option><option value="Overige">Overige</option></select><input type="text" id="oms0-3" placeholder="Extra omschrijving" oninput="updateAlles(0)"></div>
+                            <div class="detail-input"><span>4</span><select id="detail0-4" oninput="updateAlles(0)"><option value="">Kies detail</option><option value="Lood">Lood</option><option value="Afwerkstrook">Afwerkstrook</option><option value="Opgaandwerk">Opgaandwerk</option><option value="Dilatatie">Dilatatie</option><option value="Knelstrip">Knelstrip</option><option value="Overige">Overige</option></select><input type="text" id="oms0-4" placeholder="Extra omschrijving" oninput="updateAlles(0)"></div>
+                        </div>
+                        <div id="l-vorm0" class="vorm-specifiek">
+                            <label for="lengte1-0">Totale lengte (m):</label>
+                            <input type="number" id="lengte1-0" step="0.1" min="0" value="10" oninput="updateAlles(0)">
+                            <label for="breedte1-0">Breedte hoofdzijde (m):</label>
+                            <input type="number" id="breedte1-0" step="0.1" min="0" value="5" oninput="updateAlles(0)">
+                            <label for="lengte2-0">Lengte uitsparing (m):</label>
+                            <input type="number" id="lengte2-0" step="0.1" min="0" value="4" oninput="updateAlles(0)">
+                            <div id="l-vorm-warning0" class="warning"></div>
+                            <label for="breedte2-0">Breedte uitsparing (m):</label>
+                            <input type="number" id="breedte2-0" step="0.1" min="0" value="3" oninput="updateAlles(0)">
+                            <label>Detailomschrijvingen (6 zijden):</label>
+                            <div class="detail-input"><span>1</span><select id="l-detail0-1" oninput="updateAlles(0)"><option value="">Kies detail</option><option value="Lood">Lood</option><option value="Afwerkstrook">Afwerkstrook</option><option value="Opgaandwerk">Opgaandwerk</option><option value="Dilatatie">Dilatatie</option><option value="Knelstrip">Knelstrip</option><option value="Overige">Overige</option></select><input type="text" id="l-oms0-1" placeholder="Extra omschrijving" oninput="updateAlles(0)"></div>
+                            <div class="detail-input"><span>2</span><select id="l-detail0-2" oninput="updateAlles(0)"><option value="">Kies detail</option><option value="Lood">Lood</option><option value="Afwerkstrook">Afwerkstrook</option><option value="Opgaandwerk">Opgaandwerk</option><option value="Dilatatie">Dilatatie</option><option value="Knelstrip">Knelstrip</option><option value="Overige">Overige</option></select><input type="text" id="l-oms0-2" placeholder="Extra omschrijving" oninput="updateAlles(0)"></div>
+                            <div class="detail-input"><span>3</span><select id="l-detail0-3" oninput="updateAlles(0)"><option value="">Kies detail</option><option value="Lood">Lood</option><option value="Afwerkstrook">Afwerkstrook</option><option value="Opgaandwerk">Opgaandwerk</option><option value="Dilatatie">Dilatatie</option><option value="Knelstrip">Knelstrip</option><option value="Overige">Overige</option></select><input type="text" id="l-oms0-3" placeholder="Extra omschrijving" oninput="updateAlles(0)"></div>
+                            <div class="detail-input"><span>4</span><select id="l-detail0-4" oninput="updateAlles(0)"><option value="">Kies detail</option><option value="Lood">Lood</option><option value="Afwerkstrook">Afwerkstrook</option><option value="Opgaandwerk">Opgaandwerk</option><option value="Dilatatie">Dilatatie</option><option value="Knelstrip">Knelstrip</option><option value="Overige">Overige</option></select><input type="text" id="l-oms0-4" placeholder="Extra omschrijving" oninput="updateAlles(0)"></div>
+                            <div class="detail-input"><span>5</span><select id="l-detail0-5" oninput="updateAlles(0)"><option value="">Kies detail</option><option value="Lood">Lood</option><option value="Afwerkstrook">Afwerkstrook</option><option value="Opgaandwerk">Opgaandwerk</option><option value="Dilatatie">Dilatatie</option><option value="Knelstrip">Knelstrip</option><option value="Overige">Overige</option></select><input type="text" id="l-oms0-5" placeholder="Extra omschrijving" oninput="updateAlles(0)"></div>
+                            <div class="detail-input"><span>6</span><select id="l-detail0-6" oninput="updateAlles(0)"><option value="">Kies detail</option><option value="Lood">Lood</option><option value="Afwerkstrook">Afwerkstrook</option><option value="Opgaandwerk">Opgaandwerk</option><option value="Dilatatie">Dilatatie</option><option value="Knelstrip">Knelstrip</option><option value="Overige">Overige</option></select><input type="text" id="l-oms0-6" placeholder="Extra omschrijving" oninput="updateAlles(0)"></div>
+                        </div>
+                        <label for="hellingsgraad0">Hellingsgraad (°):</label>
+                        <input type="number" id="hellingsgraad0" step="0.1" min="0" max="90" value="0" oninput="updateAlles(0)">
+                        <button type="button" onclick="resetForm(0)">Reset</button>
+                        <button type="button" onclick="exportPNG()">Export PNG</button>
+                        <button type="button" onclick="exportPDF()">Export PDF</button>
+                        <button type="button" onclick="zoomIn(0)">Zoom In</button>
+                        <button type="button" onclick="zoomOut(0)">Zoom Uit</button>
+                    </form>
+                    <div id="resultaat0"></div>
+                </div>
+                <div class="schets-section">
+                    <h3>Schets</h3>
+                    <canvas id="dakCanvas0"></canvas>
+                    <div id="legenda0"></div>
+                </div>
+            </div>
+            <!-- Dak 2-5 (dynamisch gegenereerd in JS) -->
         </div>
     </div>
 
     <script>
-        const canvas = document.getElementById('dakCanvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = 400;
-        canvas.height = 400;
+        const { jsPDF } = window.jspdf;
+        const daken = Array(5).fill().map((_, i) => ({
+            canvas: null,
+            ctx: null,
+            zoom: 1
+        }));
 
-        function updateAlles() {
-            const vorm = document.getElementById('vorm').value;
-            const hellingsgraad = parseFloat(document.getElementById('hellingsgraad').value) || 0;
-            let oppervlakte = 0, omtrek = 0, lengtes = [], omschrijvingen = [];
+        const kleuren = {
+            "Lood": "#FF0000",
+            "Afwerkstrook": "#00FF00",
+            "Opgaandwerk": "#FFA500",
+            "Dilatatie": "#800080",
+            "Knelstrip": "#008080",
+            "Overige": "#A9A9A9",
+            "": "#000000"
+        };
 
-            // Toon juiste velden
-            document.getElementById('rechthoek').style.display = vorm === 'rechthoek' ? 'block' : 'none';
-            document.getElementById('l-vorm').style.display = vorm === 'l-vorm' ? 'block' : 'none';
+        // Initialiseer daken
+        function initDaken() {
+            const container = document.getElementById('dak-containers');
+            for (let i = 1; i < 5; i++) {
+                const dakDiv = document.createElement('div');
+                dakDiv.className = 'dak-container';
+                dakDiv.dataset.dak = i;
+                dakDiv.innerHTML = `
+                    <div class="input-section">
+                        <form id="dakForm${i}">
+                            <label for="dakNaam${i}">Daknaam:</label>
+                            <input type="text" id="dakNaam${i}" value="Dak ${i + 1}" oninput="updateAlles(${i})">
+                            <label for="vorm${i}">Dakvorm:</label>
+                            <select id="vorm${i}" onchange="updateAlles(${i})">
+                                <option value="rechthoek">⬜ Rechthoek</option>
+                                <option value="l-vorm">🡒 L-vorm</option>
+                            </select>
+                            <div id="rechthoek${i}" class="vorm-specifiek">
+                                <label for="lengte${i}">Lengte (m):</label>
+                                <input type="number" id="lengte${i}" step="0.1" min="0" value="10" oninput="updateAlles(${i})">
+                                <label for="breedte${i}">Breedte (m):</label>
+                                <input type="number" id="breedte${i}" step="0.1" min="0" value="5" oninput="updateAlles(${i})">
+                                <label>Detailomschrijvingen (4 zijden):</label>
+                                ${[1, 2, 3, 4].map(j => `
+                                    <div class="detail-input">
+                                        <span>${j}</span>
+                                        <select id="detail${i}-${j}" oninput="updateAlles(${i})">
+                                            <option value="">Kies detail</option>
+                                            <option value="Lood">Lood</option>
+                                            <option value="Afwerkstrook">Afwerkstrook</option>
+                                            <option value="Opgaandwerk">Opgaandwerk</option>
+                                            <option value="Dilatatie">Dilatatie</option>
+                                            <option value="Knelstrip">Knelstrip</option>
+                                            <option value="Overige">Overige</option>
+                                        </select>
+                                        <input type="text" id="oms${i}-${j}" placeholder="Extra omschrijving" oninput="updateAlles(${i})">
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div id="l-vorm${i}" class="vorm-specifiek">
+                                <label for="lengte1-${i}">Totale lengte (m):</label>
+                                <input type="number" id="lengte1-${i}" step="0.1" min="0" value="10" oninput="updateAlles(${i})">
+                                <label for="breedte1-${i}">Breedte hoofdzijde (m):</label>
+                                <input type="number" id="breedte1-${i}" step="0.1" min="0" value="5" oninput="updateAlles(${i})">
+                                <label for="lengte2-${i}">Lengte uitsparing (m):</label>
+                                <input type="number" id="lengte2-${i}" step="0.1" min="0" value="4" oninput="updateAlles(${i})">
+                                <div id="l-vorm-warning${i}" class="warning"></div>
+                                <label for="breedte2-${i}">Breedte uitsparing (m):</label>
+                                <input type="number" id="breedte2-${i}" step="0.1" min="0" value="3" oninput="updateAlles(${i})">
+                                <label>Detailomschrijvingen (6 zijden):</label>
+                                ${[1, 2, 3, 4, 5, 6].map(j => `
+                                    <div class="detail-input">
+                                        <span>${j}</span>
+                                        <select id="l-detail${i}-${j}" oninput="updateAlles(${i})">
+                                            <option value="">Kies detail</option>
+                                            <option value="Lood">Lood</option>
+                                            <option value="Afwerkstrook">Afwerkstrook</option>
+                                            <option value="Opgaandwerk">Opgaandwerk</option>
+                                            <option value="Dilatatie">Dilatatie</option>
+                                            <option value="Knelstrip">Knelstrip</option>
+                                            <option value="Overige">Overige</option>
+                                        </select>
+                                        <input type="text" id="l-oms${i}-${j}" placeholder="Extra omschrijving" oninput="updateAlles(${i})">
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <label for="hellingsgraad${i}">Hellingsgraad (°):</label>
+                            <input type="number" id="hellingsgraad${i}" step="0.1" min="0" max="90" value="0" oninput="updateAlles(${i})">
+                            <button type="button" onclick="resetForm(${i})">Reset</button>
+                            <button type="button" onclick="exportPNG()">Export PNG</button>
+                            <button type="button" onclick="exportPDF()">Export PDF</button>
+                            <button type="button" onclick="zoomIn(${i})">Zoom In</button>
+                            <button type="button" onclick="zoomOut(${i})">Zoom Uit</button>
+                        </form>
+                        <div id="resultaat${i}"></div>
+                    </div>
+                    <div class="schets-section">
+                        <h3>Schets</h3>
+                        <canvas id="dakCanvas${i}"></canvas>
+                        <div id="legenda${i}"></div>
+                    </div>
+                `;
+                container.appendChild(dakDiv);
+            }
+            daken.forEach((dak, i) => {
+                dak.canvas = document.getElementById(`dakCanvas${i}`);
+                dak.ctx = dak.canvas.getContext('2d');
+                dak.canvas.width = 400;
+                dak.canvas.height = 400;
+            });
+            updateAlles(0);
+        }
+
+        function switchTab(index) {
+            const tabs = document.querySelectorAll('.tab');
+            const containers = document.querySelectorAll('.dak-container');
+            tabs.forEach((tab, i) => {
+                tab.classList.toggle('active', i === index);
+                tab.textContent = document.getElementById(`dakNaam${i}`).value;
+            });
+            containers.forEach((container, i) => {
+                container.classList.toggle('active', i === index);
+            });
+            updateAlles(index);
+        }
+
+        function updateAlles(dakIndex) {
+            const vorm = document.getElementById(`vorm${dakIndex}`).value;
+            const hellingsgraad = parseFloat(document.getElementById(`hellingsgraad${dakIndex}`).value) || 0;
+            let oppervlakte = 0, omtrek = 0, lengtes = [], omschrijvingen = [], detailsList = [];
+
+            document.getElementById(`rechthoek${dakIndex}`).style.display = vorm === 'rechthoek' ? 'block' : 'none';
+            document.getElementById(`l-vorm${dakIndex}`).style.display = vorm === 'l-vorm' ? 'block' : 'none';
 
             if (vorm === 'rechthoek') {
-                const lengte = parseFloat(document.getElementById('lengte').value) || 0;
-                const breedte = parseFloat(document.getElementById('breedte').value) || 0;
+                const lengte = parseFloat(document.getElementById(`lengte${dakIndex}`).value) || 0;
+                const breedte = parseFloat(document.getElementById(`breedte${dakIndex}`).value) || 0;
                 oppervlakte = lengte * breedte;
                 omtrek = 2 * (lengte + breedte);
                 lengtes = [lengte, breedte, lengte, breedte];
-                omschrijvingen = [1, 2, 3, 4].map(i => document.getElementById(`oms${i}`).value || `Zijde ${i}`);
-                tekenRechthoek(lengte, breedte);
+                detailsList = [1, 2, 3, 4].map(i => ({
+                    detail: document.getElementById(`detail${dakIndex}-${i}`).value,
+                    oms: document.getElementById(`oms${dakIndex}-${i}`).value || ''
+                }));
+                omschrijvingen = detailsList.map(d => d.detail + (d.oms ? ` - ${d.oms}` : ''));
+                tekenRechthoek(dakIndex, lengte, breedte, detailsList);
             } else if (vorm === 'l-vorm') {
-                const lengte1 = parseFloat(document.getElementById('lengte1').value) || 0;
-                const breedte1 = parseFloat(document.getElementById('breedte1').value) || 0;
-                const lengte2 = parseFloat(document.getElementById('lengte2').value) || 0;
-                const breedte2 = parseFloat(document.getElementById('breedte2').value) || 0;
-                oppervlakte = (lengte1 * breedte1) + (lengte2 * breedte2);
+                const lengte1 = parseFloat(document.getElementById(`lengte1-${dakIndex}`).value) || 0;
+                const breedte1 = parseFloat(document.getElementById(`breedte1-${dakIndex}`).value) || 0;
+                const lengte2 = parseFloat(document.getElementById(`lengte2-${dakIndex}`).value) || 0;
+                const breedte2 = parseFloat(document.getElementById(`breedte2-${dakIndex}`).value) || 0;
+                const warningDiv = document.getElementById(`l-vorm-warning${dakIndex}`);
+                if (lengte2 > lengte1 - breedte2) {
+                    warningDiv.textContent = "Waarschuwing: Lengte uitsparing mag niet groter zijn dan totale lengte minus breedte uitsparing!";
+                    return;
+                } else {
+                    warningDiv.textContent = "";
+                }
+                oppervlakte = (lengte1 * breedte1) - (breedte2 * (lengte1 - lengte2)); // Correcte oppervlakte
                 omtrek = lengte1 + breedte1 + lengte2 + (breedte1 + breedte2) + (lengte1 - lengte2) + breedte2;
                 lengtes = [lengte1, breedte1, lengte2, breedte1 + breedte2, lengte1 - lengte2, breedte2];
-                omschrijvingen = [1, 2, 3, 4, 5, 6].map(i => document.getElementById(`l-oms${i}`).value || `Zijde ${i}`);
-                tekenLVorm(lengte1, breedte1, lengte2, breedte2);
+                detailsList = [1, 2, 3, 4, 5, 6].map(i => ({
+                    detail: document.getElementById(`l-detail${dakIndex}-${i}`).value,
+                    oms: document.getElementById(`l-oms${dakIndex}-${i}`).value || ''
+                }));
+                omschrijvingen = detailsList.map(d => d.detail + (d.oms ? ` - ${d.oms}` : ''));
+                tekenLVorm(dakIndex, lengte1, breedte1, lengte2, breedte2, detailsList);
             }
 
-            // Hellingsgraadcorrectie
             if (hellingsgraad > 0) {
                 const cosinus = Math.cos(hellingsgraad * Math.PI / 180);
                 oppervlakte = oppervlakte / cosinus;
             }
 
-            // Detailomschrijvingen sommen
             const details = somDetailnummers(lengtes, omschrijvingen);
 
-            // Resultaat tonen
-            const resultaatDiv = document.getElementById('resultaat');
+            const resultaatDiv = document.getElementById(`resultaat${dakIndex}`);
             let detailText = '<h4>Details:</h4><ul>';
             for (const [oms, lengte] of Object.entries(details)) {
                 detailText += `<li>${oms}: ${lengte.toFixed(2)} m</li>`;
@@ -187,6 +374,17 @@
                 <p>Totale omtrek: ${omtrek.toFixed(2)} m</p>
                 ${detailText}
             `;
+
+            const legendaDiv = document.getElementById(`legenda${dakIndex}`);
+            let legendaText = '<h4>Legenda:</h4><ul>';
+            detailsList.forEach((d, i) => {
+                const oms = d.detail + (d.oms ? ` - ${d.oms}` : '');
+                legendaText += `<li><span style="color: ${kleuren[d.detail] || '#000000'}">⬤</span> ${i + 1}: ${oms}</li>`;
+            });
+            legendaText += '</ul>';
+            legendaDiv.innerHTML = legendaText;
+
+            document.querySelectorAll('.tab')[dakIndex].textContent = document.getElementById(`dakNaam${dakIndex}`).value;
         }
 
         function somDetailnummers(lengtes, omschrijvingen) {
@@ -198,77 +396,129 @@
             return details;
         }
 
-        function tekenRechthoek(lengte, breedte) {
+        function tekenRechthoek(dakIndex, lengte, breedte, detailsList) {
+            const ctx = daken[dakIndex].ctx;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const schaal = Math.min(350 / lengte, 350 / breedte) || 1;
+            const schaal = Math.min(350 / lengte, 350 / breedte) * daken[dakIndex].zoom || daken[dakIndex].zoom;
             const x = (canvas.width - lengte * schaal) / 2;
             const y = (canvas.height - breedte * schaal) / 2;
-            ctx.beginPath();
-            ctx.rect(x, y, lengte * schaal, breedte * schaal);
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            tekenNummers([
-                [x, y, x + lengte * schaal, y], // Boven
-                [x + lengte * schaal, y, x + lengte * schaal, y + breedte * schaal], // Rechts
-                [x + lengte * schaal, y + breedte * schaal, x, y + breedte * schaal], // Onder
-                [x, y + breedte * schaal, x, y] // Links
-            ], 4);
+            const lijnen = [
+                [x, y, x + lengte * schaal, y, lengte, "Boven"],
+                [x + lengte * schaal, y, x + lengte * schaal, y + breedte * schaal, breedte, "Rechts"],
+                [x + lengte * schaal, y + breedte * schaal, x, y + breedte * schaal, lengte, "Onder"],
+                [x, y + breedte * schaal, x, y, breedte, "Links"]
+            ];
+            lijnen.forEach((lijn, i) => {
+                ctx.beginPath();
+                ctx.moveTo(lijn[0], lijn[1]);
+                ctx.lineTo(lijn[2], lijn[3]);
+                ctx.strokeStyle = kleuren[detailsList[i].detail] || '#000000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+            tekenNummersEnLabels(dakIndex, lijnen, detailsList);
         }
 
-        function tekenLVorm(lengte1, breedte1, lengte2, breedte2) {
+        function tekenLVorm(dakIndex, lengte1, breedte1, lengte2, breedte2, detailsList) {
+            const ctx = daken[dakIndex].ctx;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const schaal = Math.min(350 / lengte1, 350 / (breedte1 + breedte2)) || 1;
+            const schaal = Math.min(350 / lengte1, 350 / (breedte1 + breedte2)) * daken[dakIndex].zoom || daken[dakIndex].zoom;
             const x = (canvas.width - lengte1 * schaal) / 2;
             const y = (canvas.height - (breedte1 + breedte2) * schaal) / 2;
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x + lengte1 * schaal, y);
-            ctx.lineTo(x + lengte1 * schaal, y + breedte1 * schaal);
-            ctx.lineTo(x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal);
-            ctx.lineTo(x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal);
-            ctx.lineTo(x, y + (breedte1 + breedte2) * schaal);
-            ctx.closePath();
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            tekenNummers([
-                [x, y, x + lengte1 * schaal, y],
-                [x + lengte1 * schaal, y, x + lengte1 * schaal, y + breedte1 * schaal],
-                [x + lengte1 * schaal, y + breedte1 * schaal, x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal],
-                [x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal, x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal],
-                [x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal, x, y + (breedte1 + breedte2) * schaal],
-                [x, y + (breedte1 + breedte2) * schaal, x, y]
-            ], 6);
+            const lijnen = [
+                [x, y, x + lengte1 * schaal, y, lengte1, "Boven"],
+                [x + lengte1 * schaal, y, x + lengte1 * schaal, y + breedte1 * schaal, breedte1, "Rechts boven"],
+                [x + lengte1 * schaal, y + breedte1 * schaal, x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal, lengte2, "Midden rechts"],
+                [x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal, x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal, breedte2, "Rechts onder"],
+                [x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal, x, y + (breedte1 + breedte2) * schaal, lengte1 - lengte2, "Onder"],
+                [x, y + (breedte1 + breedte2) * schaal, x, y, breedte1 + breedte2, "Links"]
+            ];
+            lijnen.forEach((lijn, i) => {
+                ctx.beginPath();
+                ctx.moveTo(lijn[0], lijn[1]);
+                ctx.lineTo(lijn[2], lijn[3]);
+                ctx.strokeStyle = kleuren[detailsList[i].detail] || '#000000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+            tekenNummersEnLabels(dakIndex, lijnen, detailsList);
         }
 
-        function tekenNummers(lijnen, aantal) {
-            ctx.font = '14px Arial';
-            ctx.fillStyle = 'red';
+        function tekenNummersEnLabels(dakIndex, lijnen, detailsList) {
+            const ctx = daken[dakIndex].ctx;
+            ctx.font = '12px Arial';
+            ctx.fillStyle = 'black';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            lijnen.slice(0, aantal).forEach((lijn, i) => {
+            lijnen.forEach((lijn, i) => {
                 const middenX = (lijn[0] + lijn[2]) / 2;
                 const middenY = (lijn[1] + lijn[3]) / 2;
-                ctx.fillText(i + 1, middenX, middenY);
+                ctx.fillStyle = 'red';
+                ctx.fillText(i + 1, middenX, middenY - 10);
+                ctx.fillStyle = 'black';
+                ctx.fillText(`${lijn[4].toFixed(1)}m (${lijn[5]})`, middenX, middenY + 10);
             });
         }
 
-        function resetForm() {
-            document.getElementById('dakForm').reset();
-            document.getElementById('lengte').value = 10;
-            document.getElementById('breedte').value = 5;
-            document.getElementById('lengte1').value = 10;
-            document.getElementById('breedte1').value = 5;
-            document.getElementById('lengte2').value = 4;
-            document.getElementById('breedte2').value = 3;
-            document.getElementById('hellingsgraad').value = 0;
-            document.getElementById('resultaat').innerHTML = '';
-            updateAlles();
+        function zoomIn(dakIndex) {
+            daken[dakIndex].zoom *= 1.2;
+            updateAlles(dakIndex);
         }
 
-        // Initiele weergave
-        updateAlles();
+        function zoomOut(dakIndex) {
+            daken[dakIndex].zoom /= 1.2;
+            if (daken[dakIndex].zoom < 0.5) daken[dakIndex].zoom = 0.5;
+            updateAlles(dakIndex);
+        }
+
+        function exportPNG() {
+            html2canvas(document.querySelector('.container')).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'dakvormen.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+
+        function exportPDF() {
+            const pdf = new jsPDF();
+            let yOffset = 10;
+            const promises = Array.from(document.querySelectorAll('.dak-container')).map((container, i) => {
+                return html2canvas(container).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const imgProps = pdf.getImageProperties(imgData);
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                    if (yOffset + pdfHeight > pdf.internal.pageSize.getHeight()) {
+                        pdf.addPage();
+                        yOffset = 10;
+                    }
+                    pdf.addImage(imgData, 'PNG', 0, yOffset, pdfWidth, pdfHeight);
+                    yOffset += pdfHeight + 10;
+                });
+            });
+            Promise.all(promises).then(() => {
+                pdf.save('dakvormen.pdf');
+            });
+        }
+
+        function resetForm(dakIndex) {
+            document.getElementById(`dakForm${dakIndex}`).reset();
+            document.getElementById(`dakNaam${dakIndex}`).value = `Dak ${dakIndex + 1}`;
+            document.getElementById(`lengte${dakIndex}`).value = 10;
+            document.getElementById(`breedte${dakIndex}`).value = 5;
+            document.getElementById(`lengte1-${dakIndex}`).value = 10;
+            document.getElementById(`breedte1-${dakIndex}`).value = 5;
+            document.getElementById(`lengte2-${dakIndex}`).value = 4;
+            document.getElementById(`breedte2-${dakIndex}`).value = 3;
+            document.getElementById(`hellingsgraad${dakIndex}`).value = 0;
+            document.getElementById(`l-vorm-warning${dakIndex}`).textContent = '';
+            daken[dakIndex].zoom = 1;
+            updateAlles(dakIndex);
+        }
+
+        // Initiele setup
+        initDaken();
     </script>
 </body>
 </html>
