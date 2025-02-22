@@ -167,7 +167,7 @@
                         <div id="breedte-error" class="error">Voer een getal groter dan 0 in</div>
                         <label>Detailomschrijvingen (4 zijden):</label>
                         <div class="detail-input">
-                            <select id="detail1" oninput="updateAlles()" aria-label="Detail voor zijde 1">
+                            <select id="detail1" onchange="updateKleurPreset(this, 'kleur1'); updateAlles()" aria-label="Detail voor zijde 1">
                                 <option value="">Kies detail (1)</option>
                                 <option value="Lood">Lood (1)</option>
                                 <option value="Afwerkstrook">Afwerkstrook (1)</option>
@@ -178,10 +178,10 @@
                                 <option value="Opgaandwerk">Opgaandwerk (1)</option>
                             </select>
                             <input type="text" id="oms1" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 1">
-                            <input type="color" id="kleur1" value="#FF4136" oninput="updateKleuren(); updateAlles()" aria-label="Kleur voor zijde 1">
+                            <input type="color" id="kleur1" value="#FF4136" oninput="updateAlles()" aria-label="Kleur voor zijde 1">
                         </div>
                         <div class="detail-input">
-                            <select id="detail2" oninput="updateAlles()" aria-label="Detail voor zijde 2">
+                            <select id="detail2" onchange="updateKleurPreset(this, 'kleur2'); updateAlles()" aria-label="Detail voor zijde 2">
                                 <option value="">Kies detail (2)</option>
                                 <option value="Lood">Lood (2)</option>
                                 <option value="Afwerkstrook">Afwerkstrook (2)</option>
@@ -192,10 +192,10 @@
                                 <option value="Opgaandwerk">Opgaandwerk (2)</option>
                             </select>
                             <input type="text" id="oms2" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 2">
-                            <input type="color" id="kleur2" value="#2ECC40" oninput="updateKleuren(); updateAlles()" aria-label="Kleur voor zijde 2">
+                            <input type="color" id="kleur2" value="#2ECC40" oninput="updateAlles()" aria-label="Kleur voor zijde 2">
                         </div>
                         <div class="detail-input">
-                            <select id="detail3" oninput="updateAlles()" aria-label="Detail voor zijde 3">
+                            <select id="detail3" onchange="updateKleurPreset(this, 'kleur3'); updateAlles()" aria-label="Detail voor zijde 3">
                                 <option value="">Kies detail (3)</option>
                                 <option value="Lood">Lood (3)</option>
                                 <option value="Afwerkstrook">Afwerkstrook (3)</option>
@@ -206,10 +206,10 @@
                                 <option value="Opgaandwerk">Opgaandwerk (3)</option>
                             </select>
                             <input type="text" id="oms3" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 3">
-                            <input type="color" id="kleur3" value="#7FDBFF" oninput="updateKleuren(); updateAlles()" aria-label="Kleur voor zijde 3">
+                            <input type="color" id="kleur3" value="#7FDBFF" oninput="updateAlles()" aria-label="Kleur voor zijde 3">
                         </div>
                         <div class="detail-input">
-                            <select id="detail4" oninput="updateAlles()" aria-label="Detail voor zijde 4">
+                            <select id="detail4" onchange="updateKleurPreset(this, 'kleur4'); updateAlles()" aria-label="Detail voor zijde 4">
                                 <option value="">Kies detail (4)</option>
                                 <option value="Lood">Lood (4)</option>
                                 <option value="Afwerkstrook">Afwerkstrook (4)</option>
@@ -220,7 +220,7 @@
                                 <option value="Opgaandwerk">Opgaandwerk (4)</option>
                             </select>
                             <input type="text" id="oms4" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 4">
-                            <input type="color" id="kleur4" value="#FFDC00" oninput="updateKleuren(); updateAlles()" aria-label="Kleur voor zijde 4">
+                            <input type="color" id="kleur4" value="#FFDC00" oninput="updateAlles()" aria-label="Kleur voor zijde 4">
                         </div>
                     </div>
 
@@ -240,7 +240,7 @@
                         <div id="breedte2-error" class="error">Voer een getal groter dan 0 in</div>
                         <label>Detailomschrijvingen (6 zijden):</label>
                         <div class="detail-input">
-                            <select id="l-detail1" oninput="updateAlles()" aria-label="Detail voor zijde 1 van L-vorm">
+                            <select id="l-detail1" onchange="updateKleurPreset(this, 'l-kleur1'); updateAlles()" aria-label="Detail voor zijde 1 van L-vorm">
                                 <option value="">Kies detail (1 - Lengte deel 1)</option>
                                 <option value="Lood">Lood (1)</option>
                                 <option value="Afwerkstrook">Afwerkstrook (1)</option>
@@ -251,10 +251,10 @@
                                 <option value="Opgaandwerk">Opgaandwerk (1)</option>
                             </select>
                             <input type="text" id="l-oms1" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 1 van L-vorm">
-                            <input type="color" id="l-kleur1" value="#FF4136" oninput="updateKleuren(); updateAlles()" aria-label="Kleur voor zijde 1 van L-vorm">
+                            <input type="color" id="l-kleur1" value="#FF4136" oninput="updateAlles()" aria-label="Kleur voor zijde 1 van L-vorm">
                         </div>
                         <div class="detail-input">
-                            <select id="l-detail2" oninput="updateAlles()" aria-label="Detail voor zijde 2 van L-vorm">
+                            <select id="l-detail2" onchange="updateKleurPreset(this, 'l-kleur2'); updateAlles()" aria-label="Detail voor zijde 2 van L-vorm">
                                 <option value="">Kies detail (2 - Breedte deel 1)</option>
                                 <option value="Lood">Lood (2)</option>
                                 <option value="Afwerkstrook">Afwerkstrook (2)</option>
@@ -265,10 +265,10 @@
                                 <option value="Opgaandwerk">Opgaandwerk (2)</option>
                             </select>
                             <input type="text" id="l-oms2" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 2 van L-vorm">
-                            <input type="color" id="l-kleur2" value="#2ECC40" oninput="updateKleuren(); updateAlles()" aria-label="Kleur voor zijde 2 van L-vorm">
+                            <input type="color" id="l-kleur2" value="#2ECC40" oninput="updateAlles()" aria-label="Kleur voor zijde 2 van L-vorm">
                         </div>
                         <div class="detail-input">
-                            <select id="l-detail3" oninput="updateAlles()" aria-label="Detail voor zijde 3 van L-vorm">
+                            <select id="l-detail3" onchange="updateKleurPreset(this, 'l-kleur3'); updateAlles()" aria-label="Detail voor zijde 3 van L-vorm">
                                 <option value="">Kies detail (3 - Lengte deel 2)</option>
                                 <option value="Lood">Lood (3)</option>
                                 <option value="Afwerkstrook">Afwerkstrook (3)</option>
@@ -279,10 +279,10 @@
                                 <option value="Opgaandwerk">Opgaandwerk (3)</option>
                             </select>
                             <input type="text" id="l-oms3" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 3 van L-vorm">
-                            <input type="color" id="l-kleur3" value="#7FDBFF" oninput="updateKleuren(); updateAlles()" aria-label="Kleur voor zijde 3 van L-vorm">
+                            <input type="color" id="l-kleur3" value="#7FDBFF" oninput="updateAlles()" aria-label="Kleur voor zijde 3 van L-vorm">
                         </div>
                         <div class="detail-input">
-                            <select id="l-detail4" oninput="updateAlles()" aria-label="Detail voor zijde 4 van L-vorm">
+                            <select id="l-detail4" onchange="updateKleurPreset(this, 'l-kleur4'); updateAlles()" aria-label="Detail voor zijde 4 van L-vorm">
                                 <option value="">Kies detail (4 - Breedte deel 2)</option>
                                 <option value="Lood">Lood (4)</option>
                                 <option value="Afwerkstrook">Afwerkstrook (4)</option>
@@ -293,10 +293,10 @@
                                 <option value="Opgaandwerk">Opgaandwerk (4)</option>
                             </select>
                             <input type="text" id="l-oms4" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 4 van L-vorm">
-                            <input type="color" id="l-kleur4" value="#FFDC00" oninput="updateKleuren(); updateAlles()" aria-label="Kleur voor zijde 4 van L-vorm">
+                            <input type="color" id="l-kleur4" value="#FFDC00" oninput="updateAlles()" aria-label="Kleur voor zijde 4 van L-vorm">
                         </div>
                         <div class="detail-input">
-                            <select id="l-detail5" oninput="updateAlles()" aria-label="Detail voor zijde 5 van L-vorm">
+                            <select id="l-detail5" onchange="updateKleurPreset(this, 'l-kleur5'); updateAlles()" aria-label="Detail voor zijde 5 van L-vorm">
                                 <option value="">Kies detail (5 - Lengte deel 1 - Lengte deel 2)</option>
                                 <option value="Lood">Lood (5)</option>
                                 <option value="Afwerkstrook">Afwerkstrook (5)</option>
@@ -307,10 +307,10 @@
                                 <option value="Opgaandwerk">Opgaandwerk (5)</option>
                             </select>
                             <input type="text" id="l-oms5" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 5 van L-vorm">
-                            <input type="color" id="l-kleur5" value="#AAAAAA" oninput="updateKleuren(); updateAlles()" aria-label="Kleur voor zijde 5 van L-vorm">
+                            <input type="color" id="l-kleur5" value="#AAAAAA" oninput="updateAlles()" aria-label="Kleur voor zijde 5 van L-vorm">
                         </div>
                         <div class="detail-input">
-                            <select id="l-detail6" oninput="updateAlles()" aria-label="Detail voor zijde 6 van L-vorm">
+                            <select id="l-detail6" onchange="updateKleurPreset(this, 'l-kleur6'); updateAlles()" aria-label="Detail voor zijde 6 van L-vorm">
                                 <option value="">Kies detail (6 - Breedte deel 1 + Breedte deel 2)</option>
                                 <option value="Lood">Lood (6)</option>
                                 <option value="Afwerkstrook">Afwerkstrook (6)</option>
@@ -321,8 +321,10 @@
                                 <option value="Opgaandwerk">Opgaandwerk (6)</option>
                             </select>
                             <input type="text" id="l-oms6" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 6 van L-vorm">
-                            <input type="color" id="l-kleur6" value="#FF851B" oninput="updateKleuren(); updateAlles()" aria-label="Kleur voor zijde 6 van L-vorm">
+                            <input type="color" id="l-kleur6" value="#FF851B" oninput="updateAlles()" aria-label="Kleur voor zijde 6 van L-vorm">
                         </div>
+                        <label for="spiegel">Spiegel L-vorm:</label>
+                        <input type="checkbox" id="spiegel" oninput="updateAlles()" aria-label="Spiegel de L-vorm schets horizontaal">
                     </div>
 
                     <label for="hellingsgraad">Hellingsgraad (°):</label>
@@ -339,10 +341,16 @@
             <div id="waarnemingen" class="tab-content">
                 <label for="daknaam-waarnemingen">Daknaam:</label>
                 <input type="text" id="daknaam-waarnemingen" readonly aria-label="Naam van het dak" value="Dak 1">
+                <label for="dakhoogte">Dakhoogte (m, indien bekend):</label>
+                <input type="number" id="dakhoogte" step="0.1" min="0" placeholder="Bijv. 5.5" aria-label="Hoogte van het dak in meters">
                 <label for="dakopbouw">Dakopbouw:</label>
                 <textarea id="dakopbouw" rows="3" placeholder="Bijv. Bitumen, isolatie, grind" aria-label="Beschrijving van de dakopbouw"></textarea>
                 <label for="gebreken">Gebreken:</label>
                 <textarea id="gebreken" rows="3" placeholder="Bijv. Scheuren, lekkages" aria-label="Geconstateerde gebreken op het dak"></textarea>
+                <label for="venster-details">Vensterdetails (ontluchtingen, afvoeren, noodafvoeren):</label>
+                <textarea id="venster-details" rows="3" placeholder="Bijv. 2 ontluchtingen, 1 afvoer" aria-label="Details van vensters zoals ontluchtingen en afvoeren"></textarea>
+                <label for="situatie-omgeving">Situatie/Omgeving:</label>
+                <textarea id="situatie-omgeving" rows="3" placeholder="Bijv. Nabij bomen, stedelijk gebied" aria-label="Opmerkingen over situatie en omgeving"></textarea>
                 <label for="waarnemingen-extra">Extra waarnemingen:</label>
                 <textarea id="waarnemingen-extra" rows="3" placeholder="Bijv. Toegankelijkheid, bijzonderheden" aria-label="Extra waarnemingen over het dak"></textarea>
                 <label for="toestand">Algemene onderhoudsstaat (NEN 2767):</label>
@@ -375,7 +383,7 @@
         canvas.height = 400;
         let zoom = 1;
 
-        let kleuren = {
+        const kleurPresets = {
             "Lood": "#FF4136",
             "Afwerkstrook": "#2ECC40",
             "Dilatatie": "#7FDBFF",
@@ -385,16 +393,12 @@
             "Opgaandwerk": "#FF851B",
             "": "#333333"
         };
+        let kleuren = { ...kleurPresets };
 
-        function updateKleuren() {
-            const vorm = document.getElementById('vorm').value;
-            const prefix = vorm === 'rechthoek' ? '' : 'l-';
-            const zijden = vorm === 'rechthoek' ? 4 : 6;
-            for (let i = 1; i <= zijden; i++) {
-                const detail = document.getElementById(`${prefix}detail${i}`).value;
-                const kleur = document.getElementById(`${prefix}kleur${i}`).value;
-                if (detail) kleuren[detail] = kleur;
-            }
+        function updateKleurPreset(select, kleurId) {
+            const kleurInput = document.getElementById(kleurId);
+            kleurInput.value = kleurPresets[select.value] || "#333333";
+            updateAlles();
         }
 
         function switchTab(tabId) {
@@ -428,6 +432,7 @@
             const vorm = document.getElementById('vorm').value;
             const daknaam = document.getElementById('daknaam').value;
             const hellingsgraad = parseFloat(document.getElementById('hellingsgraad').value) || 0;
+            const spiegel = document.getElementById('spiegel')?.checked || false;
             let oppervlakte = 0, omtrek = 0, lengtes = [], omschrijvingen = [], detailsList = [];
 
             document.getElementById('rechthoek').style.display = vorm === 'rechthoek' ? 'block' : 'none';
@@ -458,16 +463,18 @@
                 const breedte1 = parseFloat(document.getElementById('breedte1').value) || 0;
                 const lengte2 = parseFloat(document.getElementById('lengte2').value) || 0;
                 const breedte2 = parseFloat(document.getElementById('breedte2').value) || 0;
-                oppervlakte = (lengte1 * breedte1) + (lengte2 * breedte2);
-                omtrek = lengte1 + breedte1 + lengte2 + (breedte1 + breedte2) + (lengte1 - lengte2) + breedte2;
-                lengtes = [lengte1, breedte1, lengte2, breedte2, lengte1 - lengte2, breedte1 + breedte2];
+                const lengte5 = lengte1 - lengte2;
+                const lengte4 = breedte2;
+                oppervlakte = (lengte1 * lengte2) + (lengte5 * lengte4);
+                omtrek = lengte1 + breedte1 + lengte2 + breedte2 + lengte5 + (breedte1 + breedte2);
+                lengtes = [lengte1, breedte1, lengte2, breedte2, lengte5, breedte1 + breedte2];
                 detailsList = [1, 2, 3, 4, 5, 6].map(i => ({
                     detail: document.getElementById(`l-detail${i}`).value,
                     oms: document.getElementById(`l-oms${i}`).value || '',
                     kleur: document.getElementById(`l-kleur${i}`).value
                 }));
                 omschrijvingen = detailsList.map(d => d.detail + (d.oms ? ` - ${d.oms}` : ''));
-                tekenLVorm(lengte1, breedte1, lengte2, breedte2, detailsList);
+                tekenLVorm(lengte1, breedte1, lengte2, breedte2, detailsList, spiegel);
             }
 
             if (hellingsgraad > 0) {
@@ -490,7 +497,7 @@
             `;
 
             updateLegenda(detailsList);
-            updateSchetsBeschrijving(vorm, lengtes, omschrijvingen, daknaam);
+            updateSchetsBeschrijving(vorm, lengtes, omschrijvingen, daknaam, spiegel);
         }
 
         function somDetailnummers(lengtes, omschrijvingen) {
@@ -524,19 +531,31 @@
             tekenNummersEnLabels(lijnen, detailsList);
         }
 
-        function tekenLVorm(lengte1, breedte1, lengte2, breedte2, detailsList) {
+        function tekenLVorm(lengte1, breedte1, lengte2, breedte2, detailsList, spiegel) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const schaal = Math.min(350 / lengte1, 350 / (breedte1 + breedte2)) * zoom || zoom;
             const x = (canvas.width - lengte1 * schaal) / 2;
             const y = (canvas.height - (breedte1 + breedte2) * schaal) / 2;
-            const lijnen = [
-                [x, y, x + lengte1 * schaal, y, lengte1], // 1: Lengte deel 1 (boven)
-                [x + lengte1 * schaal, y, x + lengte1 * schaal, y + breedte1 * schaal, breedte1], // 2: Breedte deel 1 (rechts)
-                [x + lengte1 * schaal, y + breedte1 * schaal, x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal, lengte2], // 3: Lengte deel 2 (midden rechts)
-                [x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal, x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal, breedte2], // 4: Breedte deel 2 (midden onder)
-                [x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal, x, y + (breedte1 + breedte2) * schaal, lengte1 - lengte2], // 5: Lengte deel 1 - Lengte deel 2 (onder)
-                [x, y + (breedte1 + breedte2) * schaal, x, y, breedte1 + breedte2] // 6: Breedte deel 1 + Breedte deel 2 (links)
-            ];
+            let lijnen;
+            if (!spiegel) {
+                lijnen = [
+                    [x, y, x + lengte1 * schaal, y, lengte1], // 1: Lengte deel 1 (boven)
+                    [x + lengte1 * schaal, y, x + lengte1 * schaal, y + breedte1 * schaal, breedte1], // 2: Breedte deel 1 (rechts)
+                    [x + lengte1 * schaal, y + breedte1 * schaal, x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal, lengte2], // 3: Lengte deel 2 (midden rechts)
+                    [x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal, x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal, breedte2], // 4: Breedte deel 2 (midden onder)
+                    [x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal, x, y + (breedte1 + breedte2) * schaal, lengte1 - lengte2], // 5: Lengte deel 1 - Lengte deel 2 (onder)
+                    [x, y + (breedte1 + breedte2) * schaal, x, y, breedte1 + breedte2] // 6: Breedte deel 1 + Breedte deel 2 (links)
+                ];
+            } else {
+                lijnen = [
+                    [x + lengte1 * schaal, y, x, y, lengte1], // 1: Lengte deel 1 (boven, gespiegeld)
+                    [x, y, x, y + breedte1 * schaal, breedte1], // 2: Breedte deel 1 (links)
+                    [x, y + breedte1 * schaal, x + lengte2 * schaal, y + breedte1 * schaal, lengte2], // 3: Lengte deel 2 (midden links)
+                    [x + lengte2 * schaal, y + breedte1 * schaal, x + lengte2 * schaal, y + (breedte1 + breedte2) * schaal, breedte2], // 4: Breedte deel 2 (midden onder)
+                    [x + lengte2 * schaal, y + (breedte1 + breedte2) * schaal, x + lengte1 * schaal, y + (breedte1 + breedte2) * schaal, lengte1 - lengte2], // 5: Lengte deel 1 - Lengte deel 2 (onder)
+                    [x + lengte1 * schaal, y + (breedte1 + breedte2) * schaal, x + lengte1 * schaal, y, breedte1 + breedte2] // 6: Breedte deel 1 + Breedte deel 2 (rechts)
+                ];
+            }
             lijnen.forEach((lijn, i) => {
                 ctx.beginPath();
                 ctx.moveTo(lijn[0], lijn[1]);
@@ -573,9 +592,9 @@
             legendaContent.innerHTML = html;
         }
 
-        function updateSchetsBeschrijving(vorm, lengtes, omschrijvingen, daknaam) {
+        function updateSchetsBeschrijving(vorm, lengtes, omschrijvingen, daknaam, spiegel) {
             const beschrijving = document.getElementById('schets-beschrijving');
-            let text = `Schets van ${daknaam}, een ${vorm === 'rechthoek' ? 'rechthoekig' : 'L-vormig'} dak. `;
+            let text = `Schets van ${daknaam}, een ${vorm === 'rechthoek' ? 'rechthoekig' : 'L-vormig'} dak${vorm === 'l-vorm' && spiegel ? ' (gespiegeld)' : ''}. `;
             lengtes.forEach((lengte, i) => {
                 text += `Zijde ${i + 1}: ${lengte.toFixed(1)} meter, detail: ${omschrijvingen[i]}. `;
             });
@@ -626,20 +645,12 @@
             document.getElementById('daknaam').value = "Dak 1";
             document.getElementById('daknaam-waarnemingen').value = "Dak 1";
             document.getElementById('toestand').value = "1";
+            document.getElementById('spiegel').checked = false;
             document.querySelectorAll('.error').forEach(e => e.style.display = 'none');
             zoom = 1;
-            kleuren = {
-                "Lood": "#FF4136",
-                "Afwerkstrook": "#2ECC40",
-                "Dilatatie": "#7FDBFF",
-                "Dakpannen": "#FFDC00",
-                "Overig": "#AAAAAA",
-                "Verschillende": "#B10DC9",
-                "Opgaandwerk": "#FF851B",
-                "": "#333333"
-            };
-            ['1', '2', '3', '4'].forEach(i => document.getElementById(`kleur${i}`).value = kleuren[document.getElementById(`detail${i}`).value] || '#333333');
-            ['1', '2', '3', '4', '5', '6'].forEach(i => document.getElementById(`l-kleur${i}`).value = kleuren[document.getElementById(`l-detail${i}`).value] || '#333333');
+            kleuren = { ...kleurPresets };
+            ['1', '2', '3', '4'].forEach(i => document.getElementById(`kleur${i}`).value = kleurPresets[document.getElementById(`detail${i}`).value] || '#333333');
+            ['1', '2', '3', '4', '5', '6'].forEach(i => document.getElementById(`l-kleur${i}`).value = kleurPresets[document.getElementById(`l-detail${i}`).value] || '#333333');
             updateAlles();
         }
 
