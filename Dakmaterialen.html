@@ -245,7 +245,6 @@
                 aantalBanenBreedte = Math.ceil(dakBreedte / effectieveBaanBreedte);
                 aantalBanenLengte = Math.ceil(dakLengte / effectieveBaanLengte);
                 let totaleBaanLengte = 0;
-                let sluitbaanOppervlakte = 0;
                 for (let i = 0; i < aantalBanenBreedte; i++) {
                     let banenInRij = [];
                     let resterendeLengte = dakLengte;
@@ -260,10 +259,11 @@
                     }
                     banenPerRij.push(banenInRij);
                     totaleBaanLengte += banenInRij.reduce((sum, len) => sum + len, 0);
-                    sluitbaanOppervlakte += sluitbaanBreedte * dakBreedte; // Sluitbaan per rij
                 }
+                // Sluitbaan oppervlakte toevoegen
+                const sluitbaanOppervlakte = aantalBanenBreedte * sluitbaanBreedte * dakBreedte;
                 materiaalOppervlakte = totaleBaanLengte * baanBreedte + sluitbaanOppervlakte;
-                overlapOppervlakte = (aantalBanenBreedte * aantalBanenLengte * kopOverlap * baanBreedte) + (langsOverlap * dakLengte * aantalBanenBreedte) + (sluitbaanOppervlakte);
+                overlapOppervlakte = (aantalBanenBreedte * aantalBanenLengte * kopOverlap * baanBreedte) + (langsOverlap * dakLengte * aantalBanenBreedte) + sluitbaanOppervlakte;
                 snijverlies = Math.max(0, materiaalOppervlakte - nettoDakOppervlakte - overlapOppervlakte);
                 aantalBanenLengte = Math.max(...banenPerRij.map(row => row.length));
             }
