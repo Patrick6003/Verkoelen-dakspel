@@ -169,7 +169,7 @@
             </div>
             <div id="legenda">
                 <span style="color: red;">■</span> Dakvlak (rood) |
-                <span style="color: #D3D3D3;">■</span> Banen (lichtgrijs) |
+                <span style="color: #D3D3D3;">■</span> Banen/Sluitbaan (lichtgrijs) |
                 <span style="color: green;">■</span> Overlap (groen) |
                 <span style="color: blue;">■</span> Snijverlies (blauw)
             </div>
@@ -202,7 +202,7 @@
             const effectieveBaanLengte = baanLengte - kopOverlap;
             const effectieveBaanBreedte = baanBreedte - langsOverlap;
             const nettoDakOppervlakte = dakLengte * dakBreedte;
-            const sluitbaanOverlap = verband === 'blok' ? 0.3 : 0; // 30cm voor blokverband
+            const sluitbaanBreedte = verband === 'blok' ? 0.3 : 0; // 30cm sluitbaan voor blokverband
 
             let aantalBanenLengte, aantalBanenBreedte, materiaalOppervlakte, overlapOppervlakte, snijverlies, banenPerRij = [];
 
@@ -245,6 +245,7 @@
                 aantalBanenBreedte = Math.ceil(dakBreedte / effectieveBaanBreedte);
                 aantalBanenLengte = Math.ceil(dakLengte / effectieveBaanLengte);
                 let totaleBaanLengte = 0;
+                let sluitbaanOppervlakte = 0;
                 for (let i = 0; i < aantalBanenBreedte; i++) {
                     let banenInRij = [];
                     let resterendeLengte = dakLengte;
@@ -258,15 +259,15 @@
                         }
                     }
                     banenPerRij.push(banenInRij);
-                    totaleBaanLengte += banenInRij.reduce((sum, len) => sum + len, 0) + (banenInRij.length > 1 ? sluitbaanOverlap * (banenInRij.length - 1) : 0);
+                    totaleBaanLengte += banenInRij.reduce((sum, len) => sum + len, 0);
+                    sluitbaanOppervlakte += sluitbaanBreedte * dakBreedte; // Sluitbaan per rij
                 }
-                materiaalOppervlakte = totaleBaanLengte * baanBreedte;
-                overlapOppervlakte = (aantalBanenBreedte * aantalBanenLengte * kopOverlap * baanBreedte) + (langsOverlap * dakLengte * aantalBanenBreedte) + (sluitbaanOverlap * (aantalBanenLengte - 1) * aantalBanenBreedte * baanBreedte);
+                materiaalOppervlakte = totaleBaanLengte * baanBreedte + sluitbaanOppervlakte;
+                overlapOppervlakte = (aantalBanenBreedte * aantalBanenLengte * kopOverlap * baanBreedte) + (langsOverlap * dakLengte * aantalBanenBreedte) + (sluitbaanOppervlakte);
                 snijverlies = Math.max(0, materiaalOppervlakte - nettoDakOppervlakte - overlapOppervlakte);
                 aantalBanenLengte = Math.max(...banenPerRij.map(row => row.length));
             }
 
-            // Visuele check: controleer dekking
             const totaleDekking = materiaalOppervlakte - snijverlies;
             const isVolledigBedekt = totaleDekking >= nettoDakOppervlakte;
 
@@ -357,6 +358,7 @@
             const cBaanBreedte = baanBreedte * schaal;
             const cKopOverlap = kopOverlap * schaal;
             const cLangsOverlap = langsOverlap * schaal;
+            const cSluitbaanBreedte = verband === 'blok' ? 0.3 * schaal : 0;
 
             // Banen tekenen
             ctx.fillStyle = '#D3D3D3';
@@ -391,6 +393,12 @@
                         ctx.fillRect(xOffset, 10 + i * effectieveBaanBreedte, cBaanLengteSpecifiek, cBaanBreedte);
                         ctx.strokeRect(xOffset, 10 + i * effectieveBaanBreedte, cBaanLengteSpecifiek, cBaanBreedte);
                         xOffset += cBaanLengteSpecifiek - cKopOverlap;
+                    }
+                    // Sluitbaan tekenen
+                    const sluitbaanX = xOffset - cKopOverlap;
+                    if (sluitbaanX < 10 + cDakLengte) {
+                        ctx.fillRect(sluitbaanX, 10 + i * effectieveBaanBreedte, cSluitbaanBreedte, cBaanBreedte);
+                        ctx.strokeRect(sluitbaanX, 10 + i * effectieveBaanBreedte, cSluitbaanBreedte, cBaanBreedte);
                     }
                 }
             }
@@ -462,13 +470,13 @@
                     let xOffset = 10;
                     for (let j = 0; j < banen.length; j++) {
                         const cBaanLengteSpecifiek = banen[j] * schaal;
-                        if (xOffset + cBaanLengteSpecifiek > 10 + cDakLengte) {
-                            ctx.fillRect(10 + cDakLengte, 10 + i * effectieveBaanBreedte, (xOffset + cBaanLengteSpecifiek) - (10 + cDakLengte), cBaanBreedte);
+                        if (xOffset + cBaanLengteSpecifiek + cSluitbaanBreedte > 10 + cDakLengte) {
+                            ctx.fillRect(10 + cDakLengte, 10 + i * effectieveBaanBreedte, (xOffset + cBaanLengteSpecifiek + cSluitbaanBreedte) - (10 + cDakLengte), cBaanBreedte);
                         }
                         xOffset += cBaanLengteSpecifiek - cKopOverlap;
                     }
                     if (i * effectieveBaanBreedte + cBaanBreedte > cDakBreedte) {
-                        ctx.fillRect(10, 10 + cDakBreedte, cDakLengte, (i * effectieveBaanBreedte + cBaanBreedte) - cDakBreedte);
+                        ctx.fillRect(10, 10 + cDakBreedte, cDakLengte + cSluitbaanBreedte, (i * effectieveBaanBreedte + cBaanBreedte) - cDakBreedte);
                     }
                 }
             }
