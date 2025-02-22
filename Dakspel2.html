@@ -38,7 +38,7 @@
 <body>
     <div class="popup" id="gamePopup" onclick="hidePopup()">
         <h2>Vinky V Jump</h2>
-        <p>Spring met Vinky V van dak naar dak! Beweeg met pijltjestoetsen of tik (links/rechts). Grijp een ladder voor een turbo-sprong, repareer lekkende daken voor bonuspunten en een superboost na 5 fixes. Pas op voor vleermuizen op platforms!</p>
+        <p>Spring met Vinky V van dak naar dak! Beweeg met pijltjestoetsen of tik (links/rechts). Grijp een ladder voor een turbo-sprong, repareer lekkende daken voor bonuspunten en een superboost na 5 fixes. Pas op voor vleermuizen op platforms! Je hebt 3 levens.</p>
     </div>
     <!-- Geluidseffecten -->
     <audio id="jumpSound" src="https://www.soundjay.com/buttons/sounds/button-1.mp3"></audio>
@@ -56,11 +56,15 @@
         let score = 0;
         let highScore = parseInt(localStorage.getItem('highScore')) || 0;
         let fixedRoofs = 0;
+        let lives = 3;
         let gameState = 'playing';
         let cameraY = 0;
         let bonusActive = false;
         let bonusTimer = 0;
         let repairEffect = [];
+        let boostEffect = [];
+        let multiplier = 1;
+        let multiplierTimer = 0;
 
         // Canvas en initiële setup
         function setup() {
@@ -86,6 +90,7 @@
                 checkCollisions();
                 updateCamera();
                 updateBonus();
+                updateMultiplier();
                 drawPlatforms();
                 drawCharacter();
                 drawScore();
@@ -96,7 +101,8 @@
 
         // Achtergrond tekenen
         function drawBackground() {
-            background(135, 206, 235); // Blauwe lucht
+            let blue = map(min(score / 1000, 1), 0, 1, 235, 100); // Donkerder bij hogere score
+            background(135, 206, blue);
             fill(255, 215, 0);
             ellipse(50, 50, 50, 50); // Zonnetje
             fill(255);
@@ -113,10 +119,18 @@
             character.y += character.velocity;
 
             if (character.y - cameraY > height) {
-                gameState = 'gameOver';
-                if (score > highScore) {
-                    highScore = score;
-                    localStorage.setItem('highScore', highScore);
+                lives--;
+                if (lives <= 0) {
+                    gameState = 'gameOver';
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem('highScore', highScore);
+                    }
+                } else {
+                    character.y = height / 2;
+                    character.velocity = 0;
+                    cameraY = 0;
+                    generateInitialPlatforms();
                 }
             }
 
@@ -136,13 +150,18 @@
             let speed = min(1.5 + score / 1000, 3);
             for (let platform of platforms) platform.y += speed;
             platforms = platforms.filter(p => p.y - cameraY < height);
-            let maxPlatforms = max(3, 6 - floor(score / 500)); // Minder platforms bij hogere score
+            let maxPlatforms = max(3, 6 - floor(score / 500)); // Minder platforms
             while (platforms.length < maxPlatforms) generatePlatform();
             score += 0.1;
 
-            // Reparatie-effect bijwerken
+            // Effecten bijwerken
             repairEffect = repairEffect.filter(e => e.timer > 0);
             for (let effect of repairEffect) effect.timer--;
+            boostEffect = boostEffect.filter(e => e.timer > 0);
+            for (let effect of boostEffect) {
+                effect.y += 2;
+                effect.timer--;
+            }
         }
 
         // Camera bijwerken
@@ -164,9 +183,17 @@
             if (fixedRoofs >= 5 && !bonusActive) {
                 bonusActive = true;
                 character.hasSuperBoost = true;
-                bonusTimer = 300; // 5 seconden (60 fps * 5)
+                bonusTimer = 300; // 5 seconden
                 fixedRoofs = 0;
                 document.getElementById('bonusSound').play();
+            }
+        }
+
+        // Multiplier bijwerken
+        function updateMultiplier() {
+            if (multiplierTimer > 0) {
+                multiplierTimer--;
+                if (multiplierTimer <= 0) multiplier = 1;
             }
         }
 
@@ -182,20 +209,32 @@
                     character.velocity > 0
                 ) {
                     if (platform.hasBat) {
-                        gameState = 'gameOver';
-                        if (score > highScore) {
-                            highScore = score;
-                            localStorage.setItem('highScore', highScore);
+                        lives--;
+                        if (lives <= 0) {
+                            gameState = 'gameOver';
+                            if (score > highScore) {
+                                highScore = score;
+                                localStorage.setItem('highScore', highScore);
+                            }
+                        } else {
+                            character.y = height / 2;
+                            character.velocity = 0;
+                            cameraY = 0;
+                            generateInitialPlatforms();
                         }
                     } else {
                         character.velocity = character.hasSuperBoost ? superBoostJumpSpeed : (character.hasBoost ? boostJumpSpeed : jumpSpeed);
                         character.hasBoost = false;
-                        score += platform.isBroken ? 50 : 10;
                         if (platform.isBroken) {
                             platform.isBroken = false;
                             fixedRoofs++;
+                            score += 50 * multiplier;
+                            multiplier = min(multiplier + 1, 3);
+                            multiplierTimer = 120; // 2 seconden
                             repairEffect.push({ x: platform.x + platform.width / 2, y: platform.y, timer: 30 });
                             document.getElementById('repairSound').play();
+                        } else {
+                            score += 10;
                         }
                         document.getElementById('jumpSound').play();
                     }
@@ -210,6 +249,9 @@
                 ) {
                     character.hasBoost = true;
                     platform.hasPowerUp = false;
+                    for (let i = 0; i < 5; i++) {
+                        boostEffect.push({ x: character.x, y: character.y, timer: 20 });
+                    }
                     document.getElementById('boostSound').play();
                 }
             }
@@ -252,6 +294,15 @@
                 fill(0, 0, 255, 100);
                 ellipse(character.x, character.y - cameraY, character.size + 10, character.size + 10);
             }
+
+            // Boost-effect (vonken)
+            for (let effect of boostEffect) {
+                push();
+                translate(effect.x, effect.y - cameraY);
+                fill(0, 0, 255, effect.timer * 12);
+                ellipse(0, 0, 5, 5);
+                pop();
+            }
         }
 
         // Platforms tekenen
@@ -288,10 +339,11 @@
 
                 // Vleermuis
                 if (platform.hasBat) {
+                    let batX = platform.x + platform.width / 2 + sin(frameCount * 0.05) * 30; // Bewegende vleermuis
                     fill(0);
-                    ellipse(platform.x + platform.width / 2, platform.y - 10, 20, 10);
-                    triangle(platform.x + platform.width / 2 - 10, platform.y - 15, platform.x + platform.width / 2 - 5, platform.y - 20, platform.x + platform.width / 2, platform.y - 15);
-                    triangle(platform.x + platform.width / 2 + 10, platform.y - 15, platform.x + platform.width / 2 + 5, platform.y - 20, platform.x + platform.width / 2, platform.y - 15);
+                    ellipse(batX, platform.y - 10, 20, 10);
+                    triangle(batX - 10, platform.y - 15, batX - 5, platform.y - 20, batX, platform.y - 15);
+                    triangle(batX + 10, platform.y - 15, batX + 5, platform.y - 20, batX, platform.y - 15);
                 }
 
                 pop();
@@ -327,6 +379,8 @@
             textAlign(LEFT);
             text('Score: ' + floor(score), 10, 30);
             text('Daken gerepareerd: ' + fixedRoofs, 10, 50);
+            text('Levens: ' + lives, 10, 70);
+            if (multiplier > 1) text('Multiplier: x' + multiplier, 10, 90);
             textAlign(RIGHT);
             text('Highscore: ' + floor(highScore), width - 10, 30);
         }
@@ -406,6 +460,7 @@
             gameState = 'playing';
             score = 0;
             fixedRoofs = 0;
+            lives = 3;
             character.x = width / 2;
             character.y = height / 2;
             character.velocity = 0;
@@ -413,8 +468,11 @@
             character.hasSuperBoost = false;
             bonusActive = false;
             bonusTimer = 0;
+            multiplier = 1;
+            multiplierTimer = 0;
             cameraY = 0;
             repairEffect = [];
+            boostEffect = [];
             generateInitialPlatforms();
         }
 
