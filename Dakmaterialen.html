@@ -1,1028 +1,806 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8" />
-  <title>Vinky V Dakspel (Mobielvriendelijke versie met Storm & Promotie)</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background-color: #f0f0f0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    /* Bovenbalk met Highscore en Pauzeknop */
-    #topBar {
-      width: 100%;
-      max-width: 400px;
-      margin-top: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-family: Arial, sans-serif;
-    }
-    #highScoreLabel {
-      font-size: 14px;
-      margin: 0 10px;
-    }
-    #pauseBtn {
-      margin: 0 10px;
-      font-size: 14px;
-      padding: 4px 8px;
-      cursor: pointer;
-    }
-
-    /* Titel boven canvas */
-    #gameTitle {
-      margin-top: 10px;
-      max-width: 400px;
-      text-align: center;
-      font-family: Arial, sans-serif;
-      font-size: 16px;
-      padding: 0 10px;
-    }
-
-    /* Canvas is in 'echte' pixels 400×600, maar schaalt naar max 400px breed */
-    canvas {
-      border: 1px solid #000;
-      width: 100%;
-      max-width: 400px;
-      height: auto;
-      display: block;
-      margin-top: 10px;
-      background-color: #595A5C; /* fallback */
-    }
-
-    /* ScoreBoard & info */
-    #scoreBoard {
-      margin-top: 10px;
-      font-family: Arial, sans-serif;
-      text-align: center;
-    }
-    #scoreBoard p {
-      margin: 5px;
-      font-size: 16px;
-    }
-
-    /* Uitleg helemaal onderaan */
-    #gameInfo {
-      max-width: 400px;
-      font-family: Arial, sans-serif;
-      font-size: 14px;
-      background-color: #eee;
-      padding: 10px;
-      margin-top: 20px; /* wat extra ruimte */
-      text-align: left;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digitaal Opnameformulier</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #222;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+        .input-section, .schets-section {
+            min-width: 0;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .tab-button {
+            background-color: #ddd;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+        }
+        .tab-button.active {
+            background-color: #007BFF;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+            color: #222;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #888;
+            border-radius: 4px;
+            box-sizing: border-box;
+            background-color: #fff;
+            color: #333;
+        }
+        .error {
+            color: #d32f2f;
+            font-size: 12px;
+            margin-top: -5px;
+            display: none;
+        }
+        button {
+            background-color: #007BFF;
+            color: #fff;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #resultaat {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #888;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .vorm-specifiek {
+            display: none;
+        }
+        canvas {
+            border: 1px solid #888;
+            margin-top: 10px;
+            width: 100%;
+            max-width: 400px;
+            height: 400px;
+            background-color: #fff;
+            cursor: crosshair;
+        }
+        .detail-input {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .detail-input select, .detail-input input[type="text"] {
+            flex: 1;
+        }
+        .legenda {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #888;
+            border-radius: 4px;
+        }
+        .legenda-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legenda-kleur {
+            width: 15px;
+            height: 15px;
+            display: inline-block;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
-  <!-- Bovenbalk: Highscore + Pauzeknop -->
-  <div id="topBar">
-    <div id="highScoreLabel">Highscore: <span id="highScoreSpan">0</span></div>
-    <button id="pauseBtn">Pauze</button>
-  </div>
+    <h1>Digitaal Opnameformulier</h1>
+    <div class="container">
+        <div class="input-section">
+            <div class="tabs">
+                <button class="tab-button active" onclick="switchTab('invoer')" aria-label="Invoertabblad">Invoer</button>
+                <button class="tab-button" onclick="switchTab('waarnemingen')" aria-label="Waarnemingen tabblad">Waarnemingen</button>
+            </div>
+            <div id="invoer" class="tab-content active">
+                <form id="dakForm">
+                    <label for="daknaam">Daknaam:</label>
+                    <input type="text" id="daknaam" placeholder="Bijv. Dak Noord" aria-label="Naam van het dak" value="Dak 1" oninput="syncDaknaam()">
+                    <label for="vorm">Dakvorm:</label>
+                    <select id="vorm" onchange="updateAlles()" aria-label="Kies dakvorm">
+                        <option value="rechthoek">⬜ Rechthoek</option>
+                        <option value="l-vorm">🡒 L-vorm</option>
+                    </select>
 
-  <!-- Titel / Korte tekst direct boven het canvas -->
-  <div id="gameTitle">
-    <strong>De hijskraan is op tilt geslagen!</strong><br/>
-    Help Vinky V om de vallende dakmaterialen te vangen, zodat de dakrenovatie door kan gaan.
-  </div>
+                    <!-- Rechthoek -->
+                    <div id="rechthoek" class="vorm-specifiek">
+                        <label for="lengte">Lengte (m) - Zijden 1 en 3:</label>
+                        <input type="number" id="lengte" step="0.1" value="10" oninput="validateInput(this); updateAlles()" aria-label="Lengte van het dak in meters, zijden 1 en 3">
+                        <div id="lengte-error" class="error">Voer een getal groter dan 0 in</div>
+                        <label for="breedte">Breedte (m) - Zijden 2 en 4:</label>
+                        <input type="number" id="breedte" step="0.1" value="5" oninput="validateInput(this); updateAlles()" aria-label="Breedte van het dak in meters, zijden 2 en 4">
+                        <div id="breedte-error" class="error">Voer een getal groter dan 0 in</div>
+                        <div class="checkbox-group">
+                            <label>Indicatief <input type="checkbox" id="indicatief" oninput="updateAlles()" aria-label="Afmetingen zijn indicatief"></label>
+                        </div>
+                        <label>Detailomschrijvingen (4 zijden):</label>
+                        <div class="detail-input">
+                            <select id="detail1" oninput="updateAlles()" aria-label="Detail voor zijde 1">
+                                <option value="">Kies detail (1)</option>
+                                <option value="Lood">Lood (1)</option>
+                                <option value="Afwerkstrook">Afwerkstrook (1)</option>
+                                <option value="Dilatatie">Dilatatie (1)</option>
+                                <option value="Dakpannen">Dakpannen (1)</option>
+                                <option value="Overig">Overig (1)</option>
+                                <option value="Verschillende">Verschillende (1)</option>
+                                <option value="Opgaandwerk">Opgaandwerk (1)</option>
+                            </select>
+                            <input type="text" id="oms1" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 1">
+                        </div>
+                        <div class="detail-input">
+                            <select id="detail2" oninput="updateAlles()" aria-label="Detail voor zijde 2">
+                                <option value="">Kies detail (2)</option>
+                                <option value="Lood">Lood (2)</option>
+                                <option value="Afwerkstrook">Afwerkstrook (2)</option>
+                                <option value="Dilatatie">Dilatatie (2)</option>
+                                <option value="Dakpannen">Dakpannen (2)</option>
+                                <option value="Overig">Overig (2)</option>
+                                <option value="Verschillende">Verschillende (2)</option>
+                                <option value="Opgaandwerk">Opgaandwerk (2)</option>
+                            </select>
+                            <input type="text" id="oms2" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 2">
+                        </div>
+                        <div class="detail-input">
+                            <select id="detail3" oninput="updateAlles()" aria-label="Detail voor zijde 3">
+                                <option value="">Kies detail (3)</option>
+                                <option value="Lood">Lood (3)</option>
+                                <option value="Afwerkstrook">Afwerkstrook (3)</option>
+                                <option value="Dilatatie">Dilatatie (3)</option>
+                                <option value="Dakpannen">Dakpannen (3)</option>
+                                <option value="Overig">Overig (3)</option>
+                                <option value="Verschillende">Verschillende (3)</option>
+                                <option value="Opgaandwerk">Opgaandwerk (3)</option>
+                            </select>
+                            <input type="text" id="oms3" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 3">
+                        </div>
+                        <div class="detail-input">
+                            <select id="detail4" oninput="updateAlles()" aria-label="Detail voor zijde 4">
+                                <option value="">Kies detail (4)</option>
+                                <option value="Lood">Lood (4)</option>
+                                <option value="Afwerkstrook">Afwerkstrook (4)</option>
+                                <option value="Dilatatie">Dilatatie (4)</option>
+                                <option value="Dakpannen">Dakpannen (4)</option>
+                                <option value="Overig">Overig (4)</option>
+                                <option value="Verschillende">Verschillende (4)</option>
+                                <option value="Opgaandwerk">Opgaandwerk (4)</option>
+                            </select>
+                            <input type="text" id="oms4" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 4">
+                        </div>
+                    </div>
 
-  <canvas id="gameCanvas" width="400" height="600"></canvas>
+                    <!-- L-vorm -->
+                    <div id="l-vorm" class="vorm-specifiek">
+                        <label for="lengte1">Lengte deel 1 (m) - Zijden 1 en 5:</label>
+                        <input type="number" id="lengte1" step="0.1" value="10" oninput="validateInput(this); updateAlles()" aria-label="Lengte deel 1 van L-vorm in meters, zijden 1 en 5">
+                        <div id="lengte1-error" class="error">Voer een getal groter dan 0 in</div>
+                        <label for="breedte1">Breedte deel 1 (m) - Zijden 2 en 6:</label>
+                        <input type="number" id="breedte1" step="0.1" value="5" oninput="validateInput(this); updateAlles()" aria-label="Breedte deel 1 van L-vorm in meters, zijden 2 en 6">
+                        <div id="breedte1-error" class="error">Voer een getal groter dan 0 in</div>
+                        <label for="lengte2">Lengte deel 2 (m) - Zijde 3:</label>
+                        <input type="number" id="lengte2" step="0.1" value="4" oninput="validateInput(this); updateAlles()" aria-label="Lengte deel 2 van L-vorm in meters, zijde 3">
+                        <div id="lengte2-error" class="error">Voer een getal groter dan 0 in of kleiner dan Lengte deel 1</div>
+                        <label for="breedte2">Breedte deel 2 (m) - Zijde 4:</label>
+                        <input type="number" id="breedte2" step="0.1" value="3" oninput="validateInput(this); updateAlles()" aria-label="Breedte deel 2 van L-vorm in meters, zijde 4">
+                        <div id="breedte2-error" class="error">Voer een getal groter dan 0 in</div>
+                        <div class="checkbox-group">
+                            <label>Indicatief <input type="checkbox" id="indicatief" oninput="updateAlles()" aria-label="Afmetingen zijn indicatief"></label>
+                        </div>
+                        <label>Detailomschrijvingen (6 zijden):</label>
+                        <div class="detail-input">
+                            <select id="l-detail1" oninput="updateAlles()" aria-label="Detail voor zijde 1 van L-vorm">
+                                <option value="">Kies detail (1 - Lengte deel 1)</option>
+                                <option value="Lood">Lood (1)</option>
+                                <option value="Afwerkstrook">Afwerkstrook (1)</option>
+                                <option value="Dilatatie">Dilatatie (1)</option>
+                                <option value="Dakpannen">Dakpannen (1)</option>
+                                <option value="Overig">Overig (1)</option>
+                                <option value="Verschillende">Verschillende (1)</option>
+                                <option value="Opgaandwerk">Opgaandwerk (1)</option>
+                            </select>
+                            <input type="text" id="l-oms1" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 1 van L-vorm">
+                        </div>
+                        <div class="detail-input">
+                            <select id="l-detail2" oninput="updateAlles()" aria-label="Detail voor zijde 2 van L-vorm">
+                                <option value="">Kies detail (2 - Breedte deel 1)</option>
+                                <option value="Lood">Lood (2)</option>
+                                <option value="Afwerkstrook">Afwerkstrook (2)</option>
+                                <option value="Dilatatie">Dilatatie (2)</option>
+                                <option value="Dakpannen">Dakpannen (2)</option>
+                                <option value="Overig">Overig (2)</option>
+                                <option value="Verschillende">Verschillende (2)</option>
+                                <option value="Opgaandwerk">Opgaandwerk (2)</option>
+                            </select>
+                            <input type="text" id="l-oms2" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 2 van L-vorm">
+                        </div>
+                        <div class="detail-input">
+                            <select id="l-detail3" oninput="updateAlles()" aria-label="Detail voor zijde 3 van L-vorm">
+                                <option value="">Kies detail (3 - Lengte deel 2)</option>
+                                <option value="Lood">Lood (3)</option>
+                                <option value="Afwerkstrook">Afwerkstrook (3)</option>
+                                <option value="Dilatatie">Dilatatie (3)</option>
+                                <option value="Dakpannen">Dakpannen (3)</option>
+                                <option value="Overig">Overig (3)</option>
+                                <option value="Verschillende">Verschillende (3)</option>
+                                <option value="Opgaandwerk">Opgaandwerk (3)</option>
+                            </select>
+                            <input type="text" id="l-oms3" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 3 van L-vorm">
+                        </div>
+                        <div class="detail-input">
+                            <select id="l-detail4" oninput="updateAlles()" aria-label="Detail voor zijde 4 van L-vorm">
+                                <option value="">Kies detail (4 - Breedte deel 2)</option>
+                                <option value="Lood">Lood (4)</option>
+                                <option value="Afwerkstrook">Afwerkstrook (4)</option>
+                                <option value="Dilatatie">Dilatatie (4)</option>
+                                <option value="Dakpannen">Dakpannen (4)</option>
+                                <option value="Overig">Overig (4)</option>
+                                <option value="Verschillende">Verschillende (4)</option>
+                                <option value="Opgaandwerk">Opgaandwerk (4)</option>
+                            </select>
+                            <input type="text" id="l-oms4" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 4 van L-vorm">
+                        </div>
+                        <div class="detail-input">
+                            <select id="l-detail5" oninput="updateAlles()" aria-label="Detail voor zijde 5 van L-vorm">
+                                <option value="">Kies detail (5 - Lengte deel 1 - Lengte deel 2)</option>
+                                <option value="Lood">Lood (5)</option>
+                                <option value="Afwerkstrook">Afwerkstrook (5)</option>
+                                <option value="Dilatatie">Dilatatie (5)</option>
+                                <option value="Dakpannen">Dakpannen (5)</option>
+                                <option value="Overig">Overig (5)</option>
+                                <option value="Verschillende">Verschillende (5)</option>
+                                <option value="Opgaandwerk">Opgaandwerk (5)</option>
+                            </select>
+                            <input type="text" id="l-oms5" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 5 van L-vorm">
+                        </div>
+                        <div class="detail-input">
+                            <select id="l-detail6" oninput="updateAlles()" aria-label="Detail voor zijde 6 van L-vorm">
+                                <option value="">Kies detail (6 - Breedte deel 1 + Breedte deel 2)</option>
+                                <option value="Lood">Lood (6)</option>
+                                <option value="Afwerkstrook">Afwerkstrook (6)</option>
+                                <option value="Dilatatie">Dilatatie (6)</option>
+                                <option value="Dakpannen">Dakpannen (6)</option>
+                                <option value="Overig">Overig (6)</option>
+                                <option value="Verschillende">Verschillende (6)</option>
+                                <option value="Opgaandwerk">Opgaandwerk (6)</option>
+                            </select>
+                            <input type="text" id="l-oms6" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 6 van L-vorm">
+                        </div>
+                        <label for="spiegel">Spiegel L-vorm:</label>
+                        <input type="checkbox" id="spiegel" oninput="updateAlles()" aria-label="Spiegel de L-vorm schets horizontaal">
+                    </div>
 
-  <!-- ScoreBoard onder de canvas -->
-  <div id="scoreBoard">
-    <p>
-      Gasflessen: <span id="gasflesCount">0</span> |
-      Dakrollen: <span id="dakrolCount">0</span> |
-      Schroeven: <span id="schroefCount">0</span> |
-      PIR-platen: <span id="pirCount">0</span> |
-      Salaris: <span id="powerUpCount">0</span>
-    </p>
-  </div>
+                    <label for="hellingsgraad">Hellingsgraad t.o.v. dakranden (°):</label>
+                    <input type="number" id="hellingsgraad" step="0.1" min="0" max="90" value="0" oninput="validateInput(this, true); updateAlles()" aria-label="Hellingsgraad ten opzichte van dakranden in graden">
+                    <div id="hellingsgraad-error" class="error">Voer een getal tussen 0 en 90 in</div>
+                    <button type="button" onclick="resetForm()" aria-label="Formulier resetten">Reset</button>
+                    <button type="button" onclick="exportPNG('invoer')" aria-label="Exporteren als PNG">Export PNG</button>
+                    <button type="button" onclick="exportPDF('invoer')" aria-label="Exporteren als PDF">Export PDF</button>
+                    <button type="button" onclick="zoomIn()" aria-label="Inzoomen op schets">Zoom In</button>
+                    <button type="button" onclick="zoomOut()" aria-label="Uitzoomen op schets">Zoom Uit</button>
+                </form>
+                <div id="resultaat" role="region" aria-live="polite"></div>
+            </div>
+            <div id="waarnemingen" class="tab-content">
+                <label for="daknaam-waarnemingen">Daknaam:</label>
+                <input type="text" id="daknaam-waarnemingen" readonly aria-label="Naam van het dak" value="Dak 1">
+                <label for="dakhoogte">Dakhoogte (m, indien bekend):</label>
+                <input type="number" id="dakhoogte" step="0.1" min="0" placeholder="Bijv. 5.5" aria-label="Hoogte van het dak in meters">
+                <label for="dakopbouw">Dakopbouw:</label>
+                <textarea id="dakopbouw" rows="3" placeholder="Bijv. Bitumen, isolatie, grind" aria-label="Beschrijving van de dakopbouw"></textarea>
+                <label for="gebreken">Gebreken:</label>
+                <textarea id="gebreken" rows="3" placeholder="Bijv. Scheuren, lekkages" aria-label="Geconstateerde gebreken op het dak"></textarea>
+                <label for="details">Details (ontluchtingen, afvoeren, noodafvoeren):</label>
+                <textarea id="details" rows="3" placeholder="Bijv. 2 ontluchtingen, 1 afvoer" aria-label="Details van ontluchtingen, afvoeren en noodafvoeren"></textarea>
+                <label for="situatie-omgeving">Situatie/Omgeving:</label>
+                <textarea id="situatie-omgeving" rows="3" placeholder="Bijv. Nabij bomen, stedelijk gebied" aria-label="Opmerkingen over situatie en omgeving"></textarea>
+                <label for="waarnemingen-extra">Extra waarnemingen:</label>
+                <textarea id="waarnemingen-extra" rows="3" placeholder="Bijv. Toegankelijkheid, bijzonderheden" aria-label="Extra waarnemingen over het dak"></textarea>
+                <div class="checkbox-group">
+                    <label>Grind zit vast <input type="checkbox" id="grind-vast" aria-label="Grind zit vast"></label>
+                </div>
+                <div class="checkbox-group">
+                    <label>Isolatie is nat <input type="checkbox" id="isolatie-nat" aria-label="Isolatie is nat"></label>
+                </div>
+                <div class="checkbox-group">
+                    <label>Plasvorming <input type="checkbox" id="plasvorming" aria-label="Plasvorming aanwezig"></label>
+                </div>
+                <label for="toestand">Algemene onderhoudsstaat (NEN 2767):</label>
+                <select id="toestand" aria-label="Algemene onderhoudsstaat van het dak volgens NEN 2767">
+                    <option value="1">1 - Uitstekend</option>
+                    <option value="2">2 - Goed</option>
+                    <option value="3">3 - Redelijk</option>
+                    <option value="4">4 - Matig</option>
+                    <option value="5">5 - Slecht</option>
+                    <option value="6">6 - Zeer slecht</option>
+                </select>
+                <button type="button" onclick="exportPNG('waarnemingen')" aria-label="Exporteren als PNG met waarnemingen">Export PNG</button>
+                <button type="button" onclick="exportPDF('waarnemingen')" aria-label="Exporteren als PDF met waarnemingen">Export PDF</button>
+            </div>
+        </div>
+        <div class="schets-section">
+            <h3>Schets</h3>
+            <canvas id="dakCanvas" aria-label="Schets van het dakvlak"></canvas>
+            <div class="legenda" role="region" aria-label="Legenda van de schets">
+                <h4>Legenda</h4>
+                <div id="legenda-content"></div>
+            </div>
+        </div>
+    </div>
 
-  <!-- Uitleg helemaal onderaan de pagina -->
-  <div id="gameInfo">
-    <strong>Levels (tot en met 8):</strong><br/>
-    - Level 1 (&lt; 1000): Normaal<br/>
-    - Level 2 (&ge; 1000): Kraan beweegt willekeurig<br/>
-    - Level 3 (&ge; 1500): Kraan hangt lager<br/>
-    - Level 4 (&ge; 2000): Kraan nóg lager<br/>
-    - Level 5 (&ge; 3000): Wind & mist<br/>
-    - Level 6 (&ge; 4000): Donker<br/>
-    - Level 7 (&ge; 5000): Donker + regen<br/>
-    - Level 8 (&ge; 6000): Storm (regen + bliksem). Als bliksem Vinky raakt, is hij even verlamd!<br/><br/>
+    <script>
+        const { jsPDF } = window.jspdf;
+        const canvas = document.getElementById('dakCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 400;
+        canvas.height = 400;
+        let zoom = 1;
+        let detailsLocaties = [];
+        let lijnen = [];
 
-    <strong>Objecten & Punten:</strong><br/>
-    - Gasfles (15 p.)<br/>
-    - Dakrol (30 p.)<br/>
-    - Schroef (10 p.)<br/>
-    - PIR-plaat (25 p.)<br/>
-    - Salaris (geldzak): +1 leven, Vinky juicht<br/>
-    - Promotie (kroon): +1 leven, tijdelijk grotere Vinky én een extra kraanhaak, Vinky juicht<br/><br/>
+        const kleuren = {
+            "Lood": "#FF4136",
+            "Afwerkstrook": "#2ECC40",
+            "Dilatatie": "#7FDBFF",
+            "Dakpannen": "#FFDC00",
+            "Overig": "#AAAAAA",
+            "Verschillende": "#B10DC9",
+            "Opgaandwerk": "#FF851B",
+            "": "#333333"
+        };
 
-    <em>Succes!</em>
-  </div>
+        canvas.addEventListener('click', handleClick);
 
-  <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-
-    // --- Audio (pas bestandsnamen aan) ---
-    const catchSound = new Audio('catch.mp3'); 
-    const missSound  = new Audio('miss.mp3');  
-
-    // --- Pauzeknop ---
-    let paused = false;
-    const pauseBtn = document.getElementById('pauseBtn');
-    pauseBtn.addEventListener('click', () => {
-      paused = !paused;
-      pauseBtn.textContent = paused ? 'Ga verder' : 'Pauze';
-    });
-
-    // --- Highscore via localStorage ---
-    let highScore = 0;
-    if (localStorage.getItem('vinkyHighScore')) {
-      highScore = parseInt(localStorage.getItem('vinkyHighScore'), 10);
-    }
-    const highScoreSpan = document.getElementById('highScoreSpan');
-    highScoreSpan.textContent = highScore.toString();
-
-    // We houden ook een array bij van alle scores om je rang te kunnen bepalen.
-    function addScoreAndFindRank(finalScore) {
-      // array uit localStorage
-      let allScores = JSON.parse(localStorage.getItem('vinkyAllScores') || '[]');
-      allScores.push(finalScore);
-      // sort desc
-      allScores.sort((a,b) => b - a);
-      const rank = allScores.indexOf(finalScore) + 1; // 1-based
-      // opslaan
-      localStorage.setItem('vinkyAllScores', JSON.stringify(allScores));
-      return {rank, totalPlayers: allScores.length};
-    }
-
-    function updateHighScoreIfNeeded() {
-      if (score > highScore) {
-        highScore = score;
-        localStorage.setItem('vinkyHighScore', highScore.toString());
-        highScoreSpan.textContent = highScore.toString();
-      }
-    }
-
-    // --- Speler (Vinky) ---
-    let vinkyX = 175;
-    let vinkyY = 550;
-    let vinkyWidth = 50;
-    let vinkyHeight = 50;
-    const originalVinkyWidth = 50;
-    const originalVinkyHeight = 50;
-
-    // Vinky kan verlamd raken door bliksem
-    let vinkyStunnedTimer = 0;
-
-    // Promotie => extra kraan + vinky groter
-    let promotieActive = false;
-    let promotieTimer = 0;
-
-    // --- Moeilijkheidslevels tot 8 ---
-    let currentLevel = 1;
-    let previousLevel = 1;
-
-    // Level-up melding
-    let levelChangeTimer = 0; // ~1.5s
-    // Vinky juich-timer
-    let vinkyCheerTimer = 0;  // ~1s
-
-    // --- Kraan / Haak 1 ---
-    const craneHeight = 10;
-    let hookX = 0;
-    let hookY = craneHeight;
-    let hookWidth = 10;
-    let hookHeight = 20;
-    let hookSpeed = 2;
-    let hookDirection = 1;
-    let randomCraneTimer = 0;
-
-    // --- Kraan / Haak 2 (bij promotie) ---
-    let twoHooksActive = false;
-    let twoHooksTimer = 0;
-    let hook2X = 380;
-    let hook2Y = craneHeight;
-    let hook2Width = 10;
-    let hook2Height = 20;
-    let hook2Speed = 2;
-    let hook2Direction = -1;
-
-    // --- Wind / Mist / Donker / Regen / Storm ---
-    let windSpeed = 0;
-    let windDirection = 1;
-    let windChangeTimer = 0;
-
-    // Regen
-    let raindrops = [];
-    for (let i=0; i<50; i++) {
-      raindrops.push({
-        x: Math.random()*400,
-        y: Math.random()*600,
-        speed: 3 + Math.random()*2
-      });
-    }
-
-    // Storm -> Bliksem
-    let randomLightningTimer = 300; 
-    let lightningActive = false;
-    let lightningX = 0;
-    let lightningTimer = 0;
-
-    // --- Objecten ---
-    let objects = [];
-    let score = 0;
-    let lives = 3;
-    let gameOver = false;
-
-    // Counters
-    let gasflesCount = 0;
-    let dakrolCount = 0;
-    let schroefCount = 0;
-    let pirCount = 0;
-    let powerUpCount = 0;
-
-    // Types (+ promotie)
-    const objectTypes = {
-      gasfles:  { points: 15, width: 20, height: 40 },
-      dakrol:   { points: 30, width: 15, height: 40 },
-      schroef:  { points: 10, width: 10, height: 20 },
-      pir:      { points: 25, width: 30, height: 20 },
-      powerUp:  { points: 0,  width: 20, height: 20 },
-      promotie: { points: 0,  width: 20, height: 20 }
-    };
-
-    // Wolken
-    let clouds = [
-      { x: 60,  y: 70,  size: 1.0 },
-      { x: 200, y: 50,  size: 1.2 },
-      { x: 300, y: 80,  size: 1.1 }
-    ];
-
-    // --- Mobiel besturing (touch+mouse) ---
-    canvas.addEventListener('touchmove', e => {
-      e.preventDefault();
-      if (vinkyStunnedTimer>0) return; // verlamd
-      if (e.touches.length>0) moveVinky(e.touches[0].clientX);
-    });
-    canvas.addEventListener('touchstart', e => {
-      e.preventDefault();
-      if (vinkyStunnedTimer>0) return;
-      if (e.touches.length>0) moveVinky(e.touches[0].clientX);
-    });
-    canvas.addEventListener('mousemove', e => {
-      if (vinkyStunnedTimer>0) return;
-      moveVinky(e.clientX);
-    });
-
-    function moveVinky(clientX) {
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      let desiredX = (clientX - rect.left)*scaleX - vinkyWidth/2;
-      vinkyX = desiredX;
-      if (vinkyX<0) vinkyX=0;
-      if (vinkyX>canvas.width - vinkyWidth) {
-        vinkyX= canvas.width - vinkyWidth;
-      }
-    }
-
-    // --- Klik om opnieuw (game over) => bounding box met schaalcorrectie ---
-    canvas.addEventListener('click', e => {
-      if (gameOver) {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height/ rect.height;
-        const clickX = (e.clientX - rect.left)*scaleX;
-        const clickY = (e.clientY - rect.top)*scaleY;
-        // bounding box voor "Opnieuw" (150..250 x 275..325)
-        if (clickX>150 && clickX<250 && clickY>275 && clickY<325) {
-          restartGame();
+        function handleClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const opmerking = prompt("Voer een opmerking in voor dit detail (bijv. 'Afvoer'):");
+            if (opmerking) {
+                let dichtstbijzijndeZijde = null;
+                let minAfstand = Infinity;
+                lijnen.forEach((lijn, i) => {
+                    const afstand = isPointNearLine(x, y, lijn[0], lijn[1], lijn[2], lijn[3]);
+                    if (afstand < minAfstand) {
+                        minAfstand = afstand;
+                        dichtstbijzijndeZijde = i + 1;
+                    }
+                });
+                if (minAfstand < 20) { // Tolerantie van 20px
+                    detailsLocaties.push({ x, y, opmerking, zijde: dichtstbijzijndeZijde });
+                    updateAlles();
+                    updateDetailsTextarea();
+                }
+            }
         }
-      }
-    });
 
-    // --- Extra: garandeer minstens 1x promotie (gouden kroon) ---
-    let promotieSpawned = false;
-    let frameCounter = 0; // telt frames
-    // We forceren 1x promotie na 10s (~600 frames) als we die niet eerder hebben gezien
-    function forcePromotieIfNeeded() {
-      if (!promotieSpawned && frameCounter>=600 && !gameOver) {
-        // spawn 1 promotie voor haak 1
-        let finalSpeed = 3; // gewoon
-        let effectiveHookY = hookY+hookHeight;
-        if (currentLevel>=3) effectiveHookY+=30;
-        if (currentLevel>=4) effectiveHookY+=30; // nog lager
-        const x = hookX + hookWidth/2 - objectTypes.promotie.width/2;
-        objects.push({
-          type: "promotie",
-          x,
-          y: effectiveHookY,
-          speed: finalSpeed,
-          points: 0,
-          width: 20,
-          height: 20
-        });
-        promotieSpawned=true;
-      }
-    }
-
-    // --- Levels tot 8 ---
-    function updateLevel() {
-      previousLevel = currentLevel;
-      if (score>=6000) {
-        currentLevel=8; // storm
-      } else if (score>=5000) {
-        currentLevel=7; // regen + donker
-      } else if (score>=4000) {
-        currentLevel=6; // donker
-      } else if (score>=3000) {
-        currentLevel=5; // wind/mist
-      } else if (score>=2000) {
-        currentLevel=4; // kraan nóg lager
-      } else if (score>=1500) {
-        currentLevel=3; // kraan lager
-      } else if (score>=1000) {
-        currentLevel=2; // kraan random
-      } else {
-        currentLevel=1;
-      }
-      // Check level up
-      if (currentLevel>previousLevel) {
-        levelChangeTimer=90;   // 1,5s
-        vinkyCheerTimer=60;    // 1s
-      }
-    }
-
-    // --- Objecten spawnen (haak1 + haak2 als actief) ---
-    function spawnObject() {
-      // Haak1
-      if (Math.random()<0.01) {
-        let type = pickObjectType();
-        if (type==="promotie") promotieSpawned=true;
-        let speed = calcObjectSpeed();
-        let effectiveY = hookY+hookHeight;
-        if (currentLevel>=3) effectiveY+=30; 
-        if (currentLevel>=4) effectiveY+=30; 
-        let x = hookX+hookWidth/2 - objectTypes[type].width/2;
-        objects.push({
-          type,
-          x,
-          y: effectiveY,
-          speed,
-          points: objectTypes[type].points,
-          width: objectTypes[type].width,
-          height: objectTypes[type].height
-        });
-      }
-
-      // Haak2?
-      if (twoHooksActive) {
-        if (Math.random()<0.01) {
-          let type = pickObjectType();
-          if (type==="promotie") promotieSpawned=true;
-          let speed = calcObjectSpeed();
-          let effectiveY2 = hook2Y+hook2Height;
-          if (currentLevel>=3) effectiveY2+=30; 
-          if (currentLevel>=4) effectiveY2+=30; 
-          let x2 = hook2X+hook2Width/2 - objectTypes[type].width/2;
-          objects.push({
-            type,
-            x: x2,
-            y: effectiveY2,
-            speed,
-            points: objectTypes[type].points,
-            width: objectTypes[type].width,
-            height: objectTypes[type].height
-          });
+        function isPointNearLine(px, py, x1, y1, x2, y2) {
+            const dist = Math.abs((y2 - y1) * px - (x2 - x1) * py + x2 * y1 - y2 * x1) / Math.sqrt(Math.pow(y2 - y1, 2) + Math.pow(x2 - x1, 2));
+            return dist;
         }
-      }
-    }
 
-    function pickObjectType() {
-      let rand = Math.random();
-      if (rand<0.003) return 'promotie'; 
-      if (rand<0.02)  return 'powerUp';
-      if (rand<0.17)  return 'gasfles';
-      if (rand<0.47)  return 'dakrol';
-      if (rand<0.80)  return 'pir';
-      return 'schroef';
-    }
-    function calcObjectSpeed() {
-      let base=3;
-      let varrange=0;
-      switch(currentLevel) {
-        case 1: varrange=0.5; break;
-        case 2: varrange=1.0; break;
-        case 3: varrange=1.5; break;
-        case 4: varrange=2.0; break;
-        case 5: varrange=3.0; break;
-        case 6: varrange=4.0; break;
-        case 7: varrange=5.0; break;
-        case 8: varrange=6.0; break;
-      }
-      return base + Math.random()*varrange;
-    }
-
-    // --- Update haak1 ---
-    function updateHook() {
-      hookX += hookDirection*hookSpeed;
-      if (hookX<0) {hookX=0; hookDirection=1;}
-      else if(hookX+hookWidth>canvas.width){ 
-        hookX= canvas.width - hookWidth;
-        hookDirection=-1;
-      }
-      if (currentLevel>=2) {
-        randomCraneTimer--;
-        if (randomCraneTimer<=0) {
-          randomCraneTimer = 60+Math.floor(Math.random()*60);
-          hookDirection=(Math.random()<0.5)?1:-1;
-          hookSpeed=2+Math.random()*2;
+        function updateDetailsTextarea() {
+            const detailsTextarea = document.getElementById('details');
+            let text = detailsTextarea.value.trim();
+            detailsLocaties.forEach((loc, index) => {
+                const existing = text.split('\n').some(line => line.includes(`Detail ${index + 1}: ${loc.opmerking} (Zijde ${loc.zijde})`));
+                if (!existing) {
+                    text += (text ? '\n' : '') + `Detail ${index + 1}: ${loc.opmerking} (Zijde ${loc.zijde})`;
+                }
+            });
+            detailsTextarea.value = text;
         }
-      }
-    }
 
-    // --- Update haak2 (indien actief) ---
-    function updateHook2() {
-      hook2X += hook2Direction*hook2Speed;
-      if (hook2X<0) {hook2X=0; hook2Direction=1;}
-      else if(hook2X+hook2Width>canvas.width){
-        hook2X=canvas.width-hook2Width;
-        hook2Direction=-1;
-      }
-      // mini random
-      if (currentLevel>=2) {
-        if (Math.random()<0.01) {
-          hook2Direction=(Math.random()<0.5)?1:-1;
-          hook2Speed=2+Math.random()*2;
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.querySelector(`[onclick="switchTab('${tabId}')"]`).classList.add('active');
         }
-      }
-    }
 
-    // --- Objecten updaten (vallen + wind) + check vangst/gemist ---
-    function updateObjects() {
-      for (let i=objects.length-1; i>=0; i--) {
-        let obj=objects[i];
-        // wind
-        if (currentLevel>=5 && windSpeed!==0) {
-          obj.x += windSpeed*windDirection;
-          if (obj.x<0) obj.x=0;
-          if (obj.x+obj.width>canvas.width) {
-            obj.x=canvas.width-obj.width;
-          }
+        function syncDaknaam() {
+            const daknaamInvoer = document.getElementById('daknaam');
+            const daknaamWaarnemingen = document.getElementById('daknaam-waarnemingen');
+            daknaamWaarnemingen.value = daknaamInvoer.value;
+            updateAlles();
         }
-        obj.y += obj.speed;
-        // vangst
-        if (
-          obj.y+obj.height>vinkyY &&
-          obj.y < vinkyY+vinkyHeight &&
-          obj.x+obj.width>vinkyX &&
-          obj.x<vinkyX+vinkyWidth
-        ){
-          catchSound.currentTime=0; catchSound.play().catch(()=>{});
-          if (obj.type==='powerUp'){
-            // +1 leven, juich
-            lives++;
-            powerUpCount++;
-            vinkyCheerTimer=30; 
-          } else if (obj.type==='promotie'){
-            // promotie => +1 leven, vinky groter, 2 hooks
-            lives++;
-            activatePromotie();
-            vinkyCheerTimer=30;
-          } else {
-            // normale
-            score += obj.points;
-            if(obj.type==='gasfles') gasflesCount++;
-            if(obj.type==='dakrol')  dakrolCount++;
-            if(obj.type==='schroef') schroefCount++;
-            if(obj.type==='pir')     pirCount++;
-          }
-          objects.splice(i,1);
+
+        function validateInput(input, allowZero = false) {
+            const value = parseFloat(input.value);
+            const errorDiv = document.getElementById(`${input.id}-error`);
+            let isValid = !isNaN(value) && (allowZero ? value >= 0 : value > 0);
+            if (input.id === 'hellingsgraad') isValid = isValid && value <= 90;
+            if (input.id === 'lengte2') {
+                const lengte1 = parseFloat(document.getElementById('lengte1').value) || 0;
+                isValid = isValid && value <= lengte1;
+            }
+            errorDiv.style.display = isValid ? 'none' : 'block';
+            return isValid;
         }
-        else if(obj.y>canvas.height){
-          // gemist
-          if (obj.type!=='powerUp' && obj.type!=='promotie'){
-            lives--;
-            missSound.currentTime=0; missSound.play().catch(()=>{});
-          }
-          objects.splice(i,1);
+
+        function drawGrid(schaal, maxLengte, maxBreedte) {
+            ctx.beginPath();
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 0.5;
+            const maxAfmeting = Math.max(maxLengte, maxBreedte);
+            const stapMeter = maxAfmeting <= 10 ? 1 : maxAfmeting <= 50 ? 5 : 10;
+            const stap = stapMeter * schaal;
+            for (let i = 0; i <= canvas.width; i += stap) {
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+            }
+            for (let i = 0; i <= canvas.height; i += stap) {
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+            }
+            ctx.stroke();
+
+            ctx.font = '10px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`${stapMeter}m`, stap + 2, 2);
         }
-      }
-    }
 
-    // --- Promotie (tweede haak + vinky groter) ---
-    function activatePromotie(){
-      twoHooksActive=true;
-      twoHooksTimer=300; // ~5s
-      promotieActive=true;
-      promotieTimer=300; 
-      vinkyWidth= originalVinkyWidth*1.3;
-      vinkyHeight=originalVinkyHeight*1.3;
-    }
-    function updatePromotie(){
-      if (promotieActive) {
-        promotieTimer--;
-        if(promotieTimer<=0){
-          promotieActive=false;
-          vinkyWidth=originalVinkyWidth;
-          vinkyHeight=originalVinkyHeight;
+        function updateAlles() {
+            const vorm = document.getElementById('vorm').value;
+            const daknaam = document.getElementById('daknaam').value;
+            const hellingsgraad = parseFloat(document.getElementById('hellingsgraad').value) || 0;
+            const spiegel = document.getElementById('spiegel')?.checked || false;
+            const indicatief = document.getElementById('indicatief')?.checked || false;
+            let oppervlakte = 0, omtrek = 0, lengtes = [], omschrijvingen = [], detailsList = [];
+
+            document.getElementById('rechthoek').style.display = vorm === 'rechthoek' ? 'block' : 'none';
+            document.getElementById('l-vorm').style.display = vorm === 'l-vorm' ? 'block' : 'none';
+
+            let isValid = true;
+            const inputs = vorm === 'rechthoek' ? ['lengte', 'breedte', 'hellingsgraad'] : ['lengte1', 'breedte1', 'lengte2', 'breedte2', 'hellingsgraad'];
+            inputs.forEach(id => {
+                if (!validateInput(document.getElementById(id), id === 'hellingsgraad')) isValid = false;
+            });
+            if (!isValid) return;
+
+            if (vorm === 'rechthoek') {
+                const lengte = parseFloat(document.getElementById('lengte').value) || 0;
+                const breedte = parseFloat(document.getElementById('breedte').value) || 0;
+                oppervlakte = lengte * breedte;
+                omtrek = 2 * (lengte + breedte);
+                if (hellingsgraad > 0) {
+                    const cosinus = Math.cos(hellingsgraad * Math.PI / 180);
+                    oppervlakte = oppervlakte / cosinus;
+                }
+                lengtes = [lengte, breedte, lengte, breedte];
+                detailsList = [1, 2, 3, 4].map(i => ({
+                    detail: document.getElementById(`detail${i}`).value,
+                    oms: document.getElementById(`oms${i}`).value || ''
+                }));
+                omschrijvingen = detailsList.map(d => d.detail + (d.oms ? ` - ${d.oms}` : ''));
+                tekenRechthoek(lengte, breedte, detailsList, oppervlakte, omtrek, hellingsgraad);
+            } else if (vorm === 'l-vorm') {
+                const lengte1 = parseFloat(document.getElementById('lengte1').value) || 0;
+                const breedte1 = parseFloat(document.getElementById('breedte1').value) || 0;
+                const lengte2 = parseFloat(document.getElementById('lengte2').value) || 0;
+                const breedte2 = parseFloat(document.getElementById('breedte2').value) || 0;
+                const lengte5 = lengte1 - lengte2;
+                const lengte4 = breedte2;
+                oppervlakte = (lengte1 * lengte2) + (lengte5 * lengte4);
+                omtrek = lengte1 + breedte1 + lengte2 + breedte2 + lengte5 + (breedte1 + breedte2);
+                if (hellingsgraad > 0) {
+                    const cosinus = Math.cos(hellingsgraad * Math.PI / 180);
+                    oppervlakte = oppervlakte / cosinus;
+                }
+                lengtes = [lengte1, breedte1, lengte2, breedte2, lengte5, breedte1 + breedte2];
+                detailsList = [1, 2, 3, 4, 5, 6].map(i => ({
+                    detail: document.getElementById(`l-detail${i}`).value,
+                    oms: document.getElementById(`l-oms${i}`).value || ''
+                }));
+                omschrijvingen = detailsList.map(d => d.detail + (d.oms ? ` - ${d.oms}` : ''));
+                tekenLVorm(lengte1, breedte1, lengte2, breedte2, detailsList, spiegel, oppervlakte, omtrek, hellingsgraad);
+            }
+
+            const resultaatDiv = document.getElementById('resultaat');
+            let detailText = '<h4>Details:</h4><ul>';
+            detailsList.forEach((d, i) => {
+                const oms = d.detail + (d.oms ? ` - ${d.oms}` : '');
+                detailText += `<li>${i + 1}: ${oms}: ${lengtes[i].toFixed(2)} m</li>`;
+            });
+            detailText += '</ul>';
+            resultaatDiv.innerHTML = `
+                <h3>Resultaat - ${daknaam}</h3>
+                <p>Oppervlakte: ${oppervlakte.toFixed(2)} m²${indicatief ? ' (indicatief)' : ''}</p>
+                <p>Totale omtrek: ${omtrek.toFixed(2)} m${indicatief ? ' (indicatief)' : ''}</p>
+                ${detailText}
+            `;
+
+            updateLegenda(detailsList, lengtes);
         }
-      }
-      if (twoHooksActive) {
-        twoHooksTimer--;
-        if (twoHooksTimer<=0) {
-          twoHooksActive=false;
+
+        function somDetailnummers(lengtes, omschrijvingen) {
+            const details = {};
+            lengtes.forEach((lengte, index) => {
+                const oms = omschrijvingen[index];
+                details[oms] = (details[oms] || 0) + lengte;
+            });
+            return details;
         }
-      }
-    }
 
-    // --- Wolken bewegen ---
-    function moveClouds(){
-      for(let c of clouds){
-        c.x-=0.2;
-        if(c.x<-50) c.x=canvas.width+30;
-      }
-    }
+        function drawGrid(schaal, maxLengte, maxBreedte) {
+            ctx.beginPath();
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 0.5;
+            const maxAfmeting = Math.max(maxLengte, maxBreedte);
+            const stapMeter = maxAfmeting <= 10 ? 1 : maxAfmeting <= 50 ? 5 : 10;
+            const stap = stapMeter * schaal;
+            for (let i = 0; i <= canvas.width; i += stap) {
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+            }
+            for (let i = 0; i <= canvas.height; i += stap) {
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+            }
+            ctx.stroke();
 
-    // --- Regen (level7+) ---
-    function updateRain(){
-      for(let r of raindrops){
-        r.y+=r.speed;
-        if(r.y>600){
-          r.x=Math.random()*400;
-          r.y=-10;
-          r.speed=3+Math.random()*2;
+            ctx.font = '10px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`${stapMeter}m`, stap + 2, 2);
         }
-      }
-    }
-    function drawRain(){
-      ctx.strokeStyle='rgba(200,200,255,0.5)';
-      ctx.lineWidth=1;
-      for(let r of raindrops){
-        ctx.beginPath();
-        ctx.moveTo(r.x,r.y);
-        ctx.lineTo(r.x+2, r.y+8);
-        ctx.stroke();
-      }
-    }
 
-    // --- Storm => Bliksem (level8) ---
-    let stunDuration=120; // 2s
-    function updateLightning(){
-      if(currentLevel<8) return;
-      if(!lightningActive){
-        randomLightningTimer--;
-        if(randomLightningTimer<=0){
-          // start flits
-          lightningActive=true;
-          lightningX=Math.random()*canvas.width;
-          lightningTimer=15; // ~0,25s
-          randomLightningTimer = 300 + Math.floor(Math.random()*300);
-          // check of vinky is getroffen
-          // breedte ~50 px
-          if( vinkyX+vinkyWidth > lightningX-25 && vinkyX < lightningX+25){
-            // stun
-            vinkyStunnedTimer = stunDuration;
-          }
+        function tekenRechthoek(lengte, breedte, detailsList, oppervlakte, omtrek, hellingsgraad) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const schaal = Math.min(350 / lengte, 350 / breedte) * zoom || zoom;
+            drawGrid(schaal, lengte, breedte);
+            const x = (canvas.width - lengte * schaal) / 2;
+            const y = (canvas.height - breedte * schaal) / 2;
+            lijnen = [
+                [x, y, x + lengte * schaal, y, lengte], // 1: Boven
+                [x + lengte * schaal, y, x + lengte * schaal, y + breedte * schaal, breedte], // 2: Rechts
+                [x + lengte * schaal, y + breedte * schaal, x, y + breedte * schaal, lengte], // 3: Onder
+                [x, y + breedte * schaal, x, y, breedte] // 4: Links
+            ];
+            lijnen.forEach((lijn, i) => {
+                ctx.beginPath();
+                ctx.moveTo(lijn[0], lijn[1]);
+                ctx.lineTo(lijn[2], lijn[3]);
+                ctx.strokeStyle = kleuren[detailsList[i].detail] || '#333333';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+            tekenNummersEnLabels(lijnen, detailsList);
+            detailsLocaties.forEach(loc => {
+                ctx.beginPath();
+                ctx.arc(loc.x, loc.y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#00F';
+                ctx.fill();
+            });
+            const fontSize = Math.max(16 * zoom, 12);
+            ctx.font = `${fontSize}px Arial`;
+            ctx.fillStyle = '#000';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${oppervlakte.toFixed(2)} m²`, canvas.width / 2, canvas.height / 2 - fontSize);
+            ctx.fillText(`${omtrek.toFixed(2)} m`, canvas.width / 2, canvas.height / 2);
+            if (hellingsgraad > 0) {
+                ctx.fillText(`${hellingsgraad.toFixed(1)}°`, canvas.width / 2, canvas.height / 2 + fontSize);
+            }
         }
-      } else {
-        // flits bezig
-        lightningTimer--;
-        if(lightningTimer<=0){
-          lightningActive=false;
+
+        function tekenLVorm(lengte1, breedte1, lengte2, breedte2, detailsList, spiegel, oppervlakte, omtrek, hellingsgraad) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const schaal = Math.min(350 / lengte1, 350 / (breedte1 + breedte2)) * zoom || zoom;
+            drawGrid(schaal, lengte1, breedte1 + breedte2);
+            const x = (canvas.width - lengte1 * schaal) / 2;
+            const y = (canvas.height - (breedte1 + breedte2) * schaal) / 2;
+            if (!spiegel) {
+                lijnen = [
+                    [x, y, x + lengte1 * schaal, y, lengte1], // 1: Lengte deel 1 (boven)
+                    [x + lengte1 * schaal, y, x + lengte1 * schaal, y + breedte1 * schaal, breedte1], // 2: Breedte deel 1 (rechts)
+                    [x + lengte1 * schaal, y + breedte1 * schaal, x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal, lengte2], // 3: Lengte deel 2 (midden rechts)
+                    [x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal, x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal, breedte2], // 4: Breedte deel 2 (midden onder)
+                    [x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal, x, y + (breedte1 + breedte2) * schaal, lengte1 - lengte2], // 5: Lengte deel 1 - Lengte deel 2 (onder)
+                    [x, y + (breedte1 + breedte2) * schaal, x, y, breedte1 + breedte2] // 6: Breedte deel 1 + Breedte deel 2 (links)
+                ];
+            } else {
+                lijnen = [
+                    [x + lengte1 * schaal, y, x, y, lengte1], // 1: Lengte deel 1 (boven, gespiegeld)
+                    [x, y, x, y + breedte1 * schaal, breedte1], // 2: Breedte deel 1 (links)
+                    [x, y + breedte1 * schaal, x + lengte2 * schaal, y + breedte1 * schaal, lengte2], // 3: Lengte deel 2 (midden links)
+                    [x + lengte2 * schaal, y + breedte1 * schaal, x + lengte2 * schaal, y + (breedte1 + breedte2) * schaal, breedte2], // 4: Breedte deel 2 (midden onder)
+                    [x + lengte2 * schaal, y + (breedte1 + breedte2) * schaal, x + lengte1 * schaal, y + (breedte1 + breedte2) * schaal, lengte1 - lengte2], // 5: Lengte deel 1 - Lengte deel 2 (onder)
+                    [x + lengte1 * schaal, y + (breedte1 + breedte2) * schaal, x + lengte1 * schaal, y, breedte1 + breedte2] // 6: Breedte deel 1 + Breedte deel 2 (rechts)
+                ];
+            }
+            lijnen.forEach((lijn, i) => {
+                ctx.beginPath();
+                ctx.moveTo(lijn[0], lijn[1]);
+                ctx.lineTo(lijn[2], lijn[3]);
+                ctx.strokeStyle = kleuren[detailsList[i].detail] || '#333333';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+            tekenNummersEnLabels(lijnen, detailsList);
+            detailsLocaties.forEach(loc => {
+                ctx.beginPath();
+                ctx.arc(loc.x, loc.y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#00F';
+                ctx.fill();
+            });
+            const fontSize = Math.max(16 * zoom, 12);
+            ctx.font = `${fontSize}px Arial`;
+            ctx.fillStyle = '#000';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${oppervlakte.toFixed(2)} m²`, canvas.width / 2, canvas.height / 2 - fontSize);
+            ctx.fillText(`${omtrek.toFixed(2)} m`, canvas.width / 2, canvas.height / 2);
+            if (hellingsgraad > 0) {
+                ctx.fillText(`${hellingsgraad.toFixed(1)}°`, canvas.width / 2, canvas.height / 2 + fontSize);
+            }
         }
-      }
-    }
-    function drawLightning(){
-      if(!lightningActive) return;
-      ctx.strokeStyle='yellow';
-      ctx.lineWidth=3;
-      ctx.beginPath();
-      ctx.moveTo(lightningX,0);
-      ctx.lineTo(lightningX, vinkyY+20);
-      ctx.stroke();
 
-      // evt zijsprong
-      ctx.lineWidth=2;
-      ctx.beginPath();
-      ctx.moveTo(lightningX, canvas.height*0.2);
-      ctx.lineTo(lightningX+(Math.random()*50-25), canvas.height*0.3);
-      ctx.stroke();
-    }
-
-    // --- Wind & Mist (5+), Donker(6+), Regen(7+), Storm(8) ---
-    function updateWindAndEffects(){
-      if(currentLevel<5) {
-        windSpeed=0;
-      } else {
-        if(windSpeed===0) windSpeed=0.3;
-        windChangeTimer--;
-        if(windChangeTimer<=0){
-          windChangeTimer=120+Math.floor(Math.random()*120);
-          windDirection=(Math.random()<0.5)?1:-1;
-          windSpeed=0.2+Math.random()*0.5;
+        function tekenNummersEnLabels(lijnen, detailsList) {
+            ctx.font = '12px Arial';
+            ctx.fillStyle = '#000';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            lijnen.forEach((lijn, i) => {
+                const middenX = (lijn[0] + lijn[2]) / 2;
+                const middenY = (lijn[1] + lijn[3]) / 2;
+                ctx.fillStyle = '#D81B60';
+                ctx.fillText(i + 1, middenX, middenY - 10);
+                ctx.fillStyle = '#000';
+                ctx.fillText(`${lijn[4].toFixed(1)}m`, middenX, middenY + 10);
+            });
         }
-      }
-    }
 
-    // --- Stun (bliksem) ---
-    function updateStun(){
-      if(vinkyStunnedTimer>0) {
-        vinkyStunnedTimer--;
-      }
-    }
-
-    // --- Check Game Over ---
-    function checkGameOver(){
-      if(lives<=0 && !gameOver){
-        // Einde
-        let rankData = addScoreAndFindRank(score);
-        alert(`Game Over! Je score is: ${score}\n`+
-              `Je bent geëindigd op plek ${rankData.rank} van in totaal ${rankData.totalPlayers} spelers.`);
-        gameOver=true;
-        updateHighScoreIfNeeded();
-      }
-    }
-
-    // --- Achtergrond: alleen lucht, wolken, (mist, donker, regen, storm) ---
-    function drawBackground(){
-      // skyColor
-      let skyColor;
-      if (currentLevel<5) {
-        skyColor='#87CEEB'; // lichtblauw
-      } else if (currentLevel===5) {
-        skyColor='#87CEEB'; // mist overlay straks
-      } else if (currentLevel===6) {
-        skyColor='#444444'; // donker
-      } else if (currentLevel===7) {
-        skyColor='#2F2F2F'; // nog donkerder
-      } else {
-        // level 8
-        skyColor='#1C1C1C'; // storm => nog donkerder
-      }
-      ctx.fillStyle=skyColor;
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-
-      // Zon (alleen level<6)
-      if(currentLevel<6){
-        ctx.fillStyle='#FFD700';
-        ctx.beginPath();
-        ctx.arc(canvas.width-50,50,30,0,2*Math.PI);
-        ctx.fill();
-      }
-
-      // Wolken
-      for(let c of clouds){
-        drawCloud(c.x, c.y, c.size);
-      }
-
-      // Mist (level5)
-      if(currentLevel===5){
-        ctx.fillStyle='rgba(200,200,200,0.3)';
-        ctx.fillRect(0,0,canvas.width,canvas.height);
-      }
-      // Donker overlay (6+)
-      if(currentLevel>=6){
-        ctx.fillStyle='rgba(0,0,0,0.4)';
-        ctx.fillRect(0,0,canvas.width,canvas.height);
-      }
-      // Regen (7+)
-      if(currentLevel>=7){
-        drawRain();
-      }
-      // Bliksem (8)
-      if(currentLevel>=8){
-        drawLightning();
-      }
-    }
-    function drawCloud(cx, cy, size=1.0){
-      ctx.fillStyle='#FFFFFF';
-      ctx.beginPath();
-      ctx.arc(cx,cy,20*size,0,2*Math.PI);
-      ctx.arc(cx+15*size,cy,25*size,0,2*Math.PI);
-      ctx.arc(cx-15*size,cy+10*size,25*size,0,2*Math.PI);
-      ctx.fill();
-    }
-
-    // --- Kraanbalk ---
-    function drawCraneBar(){
-      ctx.fillStyle='#FFD700';
-      ctx.fillRect(0,0,canvas.width,10);
-    }
-
-    // --- Haak 1 & Haak 2 ---
-    function drawHook(){
-      ctx.strokeStyle='#808080';
-      ctx.beginPath();
-      ctx.moveTo(hookX+hookWidth/2,0);
-      ctx.lineTo(hookX+hookWidth/2,hookY);
-      ctx.stroke();
-      ctx.fillStyle='#808080';
-      ctx.fillRect(hookX, hookY, hookWidth, hookHeight);
-    }
-    function drawHook2(){
-      ctx.strokeStyle='#808080';
-      ctx.beginPath();
-      ctx.moveTo(hook2X+hook2Width/2,0);
-      ctx.lineTo(hook2X+hook2Width/2,hook2Y);
-      ctx.stroke();
-      ctx.fillStyle='#808080';
-      ctx.fillRect(hook2X,hook2Y,hook2Width,hook2Height);
-    }
-
-    // --- Simpel dak onderaan ---
-    function drawFlatRoof(){
-      ctx.fillStyle='#444';
-      ctx.fillRect(0,580,canvas.width,20);
-    }
-
-    // --- Vinky's binnenste kleur meeveranderen met level ---
-    function getVinkyInsideColor(){
-      if (currentLevel<5) {
-        return '#87CEEB';
-      } else if (currentLevel===5) {
-        return '#A0A0A0'; // mistig
-      } else if (currentLevel===6) {
-        return '#444444';
-      } else if (currentLevel===7) {
-        return '#2F2F2F';
-      } else {
-        return '#1C1C1C'; // level8 storm => nog donkerder
-      }
-    }
-
-    // --- Vinky V tekenen met juich-animatie ---
-    function drawVinkyV(){
-      ctx.save();
-      ctx.translate(vinkyX+vinkyWidth/2, vinkyY+vinkyHeight/2);
-
-      // Oranje V
-      ctx.fillStyle='#F36F21';
-      ctx.beginPath();
-      ctx.moveTo(-vinkyWidth/2, -vinkyHeight/2);
-      ctx.lineTo(0, vinkyHeight/2);
-      ctx.lineTo(vinkyWidth/2, -vinkyHeight/2);
-      ctx.closePath();
-      ctx.fill();
-
-      // Binnenste driehoek
-      ctx.fillStyle=getVinkyInsideColor();
-      ctx.beginPath();
-      ctx.moveTo(-vinkyWidth*0.2, -vinkyHeight/2);
-      ctx.lineTo(0, vinkyHeight*0.15);
-      ctx.lineTo(vinkyWidth*0.2, -vinkyHeight/2);
-      ctx.closePath();
-      ctx.fill();
-
-      if(vinkyCheerTimer>0) {
-        // Juichen: ogen dicht, handjes omhoog
-        drawVinkyEyesClosed(-vinkyWidth*0.25, vinkyWidth*0.25, -vinkyHeight*0.1);
-        drawVinkyHands(-vinkyWidth/2, vinkyWidth/2, -vinkyHeight/2 -5);
-      } else {
-        // Normaal
-        drawVinkyEyesOpen(-vinkyWidth*0.25, vinkyWidth*0.25, -vinkyHeight*0.1);
-        drawVinkyHands(-vinkyWidth/2, vinkyWidth/2, -vinkyHeight/4);
-      }
-      ctx.restore();
-    }
-
-    function drawVinkyEyesOpen(leftX, rightX, eyeY){
-      ctx.fillStyle='#FFFFFF';
-      ctx.beginPath();
-      ctx.arc(leftX,eyeY,4,0,2*Math.PI);
-      ctx.arc(rightX,eyeY,4,0,2*Math.PI);
-      ctx.fill();
-      ctx.fillStyle='#0000FF';
-      ctx.beginPath();
-      ctx.arc(leftX,eyeY,2,0,2*Math.PI);
-      ctx.arc(rightX,eyeY,2,0,2*Math.PI);
-      ctx.fill();
-    }
-    function drawVinkyEyesClosed(leftX, rightX, eyeY){
-      ctx.strokeStyle='#000000';
-      ctx.lineWidth=2;
-      ctx.beginPath();
-      ctx.moveTo(leftX-2, eyeY);
-      ctx.lineTo(leftX+2, eyeY);
-      ctx.moveTo(rightX-2, eyeY);
-      ctx.lineTo(rightX+2, eyeY);
-      ctx.stroke();
-    }
-    function drawVinkyHands(leftX,rightX, handY){
-      ctx.fillStyle='#FFFFFF';
-      // linker
-      ctx.beginPath();
-      ctx.arc(leftX-5,handY,5,0,2*Math.PI);
-      ctx.fill();
-      // rechter
-      ctx.beginPath();
-      ctx.arc(rightX+5,handY,5,0,2*Math.PI);
-      ctx.fill();
-    }
-
-    // --- Vallende objecten ---
-    function drawObjects(){
-      for(let obj of objects){
-        if(obj.type==='gasfles'){
-          ctx.fillStyle='#A9A9A9';
-          ctx.fillRect(obj.x,obj.y,obj.width,obj.height);
-          ctx.fillStyle='#7F7F7F';
-          ctx.fillRect(obj.x+obj.width/4, obj.y-5, obj.width/2,5);
-
-        } else if(obj.type==='dakrol'){
-          ctx.fillStyle='#000000';
-          ctx.fillRect(obj.x,obj.y,obj.width,obj.height);
-          ctx.fillStyle='#FFFFFF';
-          ctx.fillRect(obj.x, obj.y+obj.height/2-2, obj.width,4);
-
-        } else if(obj.type==='schroef'){
-          ctx.fillStyle='#0000FF';
-          ctx.fillRect(obj.x,obj.y, obj.width, obj.height*0.4);
-          ctx.fillStyle='#C0C0C0';
-          ctx.fillRect(
-            obj.x+obj.width/4,
-            obj.y+obj.height*0.4,
-            obj.width/2,
-            obj.height*0.6
-          );
-
-        } else if(obj.type==='pir'){
-          ctx.fillStyle='#EEE8AA';
-          ctx.fillRect(obj.x,obj.y,obj.width,obj.height);
-          ctx.strokeStyle='#BDB76B';
-          ctx.strokeRect(obj.x,obj.y,obj.width,obj.height);
-
-        } else if(obj.type==='powerUp'){
-          // Geldzak
-          const cx=obj.x+obj.width/2;
-          const cy=obj.y+obj.height/2;
-          const r=obj.width/2;
-          ctx.fillStyle='#8B4513';
-          ctx.beginPath();
-          ctx.ellipse(cx, cy+2, r, r*1.2, 0,0,2*Math.PI);
-          ctx.fill();
-          ctx.fillStyle='#654321';
-          ctx.fillRect(cx-r*0.6, cy-r*0.6, r*1.2, r*0.4);
-          ctx.fillStyle='#FFFF00';
-          ctx.font='10px Arial';
-          ctx.fillText('+1', cx-6, cy+4);
-
-        } else if(obj.type==='promotie'){
-          // Gouden kroon
-          ctx.fillStyle='#FFD700';
-          ctx.beginPath();
-          ctx.fillRect(obj.x, obj.y+obj.height/2, obj.width, obj.height/2);
-          ctx.moveTo(obj.x, obj.y+obj.height/2);
-          ctx.lineTo(obj.x+obj.width*0.2, obj.y);
-          ctx.lineTo(obj.x+obj.width*0.5, obj.y+obj.height*0.5);
-          ctx.lineTo(obj.x+obj.width*0.8, obj.y);
-          ctx.lineTo(obj.x+obj.width, obj.y+obj.height/2);
-          ctx.closePath();
-          ctx.fill();
-
-          ctx.fillStyle='#000000';
-          ctx.font='10px Arial';
-          ctx.fillText('+1 life', obj.x-5, obj.y+obj.height/2 -2);
+        function updateLegenda(detailsList, lengtes) {
+            const legendaContent = document.getElementById('legenda-content');
+            const groupedDetails = {};
+            detailsList.forEach((d, i) => {
+                const oms = d.detail + (d.oms ? ` - ${d.oms}` : '');
+                if (!groupedDetails[oms]) {
+                    groupedDetails[oms] = { lengte: 0, kleur: kleuren[d.detail] || '#333333', zijden: [] };
+                }
+                groupedDetails[oms].lengte += lengtes[i];
+                groupedDetails[oms].zijden.push(i + 1);
+            });
+            let html = '';
+            for (const [oms, data] of Object.entries(groupedDetails)) {
+                html += `<div class="legenda-item"><span class="legenda-kleur" style="background-color: ${data.kleur}"></span> ${data.zijden.join(', ')}: ${oms} - ${data.lengte.toFixed(2)} m</div>`;
+            }
+            legendaContent.innerHTML = html;
         }
-      }
-    }
 
-    // --- Score & Levens (zwart) ---
-    function drawScore(){
-      ctx.font='20px Arial';
-      ctx.fillStyle='#000000';
-      ctx.fillText('Score: '+score, 10,70);
-    }
-    function drawLives(){
-      ctx.font='20px Arial';
-      ctx.fillStyle='#000000';
-      ctx.fillText('Levens: '+lives, 10,95);
-    }
-
-    // --- Level-up melding ---
-    function drawLevelUpMessage(){
-      ctx.font='24px Arial';
-      ctx.fillStyle='#FF0000';
-      const msg=`LEVEL ${currentLevel}!`;
-      const textWidth= ctx.measureText(msg).width;
-      ctx.fillText(msg, canvas.width/2 - textWidth/2, 50);
-    }
-
-    // --- Opnieuw-knop bij game over ---
-    function drawRestartButton(){
-      ctx.fillStyle='#FFFFFF';
-      ctx.fillRect(150,275,100,50);
-      ctx.fillStyle='#003087';
-      ctx.font='20px Arial';
-      ctx.fillText('Opnieuw',165,305);
-    }
-
-    // --- ScoreBoard in DOM ---
-    function updateScoreBoard(){
-      document.getElementById('gasflesCount').textContent=gasflesCount;
-      document.getElementById('dakrolCount').textContent=dakrolCount;
-      document.getElementById('schroefCount').textContent=schroefCount;
-      document.getElementById('pirCount').textContent=pirCount;
-      document.getElementById('powerUpCount').textContent=powerUpCount;
-    }
-
-    // --- Herstart ---
-    function restartGame(){
-      score=0; 
-      lives=3;
-      objects=[];
-      gameOver=false;
-      currentLevel=1;
-      previousLevel=1;
-      levelChangeTimer=0;
-      vinkyCheerTimer=0;
-      vinkyStunnedTimer=0;
-
-      hookX=0;
-      hookSpeed=2;
-      hookDirection=1;
-      randomCraneTimer=0;
-
-      hook2X=380; 
-      hook2Direction=-1;
-      hook2Speed=2;
-      twoHooksActive=false;
-      twoHooksTimer=0;
-
-      promotieActive=false;
-      promotieTimer=0;
-      promotieSpawned=false;
-      frameCounter=0;
-
-      windSpeed=0;
-      windDirection=1;
-      windChangeTimer=0;
-
-      vinkyX=175;
-      vinkyWidth=originalVinkyWidth;
-      vinkyHeight=originalVinkyHeight;
-
-      gasflesCount=0;
-      dakrolCount=0;
-      schroefCount=0;
-      pirCount=0;
-      powerUpCount=0;
-    }
-
-    // --- Gameloop ---
-    function gameLoop(){
-      frameCounter++;
-      if(!paused){
-        if(!gameOver){
-          updateLevel();
-          updateHook();
-          if(twoHooksActive) updateHook2();
-
-          spawnObject();
-          updateObjects();
-          updatePromotie();
-          updateWindAndEffects();
-          moveClouds();
-          if(currentLevel>=7) updateRain();
-          if(currentLevel>=8) updateLightning();
-          updateStun();
-          checkGameOver();
-
-          // Forceer 1× promotie na ~10s
-          forcePromotieIfNeeded();
-
-          // Timers
-          if(levelChangeTimer>0) levelChangeTimer--;
-          if(vinkyCheerTimer>0)  vinkyCheerTimer--;
+        function zoomIn() {
+            zoom *= 1.2;
+            updateAlles();
         }
-      }
 
-      // Altijd tekenen (ook bij pauze)
-      drawBackground();
-      drawCraneBar();
-      drawHook();
-      if(twoHooksActive) drawHook2();
-      drawFlatRoof();
-      drawVinkyV();
-      drawObjects();
-      drawScore();
-      drawLives();
-      if(levelChangeTimer>0) drawLevelUpMessage();
-      if(gameOver) drawRestartButton();
+        function zoomOut() {
+            zoom /= 1.2;
+            if (zoom < 0.5) zoom = 0.5;
+            updateAlles();
+        }
 
-      updateScoreBoard();
-      requestAnimationFrame(gameLoop);
-    }
+        function exportPNG(tabId) {
+            switchTab(tabId);
+            setTimeout(() => {
+                html2canvas(document.body, { scale: 2 }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `${document.getElementById('daknaam').value || 'opnameformulier'}_${tabId}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                });
+            }, 100);
+        }
 
-    // Start het spel
-    gameLoop();
-  </script>
+        function exportPDF(tabId) {
+            switchTab(tabId);
+            setTimeout(() => {
+                html2canvas(document.body, { scale: 2 }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    const imgProps = pdf.getImageProperties(imgData);
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+                    let heightLeft = pdfHeight;
+                    let position = 0;
+
+                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+                    heightLeft -= pageHeight;
+                    while (heightLeft > 0) {
+                        position = heightLeft - pdfHeight;
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+                        heightLeft -= pageHeight;
+                    }
+                    pdf.save(`${document.getElementById('daknaam').value || 'opnameformulier'}_${tabId}.pdf`);
+                });
+            }, 100);
+        }
+
+        function resetForm() {
+            document.getElementById('dakForm').reset();
+            document.getElementById('lengte').value = 10;
+            document.getElementById('breedte').value = 5;
+            document.getElementById('lengte1').value = 10;
+            document.getElementById('breedte1').value = 5;
+            document.getElementById('lengte2').value = 4;
+            document.getElementById('breedte2').value = 3;
+            document.getElementById('hellingsgraad').value = 0;
+            document.getElementById('daknaam').value = "Dak 1";
+            document.getElementById('daknaam-waarnemingen').value = "Dak 1";
+            document.getElementById('toestand').value = "1";
+            document.getElementById('spiegel').checked = false;
+            document.getElementById('indicatief').checked = false;
+            document.getElementById('grind-vast').checked = false;
+            document.getElementById('isolatie-nat').checked = false;
+            document.getElementById('plasvorming').checked = false;
+            document.querySelectorAll('.error').forEach(e => e.style.display = 'none');
+            detailsLocaties = [];
+            zoom = 1;
+            updateAlles();
+        }
+
+        // Initiele weergave
+        updateAlles();
+    </script>
 </body>
 </html>
