@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DakRenovatieCalculator</title>
+    <title>DakVormCalculator</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -58,33 +58,77 @@
         .reset-btn:hover {
             background-color: #c82333;
         }
+        .vorm-specifiek {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <h1>DakRenovatieCalculator</h1>
+    <h1>DakVormCalculator</h1>
     <div class="container">
-        <form id="dakForm" onsubmit="berekenKosten(event)">
-            <label for="lengte">Lengte dak (m):</label>
-            <input type="number" id="lengte" step="0.1" min="0" required>
+        <form id="dakForm" onsubmit="berekenDak(event)">
+            <label for="vorm">Dakvorm:</label>
+            <select id="vorm" onchange="toonVormVelden()">
+                <option value="rechthoek">Rechthoek</option>
+                <option value="l-vorm">L-vorm</option>
+                <option value="t-vorm">T-vorm</option>
+            </select>
 
-            <label for="breedte">Breedte dak (m):</label>
-            <input type="number" id="breedte" step="0.1" min="0" required>
+            <!-- Rechthoek velden -->
+            <div id="rechthoek" class="vorm-specifiek">
+                <label for="lengte">Lengte (m):</label>
+                <input type="number" id="lengte" step="0.1" min="0" required>
+                <label for="breedte">Breedte (m):</label>
+                <input type="number" id="breedte" step="0.1" min="0" required>
+                <label>Detailnummers:</label>
+                <input type="text" id="detail1" placeholder="Detailnr zijde 1 (bijv. D1)" maxlength="5">
+                <input type="text" id="detail2" placeholder="Detailnr zijde 2" maxlength="5">
+                <input type="text" id="detail3" placeholder="Detailnr zijde 3" maxlength="5">
+                <input type="text" id="detail4" placeholder="Detailnr zijde 4" maxlength="5">
+            </div>
+
+            <!-- L-vorm velden -->
+            <div id="l-vorm" class="vorm-specifiek">
+                <label for="lengte1">Lengte deel 1 (m):</label>
+                <input type="number" id="lengte1" step="0.1" min="0">
+                <label for="breedte1">Breedte deel 1 (m):</label>
+                <input type="number" id="breedte1" step="0.1" min="0">
+                <label for="lengte2">Lengte deel 2 (m):</label>
+                <input type="number" id="lengte2" step="0.1" min="0">
+                <label for="breedte2">Breedte deel 2 (m):</label>
+                <input type="number" id="breedte2" step="0.1" min="0">
+                <label>Detailnummers (6 zijden):</label>
+                <input type="text" id="l-detail1" placeholder="Detailnr zijde 1" maxlength="5">
+                <input type="text" id="l-detail2" placeholder="Detailnr zijde 2" maxlength="5">
+                <input type="text" id="l-detail3" placeholder="Detailnr zijde 3" maxlength="5">
+                <input type="text" id="l-detail4" placeholder="Detailnr zijde 4" maxlength="5">
+                <input type="text" id="l-detail5" placeholder="Detailnr zijde 5" maxlength="5">
+                <input type="text" id="l-detail6" placeholder="Detailnr zijde 6" maxlength="5">
+            </div>
+
+            <!-- T-vorm velden -->
+            <div id="t-vorm" class="vorm-specifiek">
+                <label for="lengte-stam">Lengte stam (m):</label>
+                <input type="number" id="lengte-stam" step="0.1" min="0">
+                <label for="breedte-stam">Breedte stam (m):</label>
+                <input type="number" id="breedte-stam" step="0.1" min="0">
+                <label for="lengte-balk">Lengte balk (m):</label>
+                <input type="number" id="lengte-balk" step="0.1" min="0">
+                <label for="breedte-balk">Breedte balk (m):</label>
+                <input type="number" id="breedte-balk" step="0.1" min="0">
+                <label>Detailnummers (8 zijden):</label>
+                <input type="text" id="t-detail1" placeholder="Detailnr zijde 1" maxlength="5">
+                <input type="text" id="t-detail2" placeholder="Detailnr zijde 2" maxlength="5">
+                <input type="text" id="t-detail3" placeholder="Detailnr zijde 3" maxlength="5">
+                <input type="text" id="t-detail4" placeholder="Detailnr zijde 4" maxlength="5">
+                <input type="text" id="t-detail5" placeholder="Detailnr zijde 5" maxlength="5">
+                <input type="text" id="t-detail6" placeholder="Detailnr zijde 6" maxlength="5">
+                <input type="text" id="t-detail7" placeholder="Detailnr zijde 7" maxlength="5">
+                <input type="text" id="t-detail8" placeholder="Detailnr zijde 8" maxlength="5">
+            </div>
 
             <label for="hellingsgraad">Hellingsgraad (°):</label>
             <input type="number" id="hellingsgraad" step="0.1" min="0" max="90" value="0">
-
-            <label for="materiaal">Materiaal:</label>
-            <select id="materiaal" required>
-                <option value="10">Bitumen (€10/m²)</option>
-                <option value="15">EPDM (€15/m²)</option>
-                <option value="12">PVC (€12/m²)</option>
-            </select>
-
-            <label for="uurloon">Uurloon (€):</label>
-            <input type="number" id="uurloon" step="0.1" min="0" value="40" required>
-
-            <label for="uren">Geschatte uren:</label>
-            <input type="number" id="uren" step="1" min="0" value="10" required>
 
             <button type="submit">Bereken</button>
             <button type="button" class="reset-btn" onclick="resetForm()">Reset</button>
@@ -94,52 +138,108 @@
     </div>
 
     <script>
-        function berekenKosten(event) {
+        function toonVormVelden() {
+            const vorm = document.getElementById('vorm').value;
+            document.getElementById('rechthoek').style.display = vorm === 'rechthoek' ? 'block' : 'none';
+            document.getElementById('l-vorm').style.display = vorm === 'l-vorm' ? 'block' : 'none';
+            document.getElementById('t-vorm').style.display = vorm === 't-vorm' ? 'block' : 'none';
+        }
+
+        function berekenDak(event) {
             event.preventDefault();
-
-            // Haal waarden op
-            const lengte = parseFloat(document.getElementById('lengte').value);
-            const breedte = parseFloat(document.getElementById('breedte').value);
+            const vorm = document.getElementById('vorm').value;
             const hellingsgraad = parseFloat(document.getElementById('hellingsgraad').value);
-            const materiaalPrijs = parseFloat(document.getElementById('materiaal').value);
-            const uurloon = parseFloat(document.getElementById('uurloon').value);
-            const uren = parseFloat(document.getElementById('uren').value);
+            let oppervlakte = 0, omtrek = 0, details = {};
 
-            // Bereken oppervlakte (met hellingsgraadcorrectie)
-            let oppervlakte = lengte * breedte;
-            if (hellingsgraad > 0) {
-                const cosinus = Math.cos(hellingsgraad * Math.PI / 180);
-                oppervlakte = oppervlakte / cosinus; // Verhoogt bij helling
+            if (vorm === 'rechthoek') {
+                const lengte = parseFloat(document.getElementById('lengte').value);
+                const breedte = parseFloat(document.getElementById('breedte').value);
+                oppervlakte = lengte * breedte;
+                omtrek = 2 * (lengte + breedte);
+                const detailnrs = [
+                    document.getElementById('detail1').value,
+                    document.getElementById('detail2').value,
+                    document.getElementById('detail3').value,
+                    document.getElementById('detail4').value
+                ];
+                details = somDetailnummers([lengte, breedte, lengte, breedte], detailnrs);
+            } else if (vorm === 'l-vorm') {
+                const lengte1 = parseFloat(document.getElementById('lengte1').value);
+                const breedte1 = parseFloat(document.getElementById('breedte1').value);
+                const lengte2 = parseFloat(document.getElementById('lengte2').value);
+                const breedte2 = parseFloat(document.getElementById('breedte2').value);
+                oppervlakte = (lengte1 * breedte1) + (lengte2 * breedte2);
+                omtrek = lengte1 + breedte1 + lengte2 + (breedte1 + breedte2) + (lengte1 - lengte2) + breedte2;
+                const detailnrs = [
+                    document.getElementById('l-detail1').value,
+                    document.getElementById('l-detail2').value,
+                    document.getElementById('l-detail3').value,
+                    document.getElementById('l-detail4').value,
+                    document.getElementById('l-detail5').value,
+                    document.getElementById('l-detail6').value
+                ];
+                details = somDetailnummers([lengte1, breedte1, lengte2, breedte1 + breedte2, lengte1 - lengte2, breedte2], detailnrs);
+            } else if (vorm === 't-vorm') {
+                const lengteStam = parseFloat(document.getElementById('lengte-stam').value);
+                const breedteStam = parseFloat(document.getElementById('breedte-stam').value);
+                const lengteBalk = parseFloat(document.getElementById('lengte-balk').value);
+                const breedteBalk = parseFloat(document.getElementById('breedte-balk').value);
+                oppervlakte = (lengteStam * breedteStam) + (lengteBalk * breedteBalk);
+                omtrek = lengteStam + breedteStam + lengteBalk + (breedteStam + breedteBalk) + (lengteStam - lengteBalk) + breedteBalk + lengteBalk + breedteStam;
+                const detailnrs = [
+                    document.getElementById('t-detail1').value,
+                    document.getElementById('t-detail2').value,
+                    document.getElementById('t-detail3').value,
+                    document.getElementById('t-detail4').value,
+                    document.getElementById('t-detail5').value,
+                    document.getElementById('t-detail6').value,
+                    document.getElementById('t-detail7').value,
+                    document.getElementById('t-detail8').value
+                ];
+                details = somDetailnummers([lengteStam, breedteStam, lengteBalk, breedteStam + breedteBalk, lengteStam - lengteBalk, breedteBalk, lengteBalk, breedteStam], detailnrs);
             }
 
-            // Bereken kosten
-            const materiaalKosten = oppervlakte * materiaalPrijs;
-            const arbeidKosten = uurloon * uren;
-            const totaalExBtw = materiaalKosten + arbeidKosten;
-            const btw = totaalExBtw * 0.21; // 21% BTW
-            const totaalInclBtw = totaalExBtw + btw;
+            // Hellingsgraadcorrectie
+            if (hellingsgraad > 0) {
+                const cosinus = Math.cos(hellingsgraad * Math.PI / 180);
+                oppervlakte = oppervlakte / cosinus;
+            }
 
             // Toon resultaat
             const resultaatDiv = document.getElementById('resultaat');
+            let detailText = '<h4>Detailnummers:</h4><ul>';
+            for (const [detail, lengte] of Object.entries(details)) {
+                detailText += `<li>${detail}: ${lengte.toFixed(2)} m</li>`;
+            }
+            detailText += '</ul>';
             resultaatDiv.innerHTML = `
                 <h3>Resultaat</h3>
                 <p>Oppervlakte: ${oppervlakte.toFixed(2)} m²</p>
-                <p>Materiaalkosten: €${materiaalKosten.toFixed(2)}</p>
-                <p>Arbeidskosten: €${arbeidKosten.toFixed(2)}</p>
-                <p>Totaal (excl. BTW): €${totaalExBtw.toFixed(2)}</p>
-                <p>BTW (21%): €${btw.toFixed(2)}</p>
-                <p><strong>Totaal (incl. BTW): €${totaalInclBtw.toFixed(2)}</strong></p>
-                <p><em>Druk op Ctrl+P om als PDF op te slaan</em></p>
+                <p>Totale omtrek: ${omtrek.toFixed(2)} m</p>
+                ${detailText}
             `;
+        }
+
+        function somDetailnummers(lengtes, detailnrs) {
+            const details = {};
+            lengtes.forEach((lengte, index) => {
+                const detail = detailnrs[index] || 'Geen';
+                if (detail !== 'Geen') {
+                    details[detail] = (details[detail] || 0) + lengte;
+                }
+            });
+            return details;
         }
 
         function resetForm() {
             document.getElementById('dakForm').reset();
             document.getElementById('hellingsgraad').value = 0;
-            document.getElementById('uurloon').value = 40;
-            document.getElementById('uren').value = 10;
             document.getElementById('resultaat').innerHTML = '';
+            toonVormVelden();
         }
+
+        // Initieel juiste velden tonen
+        toonVormVelden();
     </script>
 </body>
 </html>
