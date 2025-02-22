@@ -38,7 +38,7 @@
 <body>
     <div class="popup" id="gamePopup" onclick="hidePopup()">
         <h2>Vinky V Jump</h2>
-        <p>Spring met Vinky V van dak naar dak! Beweeg met pijltjestoetsen of tik (links/rechts). Grijp een ladder voor een turbo-sprong, repareer lekkende daken voor bonuspunten en een superboost na 5 fixes. Pas op voor vleermuizen op platforms! Je hebt 3 levens.</p>
+        <p>Spring met Vinky V van dak naar dak! Beweeg met pijltjestoetsen of tik (links/rechts). Grijp een ladder voor een turbo-sprong, repareer lekkende daken voor bonuspunten, een superboost en een extra leven na 5 fixes. Pas op voor vleermuizen op platforms! Je hebt 3 levens.</p>
     </div>
     <!-- Geluidseffecten -->
     <audio id="jumpSound" src="https://www.soundjay.com/buttons/sounds/button-1.mp3"></audio>
@@ -63,6 +63,7 @@
         let bonusTimer = 0;
         let repairEffect = [];
         let boostEffect = [];
+        let fireworkEffect = [];
         let multiplier = 1;
         let multiplierTimer = 0;
 
@@ -91,7 +92,9 @@
                 updateCamera();
                 updateBonus();
                 updateMultiplier();
+                drawStars();
                 drawPlatforms();
+                drawFireworks();
                 drawCharacter();
                 drawScore();
             } else if (gameState === 'gameOver') {
@@ -101,8 +104,10 @@
 
         // Achtergrond tekenen
         function drawBackground() {
-            let blue = map(min(score / 1000, 1), 0, 1, 235, 100); // Donkerder bij hogere score
-            background(135, 206, blue);
+            let blue = map(min(score / 1000, 1), 0, 1, 235, 204); // Licht naar donker blauw
+            let green = map(min(score / 1000, 1), 0, 1, 206, 102);
+            let red = map(min(score / 1000, 1), 0, 1, 135, 0);
+            background(red, green, blue);
             fill(255, 215, 0);
             ellipse(50, 50, 50, 50); // Zonnetje
             fill(255);
@@ -111,6 +116,41 @@
             ellipse(130, 90, 70, 50);
             ellipse(300, 150, 80, 50);
             ellipse(270, 140, 60, 40);
+        }
+
+        // Sterren tekenen
+        function drawStars() {
+            if (score > 500) {
+                let starCount = min(floor(score / 2000) * 10, 50); // Max 50 sterren
+                for (let i = 0; i < starCount; i++) {
+                    fill(255, random(100, 255));
+                    ellipse(random(width), random(height), 2, 2);
+                }
+            }
+        }
+
+        // Vuurwerk tekenen
+        function drawFireworks() {
+            if (floor(score / 1000) > floor((score - 0.1) / 1000)) {
+                for (let i = 0; i < 10; i++) {
+                    fireworkEffect.push({
+                        x: random(width),
+                        y: height,
+                        vx: random(-2, 2),
+                        vy: random(-5, -2),
+                        color: [random(255), random(255), random(255)],
+                        timer: 60
+                    });
+                }
+            }
+            fireworkEffect = fireworkEffect.filter(f => f.timer > 0);
+            for (let f of fireworkEffect) {
+                f.x += f.vx;
+                f.y += f.vy;
+                f.timer--;
+                fill(f.color[0], f.color[1], f.color[2], f.timer * 4);
+                ellipse(f.x, f.y - cameraY, 10, 10);
+            }
         }
 
         // Karakter bijwerken
@@ -127,6 +167,7 @@
                         localStorage.setItem('highScore', highScore);
                     }
                 } else {
+                    character.x = width / 2;
                     character.y = height / 2;
                     character.velocity = 0;
                     cameraY = 0;
@@ -183,6 +224,7 @@
             if (fixedRoofs >= 5 && !bonusActive) {
                 bonusActive = true;
                 character.hasSuperBoost = true;
+                lives = min(lives + 1, 5); // Extra leven, max 5
                 bonusTimer = 300; // 5 seconden
                 fixedRoofs = 0;
                 document.getElementById('bonusSound').play();
@@ -217,6 +259,7 @@
                                 localStorage.setItem('highScore', highScore);
                             }
                         } else {
+                            character.x = width / 2;
                             character.y = height / 2;
                             character.velocity = 0;
                             cameraY = 0;
@@ -339,7 +382,7 @@
 
                 // Vleermuis
                 if (platform.hasBat) {
-                    let batX = platform.x + platform.width / 2 + sin(frameCount * 0.05) * 30; // Bewegende vleermuis
+                    let batX = platform.x + platform.width / 2 + sin(frameCount * 0.05) * 30;
                     fill(0);
                     ellipse(batX, platform.y - 10, 20, 10);
                     triangle(batX - 10, platform.y - 15, batX - 5, platform.y - 20, batX, platform.y - 15);
@@ -411,7 +454,7 @@
                 hasBat: false
             });
             for (let i = 1; i < 6; i++) {
-                let y = startY - i * (120 + min(score / 10, 100)) + random(-30, 30); // Max afstand 220
+                let y = startY - i * (120 + min(score / 15, 80)) + random(-30, 30); // Max afstand 200
                 let hasPowerUp = random() < 0.1;
                 let isBroken = !hasPowerUp && random() < 0.1;
                 let hasBat = !hasPowerUp && !isBroken && score > 300 && random() < 0.1;
@@ -424,13 +467,24 @@
                     isBroken: isBroken,
                     hasBat: hasBat
                 });
+                if (hasBat) {
+                    platforms.push({
+                        x: random(width - 100),
+                        y: y - random(150, 200), // Dichtbij platform zonder vleermuis
+                        width: 100,
+                        height: 15,
+                        hasPowerUp: false,
+                        isBroken: false,
+                        hasBat: false
+                    });
+                }
             }
             character.y = startY - character.size / 2;
         }
 
         function generatePlatform() {
             let highestPlatform = min(platforms.map(p => p.y));
-            let y = highestPlatform - (120 + min(score / 10, 100)) + random(-30, 30); // Max afstand 220
+            let y = highestPlatform - (120 + min(score / 15, 80)) + random(-30, 30); // Max afstand 200
             let hasPowerUp = random() < 0.1;
             let isBroken = !hasPowerUp && random() < 0.1;
             let hasBat = !hasPowerUp && !isBroken && score > 300 && random() < 0.1;
@@ -443,6 +497,17 @@
                 isBroken: isBroken,
                 hasBat: hasBat
             });
+            if (hasBat) {
+                platforms.push({
+                    x: random(width - 100),
+                    y: y - random(150, 200), // Dichtbij platform zonder vleermuis
+                    width: 100,
+                    height: 15,
+                    hasPowerUp: false,
+                    isBroken: false,
+                    hasBat: false
+                });
+            }
         }
 
         // Bediening
@@ -473,6 +538,7 @@
             cameraY = 0;
             repairEffect = [];
             boostEffect = [];
+            fireworkEffect = [];
             generateInitialPlatforms();
         }
 
