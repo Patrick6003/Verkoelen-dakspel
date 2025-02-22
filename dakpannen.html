@@ -3,48 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VInky Jump</title>
+    <title>Vinky V Jump</title>
     <style>
         body {
             background-color: #DCDCDC; /* Lichtgrijs */
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             font-family: Arial, sans-serif;
         }
         canvas {
             border: 2px solid #FFA500; /* Oranje */
         }
-        .game-info {
-            position: absolute;
-            bottom: 10px;
+        .popup {
+            position: fixed;
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
-            color: #000;
-            text-align: center;
-            max-width: 80%;
-            display: none; /* Verberg op mobiel */
-        }
-        .info-button {
-            position: absolute;
-            top: 10px;
-            right: 10px;
+            transform: translate(-50%, -50%);
             background-color: #FFA500;
             color: white;
-            border: none;
-            padding: 10px;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 80%;
+            z-index: 10;
             cursor: pointer;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
 </head>
 <body>
-    <button class="info-button" onclick="toggleInfo()">Info</button>
-    <div class="game-info" id="gameInfo">
-        <h2>VInky Jump</h2>
-        <p>Spring van dak naar dak als Vinky! Beweeg met pijltjestoetsen of tik (links/rechts). Raak de ladder aan voor een boost. Maak kapotte daken (met waterdruppel) voor extra punten. Hoe hoger je komt, hoe moeilijker het wordt!</p>
+    <div class="popup" id="gamePopup" onclick="hidePopup()">
+        <h2>Vinky V Jump</h2>
+        <p>Spring met Vinky V van dak naar dak! Beweeg met pijltjestoetsen of tik (links/rechts). Grijp een ladder voor een turbo-sprong, en repareer lekkende daken (met druppel) voor bonuspunten. Hoe hoger, hoe stoerder!</p>
     </div>
     <script>
         // Variabelen
@@ -69,6 +63,8 @@
                 hasBoost: false
             };
             generateInitialPlatforms();
+            // Popup verdwijnt na 5 seconden
+            setTimeout(hidePopup, 5000);
         }
 
         // Hoofdgame-loop
@@ -89,26 +85,17 @@
 
         // Achtergrond tekenen
         function drawBackground() {
-            if (score < 500) {
-                background(135, 206, 235); // Blauwe lucht
-                // Zonnetje
-                fill(255, 215, 0);
-                ellipse(50, 50, 50, 50);
-                // Wolkjes
-                fill(255);
-                noStroke();
-                ellipse(100, 100, 60, 40);
-                ellipse(130, 90, 70, 50);
-                ellipse(300, 150, 80, 50);
-                ellipse(270, 140, 60, 40);
-            } else {
-                background(0); // Ruimte
-                // Sterren
-                fill(255);
-                for (let i = 0; i < 20; i++) {
-                    ellipse(random(width), random(height), 2, 2);
-                }
-            }
+            background(135, 206, 235); // Blauwe lucht
+            // Zonnetje
+            fill(255, 215, 0);
+            ellipse(50, 50, 50, 50);
+            // Wolkjes
+            fill(255);
+            noStroke();
+            ellipse(100, 100, 60, 40);
+            ellipse(130, 90, 70, 50);
+            ellipse(300, 150, 80, 50);
+            ellipse(270, 140, 60, 40);
         }
 
         // Karakter bijwerken
@@ -262,9 +249,10 @@
             push();
             translate(x, y);
             fill(169, 169, 169); // Grijs
-            rect(-5, -40, 10, 40); // Verticale balk
+            rect(-10, -40, 5, 40); // Linker stijl
+            rect(5, -40, 5, 40); // Rechter stijl
             for (let i = 0; i < 4; i++) {
-                rect(-10, -35 + i * 10, 20, 5); // Sporten
+                rect(-8, -35 + i * 10, 16, 3); // Horizontale treden
             }
             pop();
         }
@@ -351,10 +339,9 @@
             generateInitialPlatforms();
         }
 
-        // Informatieknop
-        function toggleInfo() {
-            const info = document.getElementById('gameInfo');
-            info.style.display = info.style.display === 'block' ? 'none' : 'block';
+        // Popup verbergen
+        function hidePopup() {
+            document.getElementById('gamePopup').style.display = 'none';
         }
     </script>
 </body>
