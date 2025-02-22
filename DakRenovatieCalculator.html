@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DakVormCalculator</title>
+    <title>DakVormCalculator met Schets</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
+            max-width: 1000px;
             margin: 20px auto;
             padding: 20px;
             background-color: #f4f4f4;
@@ -21,6 +21,17 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .input-section {
+            flex: 1;
+            min-width: 300px;
+        }
+        .schets-section {
+            flex: 1;
+            min-width: 400px;
+            text-align: center;
         }
         label {
             display: block;
@@ -61,108 +72,175 @@
         .vorm-specifiek {
             display: none;
         }
+        canvas {
+            border: 1px solid #ccc;
+            margin-top: 10px;
+        }
+        .detail-input {
+            display: flex;
+            gap: 5px;
+        }
     </style>
 </head>
 <body>
-    <h1>DakVormCalculator</h1>
+    <h1>DakVormCalculator met Schets</h1>
     <div class="container">
-        <form id="dakForm" onsubmit="berekenDak(event)">
-            <label for="vorm">Dakvorm:</label>
-            <select id="vorm" onchange="toonVormVelden()">
-                <option value="rechthoek">Rechthoek</option>
-                <option value="l-vorm">L-vorm</option>
-                <option value="t-vorm">T-vorm</option>
-            </select>
+        <div class="input-section">
+            <form id="dakForm" onsubmit="berekenEnTekenDak(event)">
+                <label for="vorm">Dakvorm:</label>
+                <select id="vorm" onchange="toonVormVelden()">
+                    <option value="rechthoek">⬜ Rechthoek</option>
+                    <option value="l-vorm">🡒 L-vorm</option>
+                    <option value="t-vorm">⊤ T-vorm</option>
+                    <option value="u-vorm">⊔ U-vorm</option>
+                    <option value="kruisvorm">✚ Kruisvorm</option>
+                </select>
 
-            <!-- Rechthoek velden -->
-            <div id="rechthoek" class="vorm-specifiek">
-                <label for="lengte">Lengte (m):</label>
-                <input type="number" id="lengte" step="0.1" min="0" required>
-                <label for="breedte">Breedte (m):</label>
-                <input type="number" id="breedte" step="0.1" min="0" required>
-                <label>Detailnummers:</label>
-                <input type="text" id="detail1" placeholder="Detailnr zijde 1 (bijv. D1)" maxlength="5">
-                <input type="text" id="detail2" placeholder="Detailnr zijde 2" maxlength="5">
-                <input type="text" id="detail3" placeholder="Detailnr zijde 3" maxlength="5">
-                <input type="text" id="detail4" placeholder="Detailnr zijde 4" maxlength="5">
-            </div>
+                <!-- Rechthoek -->
+                <div id="rechthoek" class="vorm-specifiek">
+                    <label for="lengte">Lengte (m):</label>
+                    <input type="number" id="lengte" step="0.1" min="0" required>
+                    <label for="breedte">Breedte (m):</label>
+                    <input type="number" id="breedte" step="0.1" min="0" required>
+                    <label>Details (4 zijden):</label>
+                    <div class="detail-input"><input type="text" id="detail1" placeholder="Detail (bijv. Lood)"><input type="text" id="oms1" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="detail2" placeholder="Detail"><input type="text" id="oms2" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="detail3" placeholder="Detail"><input type="text" id="oms3" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="detail4" placeholder="Detail"><input type="text" id="oms4" placeholder="Omschrijving"></div>
+                </div>
 
-            <!-- L-vorm velden -->
-            <div id="l-vorm" class="vorm-specifiek">
-                <label for="lengte1">Lengte deel 1 (m):</label>
-                <input type="number" id="lengte1" step="0.1" min="0">
-                <label for="breedte1">Breedte deel 1 (m):</label>
-                <input type="number" id="breedte1" step="0.1" min="0">
-                <label for="lengte2">Lengte deel 2 (m):</label>
-                <input type="number" id="lengte2" step="0.1" min="0">
-                <label for="breedte2">Breedte deel 2 (m):</label>
-                <input type="number" id="breedte2" step="0.1" min="0">
-                <label>Detailnummers (6 zijden):</label>
-                <input type="text" id="l-detail1" placeholder="Detailnr zijde 1" maxlength="5">
-                <input type="text" id="l-detail2" placeholder="Detailnr zijde 2" maxlength="5">
-                <input type="text" id="l-detail3" placeholder="Detailnr zijde 3" maxlength="5">
-                <input type="text" id="l-detail4" placeholder="Detailnr zijde 4" maxlength="5">
-                <input type="text" id="l-detail5" placeholder="Detailnr zijde 5" maxlength="5">
-                <input type="text" id="l-detail6" placeholder="Detailnr zijde 6" maxlength="5">
-            </div>
+                <!-- L-vorm -->
+                <div id="l-vorm" class="vorm-specifiek">
+                    <label for="lengte1">Lengte deel 1 (m):</label>
+                    <input type="number" id="lengte1" step="0.1" min="0">
+                    <label for="breedte1">Breedte deel 1 (m):</label>
+                    <input type="number" id="breedte1" step="0.1" min="0">
+                    <label for="lengte2">Lengte deel 2 (m):</label>
+                    <input type="number" id="lengte2" step="0.1" min="0">
+                    <label for="breedte2">Breedte deel 2 (m):</label>
+                    <input type="number" id="breedte2" step="0.1" min="0">
+                    <label>Details (6 zijden):</label>
+                    <div class="detail-input"><input type="text" id="l-detail1" placeholder="Detail"><input type="text" id="l-oms1" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="l-detail2" placeholder="Detail"><input type="text" id="l-oms2" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="l-detail3" placeholder="Detail"><input type="text" id="l-oms3" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="l-detail4" placeholder="Detail"><input type="text" id="l-oms4" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="l-detail5" placeholder="Detail"><input type="text" id="l-oms5" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="l-detail6" placeholder="Detail"><input type="text" id="l-oms6" placeholder="Omschrijving"></div>
+                </div>
 
-            <!-- T-vorm velden -->
-            <div id="t-vorm" class="vorm-specifiek">
-                <label for="lengte-stam">Lengte stam (m):</label>
-                <input type="number" id="lengte-stam" step="0.1" min="0">
-                <label for="breedte-stam">Breedte stam (m):</label>
-                <input type="number" id="breedte-stam" step="0.1" min="0">
-                <label for="lengte-balk">Lengte balk (m):</label>
-                <input type="number" id="lengte-balk" step="0.1" min="0">
-                <label for="breedte-balk">Breedte balk (m):</label>
-                <input type="number" id="breedte-balk" step="0.1" min="0">
-                <label>Detailnummers (8 zijden):</label>
-                <input type="text" id="t-detail1" placeholder="Detailnr zijde 1" maxlength="5">
-                <input type="text" id="t-detail2" placeholder="Detailnr zijde 2" maxlength="5">
-                <input type="text" id="t-detail3" placeholder="Detailnr zijde 3" maxlength="5">
-                <input type="text" id="t-detail4" placeholder="Detailnr zijde 4" maxlength="5">
-                <input type="text" id="t-detail5" placeholder="Detailnr zijde 5" maxlength="5">
-                <input type="text" id="t-detail6" placeholder="Detailnr zijde 6" maxlength="5">
-                <input type="text" id="t-detail7" placeholder="Detailnr zijde 7" maxlength="5">
-                <input type="text" id="t-detail8" placeholder="Detailnr zijde 8" maxlength="5">
-            </div>
+                <!-- T-vorm -->
+                <div id="t-vorm" class="vorm-specifiek">
+                    <label for="lengte-stam">Lengte stam (m):</label>
+                    <input type="number" id="lengte-stam" step="0.1" min="0">
+                    <label for="breedte-stam">Breedte stam (m):</label>
+                    <input type="number" id="breedte-stam" step="0.1" min="0">
+                    <label for="lengte-balk">Lengte balk (m):</label>
+                    <input type="number" id="lengte-balk" step="0.1" min="0">
+                    <label for="breedte-balk">Breedte balk (m):</label>
+                    <input type="number" id="breedte-balk" step="0.1" min="0">
+                    <label>Details (8 zijden):</label>
+                    <div class="detail-input"><input type="text" id="t-detail1" placeholder="Detail"><input type="text" id="t-oms1" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="t-detail2" placeholder="Detail"><input type="text" id="t-oms2" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="t-detail3" placeholder="Detail"><input type="text" id="t-oms3" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="t-detail4" placeholder="Detail"><input type="text" id="t-oms4" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="t-detail5" placeholder="Detail"><input type="text" id="t-oms5" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="t-detail6" placeholder="Detail"><input type="text" id="t-oms6" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="t-detail7" placeholder="Detail"><input type="text" id="t-oms7" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="t-detail8" placeholder="Detail"><input type="text" id="t-oms8" placeholder="Omschrijving"></div>
+                </div>
 
-            <label for="hellingsgraad">Hellingsgraad (°):</label>
-            <input type="number" id="hellingsgraad" step="0.1" min="0" max="90" value="0">
+                <!-- U-vorm -->
+                <div id="u-vorm" class="vorm-specifiek">
+                    <label for="lengte-basis">Lengte basis (m):</label>
+                    <input type="number" id="lengte-basis" step="0.1" min="0">
+                    <label for="breedte-basis">Breedte basis (m):</label>
+                    <input type="number" id="breedte-basis" step="0.1" min="0">
+                    <label for="lengte-zijde">Lengte zijde (m):</label>
+                    <input type="number" id="lengte-zijde" step="0.1" min="0">
+                    <label>Details (8 zijden):</label>
+                    <div class="detail-input"><input type="text" id="u-detail1" placeholder="Detail"><input type="text" id="u-oms1" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="u-detail2" placeholder="Detail"><input type="text" id="u-oms2" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="u-detail3" placeholder="Detail"><input type="text" id="u-oms3" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="u-detail4" placeholder="Detail"><input type="text" id="u-oms4" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="u-detail5" placeholder="Detail"><input type="text" id="u-oms5" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="u-detail6" placeholder="Detail"><input type="text" id="u-oms6" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="u-detail7" placeholder="Detail"><input type="text" id="u-oms7" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="u-detail8" placeholder="Detail"><input type="text" id="u-oms8" placeholder="Omschrijving"></div>
+                </div>
 
-            <button type="submit">Bereken</button>
-            <button type="button" class="reset-btn" onclick="resetForm()">Reset</button>
-        </form>
+                <!-- Kruisvorm -->
+                <div id="kruisvorm" class="vorm-specifiek">
+                    <label for="lengte-midden">Lengte midden (m):</label>
+                    <input type="number" id="lengte-midden" step="0.1" min="0">
+                    <label for="breedte-midden">Breedte midden (m):</label>
+                    <input type="number" id="breedte-midden" step="0.1" min="0">
+                    <label for="lengte-arm">Lengte arm (m):</label>
+                    <input type="number" id="lengte-arm" step="0.1" min="0">
+                    <label for="breedte-arm">Breedte arm (m):</label>
+                    <input type="number" id="breedte-arm" step="0.1" min="0">
+                    <label>Details (12 zijden):</label>
+                    <div class="detail-input"><input type="text" id="k-detail1" placeholder="Detail"><input type="text" id="k-oms1" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="k-detail2" placeholder="Detail"><input type="text" id="k-oms2" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="k-detail3" placeholder="Detail"><input type="text" id="k-oms3" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="k-detail4" placeholder="Detail"><input type="text" id="k-oms4" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="k-detail5" placeholder="Detail"><input type="text" id="k-oms5" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="k-detail6" placeholder="Detail"><input type="text" id="k-oms6" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="k-detail7" placeholder="Detail"><input type="text" id="k-oms7" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="k-detail8" placeholder="Detail"><input type="text" id="k-oms8" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="k-detail9" placeholder="Detail"><input type="text" id="k-oms9" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="k-detail10" placeholder="Detail"><input type="text" id="k-oms10" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="k-detail11" placeholder="Detail"><input type="text" id="k-oms11" placeholder="Omschrijving"></div>
+                    <div class="detail-input"><input type="text" id="k-detail12" placeholder="Detail"><input type="text" id="k-oms12" placeholder="Omschrijving"></div>
+                </div>
 
-        <div id="resultaat"></div>
+                <label for="hellingsgraad">Hellingsgraad (°):</label>
+                <input type="number" id="hellingsgraad" step="0.1" min="0" max="90" value="0">
+                <label for="opstand-hoogte">Opstandhoogte (m):</label>
+                <input type="number" id="opstand-hoogte" step="0.1" min="0" value="0">
+                <label for="opstand-breedte">Opstandbreedte (m):</label>
+                <input type="number" id="opstand-breedte" step="0.1" min="0" value="0">
+
+                <button type="submit">Bereken & Teken</button>
+                <button type="button" class="reset-btn" onclick="resetForm()">Reset</button>
+            </form>
+            <div id="resultaat"></div>
+        </div>
+        <div class="schets-section">
+            <h3>Schets</h3>
+            <canvas id="dakCanvas" width="400" height="400"></canvas>
+            <div id="legenda"></div>
+        </div>
     </div>
 
     <script>
+        const canvas = document.getElementById('dakCanvas');
+        const ctx = canvas.getContext('2d');
+        const standaardDetail = "Opgaandwerk";
+
         function toonVormVelden() {
             const vorm = document.getElementById('vorm').value;
-            document.getElementById('rechthoek').style.display = vorm === 'rechthoek' ? 'block' : 'none';
-            document.getElementById('l-vorm').style.display = vorm === 'l-vorm' ? 'block' : 'none';
-            document.getElementById('t-vorm').style.display = vorm === 't-vorm' ? 'block' : 'none';
+            ['rechthoek', 'l-vorm', 't-vorm', 'u-vorm', 'kruisvorm'].forEach(v => {
+                document.getElementById(v).style.display = v === vorm ? 'block' : 'none';
+            });
         }
 
-        function berekenDak(event) {
+        function berekenEnTekenDak(event) {
             event.preventDefault();
             const vorm = document.getElementById('vorm').value;
             const hellingsgraad = parseFloat(document.getElementById('hellingsgraad').value);
-            let oppervlakte = 0, omtrek = 0, details = {};
+            const opstandHoogte = parseFloat(document.getElementById('opstand-hoogte').value);
+            const opstandBreedte = parseFloat(document.getElementById('opstand-breedte').value);
+            let oppervlakte = 0, omtrek = 0, lengtes = [], detailnrs = [], omschrijvingen = [];
 
             if (vorm === 'rechthoek') {
                 const lengte = parseFloat(document.getElementById('lengte').value);
                 const breedte = parseFloat(document.getElementById('breedte').value);
                 oppervlakte = lengte * breedte;
                 omtrek = 2 * (lengte + breedte);
-                const detailnrs = [
-                    document.getElementById('detail1').value,
-                    document.getElementById('detail2').value,
-                    document.getElementById('detail3').value,
-                    document.getElementById('detail4').value
-                ];
-                details = somDetailnummers([lengte, breedte, lengte, breedte], detailnrs);
+                lengtes = [lengte, breedte, lengte, breedte];
+                detailnrs = [1, 2, 3, 4].map(i => document.getElementById(`detail${i}`).value || standaardDetail);
+                omschrijvingen = [1, 2, 3, 4].map(i => document.getElementById(`oms${i}`).value || '');
+                tekenRechthoek(lengte, breedte, detailnrs, omschrijvingen);
             } else if (vorm === 'l-vorm') {
                 const lengte1 = parseFloat(document.getElementById('lengte1').value);
                 const breedte1 = parseFloat(document.getElementById('breedte1').value);
@@ -170,15 +248,10 @@
                 const breedte2 = parseFloat(document.getElementById('breedte2').value);
                 oppervlakte = (lengte1 * breedte1) + (lengte2 * breedte2);
                 omtrek = lengte1 + breedte1 + lengte2 + (breedte1 + breedte2) + (lengte1 - lengte2) + breedte2;
-                const detailnrs = [
-                    document.getElementById('l-detail1').value,
-                    document.getElementById('l-detail2').value,
-                    document.getElementById('l-detail3').value,
-                    document.getElementById('l-detail4').value,
-                    document.getElementById('l-detail5').value,
-                    document.getElementById('l-detail6').value
-                ];
-                details = somDetailnummers([lengte1, breedte1, lengte2, breedte1 + breedte2, lengte1 - lengte2, breedte2], detailnrs);
+                lengtes = [lengte1, breedte1, lengte2, breedte1 + breedte2, lengte1 - lengte2, breedte2];
+                detailnrs = [1, 2, 3, 4, 5, 6].map(i => document.getElementById(`l-detail${i}`).value || standaardDetail);
+                omschrijvingen = [1, 2, 3, 4, 5, 6].map(i => document.getElementById(`l-oms${i}`).value || '');
+                tekenLVorm(lengte1, breedte1, lengte2, breedte2, detailnrs, omschrijvingen);
             } else if (vorm === 't-vorm') {
                 const lengteStam = parseFloat(document.getElementById('lengte-stam').value);
                 const breedteStam = parseFloat(document.getElementById('breedte-stam').value);
@@ -186,17 +259,31 @@
                 const breedteBalk = parseFloat(document.getElementById('breedte-balk').value);
                 oppervlakte = (lengteStam * breedteStam) + (lengteBalk * breedteBalk);
                 omtrek = lengteStam + breedteStam + lengteBalk + (breedteStam + breedteBalk) + (lengteStam - lengteBalk) + breedteBalk + lengteBalk + breedteStam;
-                const detailnrs = [
-                    document.getElementById('t-detail1').value,
-                    document.getElementById('t-detail2').value,
-                    document.getElementById('t-detail3').value,
-                    document.getElementById('t-detail4').value,
-                    document.getElementById('t-detail5').value,
-                    document.getElementById('t-detail6').value,
-                    document.getElementById('t-detail7').value,
-                    document.getElementById('t-detail8').value
-                ];
-                details = somDetailnummers([lengteStam, breedteStam, lengteBalk, breedteStam + breedteBalk, lengteStam - lengteBalk, breedteBalk, lengteBalk, breedteStam], detailnrs);
+                lengtes = [lengteStam, breedteStam, lengteBalk, breedteStam + breedteBalk, lengteStam - lengteBalk, breedteBalk, lengteBalk, breedteStam];
+                detailnrs = [1, 2, 3, 4, 5, 6, 7, 8].map(i => document.getElementById(`t-detail${i}`).value || standaardDetail);
+                omschrijvingen = [1, 2, 3, 4, 5, 6, 7, 8].map(i => document.getElementById(`t-oms${i}`).value || '');
+                tekenTVorm(lengteStam, breedteStam, lengteBalk, breedteBalk, detailnrs, omschrijvingen);
+            } else if (vorm === 'u-vorm') {
+                const lengteBasis = parseFloat(document.getElementById('lengte-basis').value);
+                const breedteBasis = parseFloat(document.getElementById('breedte-basis').value);
+                const lengteZijde = parseFloat(document.getElementById('lengte-zijde').value);
+                oppervlakte = (lengteBasis * breedteBasis) + 2 * (lengteZijde * breedteBasis);
+                omtrek = 2 * (lengteBasis + lengteZijde) + 2 * breedteBasis + 2 * (lengteZijde + breedteBasis);
+                lengtes = [lengteBasis, breedteBasis, lengteZijde, breedteBasis, lengteBasis - breedteBasis, lengteZijde, breedteBasis, lengteZijde];
+                detailnrs = [1, 2, 3, 4, 5, 6, 7, 8].map(i => document.getElementById(`u-detail${i}`).value || standaardDetail);
+                omschrijvingen = [1, 2, 3, 4, 5, 6, 7, 8].map(i => document.getElementById(`u-oms${i}`).value || '');
+                tekenUVorm(lengteBasis, breedteBasis, lengteZijde, detailnrs, omschrijvingen);
+            } else if (vorm === 'kruisvorm') {
+                const lengteMidden = parseFloat(document.getElementById('lengte-midden').value);
+                const breedteMidden = parseFloat(document.getElementById('breedte-midden').value);
+                const lengteArm = parseFloat(document.getElementById('lengte-arm').value);
+                const breedteArm = parseFloat(document.getElementById('breedte-arm').value);
+                oppervlakte = (lengteMidden * breedteMidden) + 4 * (lengteArm * breedteArm);
+                omtrek = 2 * (lengteMidden + 2 * lengteArm) + 4 * breedteArm + 2 * breedteMidden;
+                lengtes = [lengteMidden, breedteArm, lengteArm, breedteMidden, lengteArm, breedteArm, lengteMidden, breedteArm, lengteArm, breedteMidden, lengteArm, breedteArm];
+                detailnrs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(i => document.getElementById(`k-detail${i}`).value || standaardDetail);
+                omschrijvingen = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(i => document.getElementById(`k-oms${i}`).value || '');
+                tekenKruisvorm(lengteMidden, breedteMidden, lengteArm, breedteArm, detailnrs, omschrijvingen);
             }
 
             // Hellingsgraadcorrectie
@@ -205,7 +292,10 @@
                 oppervlakte = oppervlakte / cosinus;
             }
 
-            // Toon resultaat
+            // Detailnummers sommen
+            const details = somDetailnummers(lengtes, detailnrs);
+
+            // Resultaat tonen
             const resultaatDiv = document.getElementById('resultaat');
             let detailText = '<h4>Detailnummers:</h4><ul>';
             for (const [detail, lengte] of Object.entries(details)) {
@@ -216,25 +306,182 @@
                 <h3>Resultaat</h3>
                 <p>Oppervlakte: ${oppervlakte.toFixed(2)} m²</p>
                 <p>Totale omtrek: ${omtrek.toFixed(2)} m</p>
+                <p>Opstandhoogte: ${opstandHoogte.toFixed(2)} m</p>
+                <p>Opstandbreedte: ${opstandBreedte.toFixed(2)} m</p>
                 ${detailText}
             `;
+
+            // Legenda genereren
+            const legendaDiv = document.getElementById('legenda');
+            let legendaText = '<h4>Legenda:</h4><ul>';
+            detailnrs.forEach((detail, i) => {
+                if (omschrijvingen[i]) {
+                    legendaText += `<li>${i + 1}: ${detail} - ${omschrijvingen[i]}</li>`;
+                }
+            });
+            legendaText += '</ul>';
+            legendaDiv.innerHTML = legendaText;
         }
 
         function somDetailnummers(lengtes, detailnrs) {
             const details = {};
             lengtes.forEach((lengte, index) => {
-                const detail = detailnrs[index] || 'Geen';
-                if (detail !== 'Geen') {
-                    details[detail] = (details[detail] || 0) + lengte;
-                }
+                const detail = detailnrs[index];
+                details[detail] = (details[detail] || 0) + lengte;
             });
             return details;
+        }
+
+        function tekenRechthoek(lengte, breedte, detailnrs, omschrijvingen) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const schaal = Math.min(350 / lengte, 350 / breedte);
+            const x = (canvas.width - lengte * schaal) / 2;
+            const y = (canvas.height - breedte * schaal) / 2;
+            ctx.beginPath();
+            ctx.rect(x, y, lengte * schaal, breedte * schaal);
+            ctx.stroke();
+            tekenDetailNummers([
+                [x, y, x + lengte * schaal, y], // Boven
+                [x + lengte * schaal, y, x + lengte * schaal, y + breedte * schaal], // Rechts
+                [x + lengte * schaal, y + breedte * schaal, x, y + breedte * schaal], // Onder
+                [x, y + breedte * schaal, x, y] // Links
+            ], detailnrs);
+        }
+
+        function tekenLVorm(lengte1, breedte1, lengte2, breedte2, detailnrs, omschrijvingen) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const schaal = Math.min(350 / lengte1, 350 / (breedte1 + breedte2));
+            const x = (canvas.width - lengte1 * schaal) / 2;
+            const y = (canvas.height - (breedte1 + breedte2) * schaal) / 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + lengte1 * schaal, y);
+            ctx.lineTo(x + lengte1 * schaal, y + breedte1 * schaal);
+            ctx.lineTo(x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal);
+            ctx.lineTo(x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal);
+            ctx.lineTo(x, y + (breedte1 + breedte2) * schaal);
+            ctx.closePath();
+            ctx.stroke();
+            tekenDetailNummers([
+                [x, y, x + lengte1 * schaal, y],
+                [x + lengte1 * schaal, y, x + lengte1 * schaal, y + breedte1 * schaal],
+                [x + lengte1 * schaal, y + breedte1 * schaal, x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal],
+                [x + (lengte1 - lengte2) * schaal, y + breedte1 * schaal, x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal],
+                [x + (lengte1 - lengte2) * schaal, y + (breedte1 + breedte2) * schaal, x, y + (breedte1 + breedte2) * schaal],
+                [x, y + (breedte1 + breedte2) * schaal, x, y]
+            ], detailnrs);
+        }
+
+        function tekenTVorm(lengteStam, breedteStam, lengteBalk, breedteBalk, detailnrs, omschrijvingen) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const schaal = Math.min(350 / (lengteStam + lengteBalk), 350 / (breedteStam + breedteBalk));
+            const x = (canvas.width - (lengteStam + lengteBalk) * schaal) / 2;
+            const y = (canvas.height - (breedteStam + breedteBalk) * schaal) / 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + lengteStam * schaal, y);
+            ctx.lineTo(x + lengteStam * schaal, y + breedteStam * schaal);
+            ctx.lineTo(x + (lengteStam + lengteBalk) * schaal, y + breedteStam * schaal);
+            ctx.lineTo(x + (lengteStam + lengteBalk) * schaal, y + (breedteStam + breedteBalk) * schaal);
+            ctx.lineTo(x + lengteStam * schaal, y + (breedteStam + breedteBalk) * schaal);
+            ctx.lineTo(x + lengteStam * schaal, y + breedteStam * schaal + breedteBalk * schaal);
+            ctx.lineTo(x, y + breedteStam * schaal + breedteBalk * schaal);
+            ctx.closePath();
+            ctx.stroke();
+            tekenDetailNummers([
+                [x, y, x + lengteStam * schaal, y],
+                [x + lengteStam * schaal, y, x + lengteStam * schaal, y + breedteStam * schaal],
+                [x + lengteStam * schaal, y + breedteStam * schaal, x + (lengteStam + lengteBalk) * schaal, y + breedteStam * schaal],
+                [x + (lengteStam + lengteBalk) * schaal, y + breedteStam * schaal, x + (lengteStam + lengteBalk) * schaal, y + (breedteStam + breedteBalk) * schaal],
+                [x + (lengteStam + lengteBalk) * schaal, y + (breedteStam + breedteBalk) * schaal, x + lengteStam * schaal, y + (breedteStam + breedteBalk) * schaal],
+                [x + lengteStam * schaal, y + (breedteStam + breedteBalk) * schaal, x + lengteStam * schaal, y + breedteStam * schaal + breedteBalk * schaal],
+                [x + lengteStam * schaal, y + breedteStam * schaal + breedteBalk * schaal, x, y + breedteStam * schaal + breedteBalk * schaal],
+                [x, y + breedteStam * schaal + breedteBalk * schaal, x, y]
+            ], detailnrs);
+        }
+
+        function tekenUVorm(lengteBasis, breedteBasis, lengteZijde, detailnrs, omschrijvingen) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const schaal = Math.min(350 / lengteBasis, 350 / (breedteBasis + lengteZijde));
+            const x = (canvas.width - lengteBasis * schaal) / 2;
+            const y = (canvas.height - (breedteBasis + lengteZijde) * schaal) / 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + lengteBasis * schaal, y);
+            ctx.lineTo(x + lengteBasis * schaal, y + lengteZijde * schaal);
+            ctx.lineTo(x + (lengteBasis - breedteBasis) * schaal, y + lengteZijde * schaal);
+            ctx.lineTo(x + (lengteBasis - breedteBasis) * schaal, y + (lengteZijde + breedteBasis) * schaal);
+            ctx.lineTo(x, y + (lengteZijde + breedteBasis) * schaal);
+            ctx.lineTo(x, y + lengteZijde * schaal);
+            ctx.lineTo(x + breedteBasis * schaal, y + lengteZijde * schaal);
+            ctx.closePath();
+            ctx.stroke();
+            tekenDetailNummers([
+                [x, y, x + lengteBasis * schaal, y],
+                [x + lengteBasis * schaal, y, x + lengteBasis * schaal, y + lengteZijde * schaal],
+                [x + lengteBasis * schaal, y + lengteZijde * schaal, x + (lengteBasis - breedteBasis) * schaal, y + lengteZijde * schaal],
+                [x + (lengteBasis - breedteBasis) * schaal, y + lengteZijde * schaal, x + (lengteBasis - breedteBasis) * schaal, y + (lengteZijde + breedteBasis) * schaal],
+                [x + (lengteBasis - breedteBasis) * schaal, y + (lengteZijde + breedteBasis) * schaal, x, y + (lengteZijde + breedteBasis) * schaal],
+                [x, y + (lengteZijde + breedteBasis) * schaal, x, y + lengteZijde * schaal],
+                [x, y + lengteZijde * schaal, x + breedteBasis * schaal, y + lengteZijde * schaal],
+                [x + breedteBasis * schaal, y + lengteZijde * schaal, x, y]
+            ], detailnrs);
+        }
+
+        function tekenKruisvorm(lengteMidden, breedteMidden, lengteArm, breedteArm, detailnrs, omschrijvingen) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const schaal = Math.min(350 / (lengteMidden + 2 * lengteArm), 350 / (breedteMidden + 2 * breedteArm));
+            const x = (canvas.width - (lengteMidden + 2 * lengteArm) * schaal) / 2;
+            const y = (canvas.height - (breedteMidden + 2 * breedteArm) * schaal) / 2;
+            ctx.beginPath();
+            ctx.moveTo(x + lengteArm * schaal, y);
+            ctx.lineTo(x + (lengteArm + lengteMidden) * schaal, y);
+            ctx.lineTo(x + (lengteArm + lengteMidden) * schaal, y + breedteArm * schaal);
+            ctx.lineTo(x + (lengteArm + lengteMidden + lengteArm) * schaal, y + breedteArm * schaal);
+            ctx.lineTo(x + (lengteArm + lengteMidden + lengteArm) * schaal, y + (breedteArm + breedteMidden) * schaal);
+            ctx.lineTo(x + (lengteArm + lengteMidden) * schaal, y + (breedteArm + breedteMidden) * schaal);
+            ctx.lineTo(x + (lengteArm + lengteMidden) * schaal, y + (breedteArm + breedteMidden + breedteArm) * schaal);
+            ctx.lineTo(x + lengteArm * schaal, y + (breedteArm + breedteMidden + breedteArm) * schaal);
+            ctx.lineTo(x + lengteArm * schaal, y + (breedteArm + breedteMidden) * schaal);
+            ctx.lineTo(x, y + (breedteArm + breedteMidden) * schaal);
+            ctx.lineTo(x, y + breedteArm * schaal);
+            ctx.lineTo(x + lengteArm * schaal, y + breedteArm * schaal);
+            ctx.closePath();
+            ctx.stroke();
+            tekenDetailNummers([
+                [x + lengteArm * schaal, y, x + (lengteArm + lengteMidden) * schaal, y],
+                [x + (lengteArm + lengteMidden) * schaal, y, x + (lengteArm + lengteMidden) * schaal, y + breedteArm * schaal],
+                [x + (lengteArm + lengteMidden) * schaal, y + breedteArm * schaal, x + (lengteArm + lengteMidden + lengteArm) * schaal, y + breedteArm * schaal],
+                [x + (lengteArm + lengteMidden + lengteArm) * schaal, y + breedteArm * schaal, x + (lengteArm + lengteMidden + lengteArm) * schaal, y + (breedteArm + breedteMidden) * schaal],
+                [x + (lengteArm + lengteMidden + lengteArm) * schaal, y + (breedteArm + breedteMidden) * schaal, x + (lengteArm + lengteMidden) * schaal, y + (breedteArm + breedteMidden) * schaal],
+                [x + (lengteArm + lengteMidden) * schaal, y + (breedteArm + breedteMidden) * schaal, x + (lengteArm + lengteMidden) * schaal, y + (breedteArm + breedteMidden + breedteArm) * schaal],
+                [x + (lengteArm + lengteMidden) * schaal, y + (breedteArm + breedteMidden + breedteArm) * schaal, x + lengteArm * schaal, y + (breedteArm + breedteMidden + breedteArm) * schaal],
+                [x + lengteArm * schaal, y + (breedteArm + breedteMidden + breedteArm) * schaal, x + lengteArm * schaal, y + (breedteArm + breedteMidden) * schaal],
+                [x + lengteArm * schaal, y + (breedteArm + breedteMidden) * schaal, x, y + (breedteArm + breedteMidden) * schaal],
+                [x, y + (breedteArm + breedteMidden) * schaal, x, y + breedteArm * schaal],
+                [x, y + breedteArm * schaal, x + lengteArm * schaal, y + breedteArm * schaal],
+                [x + lengteArm * schaal, y + breedteArm * schaal, x + lengteArm * schaal, y]
+            ], detailnrs);
+        }
+
+        function tekenDetailNummers(lijnen, detailnrs) {
+            ctx.font = '12px Arial';
+            ctx.fillStyle = 'red';
+            lijnen.forEach((lijn, i) => {
+                const middenX = (lijn[0] + lijn[2]) / 2;
+                const middenY = (lijn[1] + lijn[3]) / 2;
+                ctx.fillText(i + 1, middenX, middenY);
+            });
         }
 
         function resetForm() {
             document.getElementById('dakForm').reset();
             document.getElementById('hellingsgraad').value = 0;
+            document.getElementById('opstand-hoogte').value = 0;
+            document.getElementById('opstand-breedte').value = 0;
             document.getElementById('resultaat').innerHTML = '';
+            document.getElementById('legenda').innerHTML = '';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             toonVormVelden();
         }
 
