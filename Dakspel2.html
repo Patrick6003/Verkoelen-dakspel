@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vinky Jump</title>
+    <title>VInky Jump</title>
     <style>
         body {
             background-color: #DCDCDC; /* Lichtgrijs */
@@ -25,38 +25,26 @@
             color: #000;
             text-align: center;
             max-width: 80%;
+            display: none; /* Verberg op mobiel */
         }
-        #info-button {
+        .info-button {
             position: absolute;
             top: 10px;
             right: 10px;
-            padding: 5px 10px;
             background-color: #FFA500;
             color: white;
             border: none;
-            cursor: pointer;
-        }
-        #instructions {
-            position: absolute;
-            top: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: white;
             padding: 10px;
-            border: 1px solid #FFA500;
-            max-width: 80%;
-            text-align: center;
+            cursor: pointer;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
 </head>
 <body>
-    <div class="game-info">
-        <h2>Vinky Jump</h2>
-    </div>
-    <button id="info-button">Info</button>
-    <div id="instructions" style="display: none;">
-        <p>Spring van dak naar dak als Vinky de dakspecialist! Gebruik pijltjestoetsen of tik op het scherm (links/rechts) om te bewegen. Verzamel de gasfles voor een jetpack-boost.</p>
+    <button class="info-button" onclick="toggleInfo()">Info</button>
+    <div class="game-info" id="gameInfo">
+        <h2>Welkom bij VInky Jump!</h2>
+        <p>Spring van dak naar dak als Vinky de dakspecialist! Gebruik pijltjestoetsen of tik op het scherm (links/rechts) om te bewegen. Verzamel de gasfles voor een jetpack-boost. Veel plezier!</p>
     </div>
     <script>
         // Variabelen
@@ -67,9 +55,8 @@
         let boostJumpSpeed = -18;
         let score = 0;
         let highScore = 0;
-        let gameState = 'playing';
-        let cameraY = 0;
-        let startPlatform;
+        let gameState = 'playing'; // Start direct met spelen
+        let cameraY = 0; // Camera scroll
 
         // Canvas en initiële setup
         function setup() {
@@ -82,15 +69,6 @@
                 hasBoost: false
             };
             generateInitialPlatforms();
-            startPlatform = {
-                x: width / 2 - 50,
-                y: height - 50,
-                width: 100,
-                height: 15,
-                hasPowerUp: false
-            };
-            platforms.push(startPlatform);
-            character.y = startPlatform.y - character.size / 2;
         }
 
         // Hoofdgame-loop
@@ -100,8 +78,9 @@
                 updateCharacter();
                 updatePlatforms();
                 checkCollisions();
-                drawCharacter();
+                updateCamera();
                 drawPlatforms();
+                drawCharacter();
                 drawScore();
             } else if (gameState === 'gameOver') {
                 drawGameOverScreen();
@@ -113,7 +92,7 @@
             character.velocity += gravity;
             character.y += character.velocity;
 
-            if (character.y > height + cameraY) {
+            if (character.y - cameraY > height) {
                 gameState = 'gameOver';
                 if (score > highScore) highScore = score;
             }
@@ -129,25 +108,21 @@
             // Schermranden omkeren
             if (character.x < 0) character.x = width;
             else if (character.x > width) character.x = 0;
-
-            // Camera volgt Vinky V
-            if (character.y < height / 2) {
-                cameraY += (height / 2 - character.y);
-                character.y = height / 2;
-                for (let platform of platforms) {
-                    platform.y += (height / 2 - character.y);
-                }
-            }
         }
 
         // Platforms bijwerken
         function updatePlatforms() {
-            for (let platform of platforms) {
-                if (platform !== startPlatform) platform.y += 1.5; // Langzame opwaartse beweging
-            }
-            platforms = platforms.filter(p => p.y < height + cameraY);
+            for (let platform of platforms) platform.y += 1.5; // Langzame opwaartse beweging
+            platforms = platforms.filter(p => p.y - cameraY < height);
             while (platforms.length < 6) generatePlatform();
             score += 0.1; // Langzame scoretoename
+        }
+
+        // Camera bijwerken
+        function updateCamera() {
+            if (character.y - cameraY < 200) {
+                cameraY -= (200 - (character.y - cameraY)) * 0.1;
+            }
         }
 
         // Botsingen controleren
@@ -214,35 +189,48 @@
         // Platforms tekenen (bruine hellende daken)
         function drawPlatforms() {
             for (let platform of platforms) {
+                push();
+                translate(0, -cameraY);
                 fill(139, 69, 19); // Bruin
                 noStroke();
                 beginShape();
-                vertex(platform.x, platform.y - cameraY + platform.height);
-                vertex(platform.x + platform.width / 2, platform.y - cameraY);
-                vertex(platform.x + platform.width, platform.y - cameraY + platform.height);
+                vertex(platform.x, platform.y + platform.height);
+                vertex(platform.x + platform.width / 2, platform.y);
+                vertex(platform.x + platform.width, platform.y + platform.height);
                 endShape(CLOSE);
 
                 // Power-up (gasflesje met vuur)
                 if (platform.hasPowerUp) {
-                    // Gasflesje
-                    fill(169, 169, 169); // Grijs
-                    rect(platform.x + platform.width / 2 - 5, platform.y - cameraY - 20, 10, 15);
-                    // Stok
-                    fill(169, 169, 169);
-                    rect(platform.x + platform.width / 2 - 1, platform.y - cameraY - 25, 2, 10);
-                    // Trechter
-                    fill(169, 169, 169);
-                    beginShape();
-                    vertex(platform.x + platform.width / 2 - 3, platform.y - cameraY - 25);
-                    vertex(platform.x + platform.width / 2 + 3, platform.y - cameraY - 25);
-                    vertex(platform.x + platform.width / 2 + 1, platform.y - cameraY - 30);
-                    vertex(platform.x + platform.width / 2 - 1, platform.y - cameraY - 30);
-                    endShape(CLOSE);
-                    // Vuur
-                    fill(255, 0, 0);
-                    ellipse(platform.x + platform.width / 2, platform.y - cameraY - 32, 5, 5);
+                    drawPowerUp(platform.x + platform.width / 2, platform.y - 20);
                 }
+                pop();
             }
+        }
+
+        // Power-up tekenen (gasflesje met vuur)
+        function drawPowerUp(x, y) {
+            push();
+            translate(x, y);
+
+            // Gasflesje
+            fill(169, 169, 169); // Grijs
+            rect(-10, -20, 20, 20, 5);
+
+            // Stok
+            stroke(169, 169, 169);
+            strokeWeight(3);
+            line(0, -20, 0, -40);
+
+            // Trechter
+            noStroke();
+            fill(169, 169, 169);
+            triangle(-5, -40, 5, -40, 0, -50);
+
+            // Vuur
+            fill(255, 0, 0);
+            ellipse(0, -50, 10, 10);
+
+            pop();
         }
 
         // Score tekenen
@@ -270,17 +258,25 @@
         // Platforms genereren
         function generateInitialPlatforms() {
             platforms = [];
+            let startY = height - 50;
+            platforms.push({
+                x: width / 2 - 50,
+                y: startY,
+                width: 100,
+                height: 15,
+                hasPowerUp: false // Geen power-up op startplatform
+            });
             for (let i = 1; i < 6; i++) {
-                let y = height - i * 120 + random(-30, 30);
+                let y = startY - i * 120 + random(-30, 30);
                 platforms.push({
                     x: random(width - 100),
                     y: y,
                     width: 100,
                     height: 15,
-                    hasPowerUp: random() < 0.1 // 10% kans op power-up
+                    hasPowerUp: random() < 0.1 // 10% kans
                 });
             }
-            cameraY = 0;
+            character.y = startY - character.size / 2;
         }
 
         function generatePlatform() {
@@ -291,7 +287,7 @@
                 y: y,
                 width: 100,
                 height: 15,
-                hasPowerUp: random() < 0.1 // 10% kans op power-up
+                hasPowerUp: random() < 0.1 // 10% kans
             });
         }
 
@@ -316,11 +312,11 @@
             generateInitialPlatforms();
         }
 
-        // Info-knop functionaliteit
-        document.getElementById('info-button').addEventListener('click', () => {
-            const instructions = document.getElementById('instructions');
-            instructions.style.display = instructions.style.display === 'none' ? 'block' : 'none';
-        });
+        // Informatieknop
+        function toggleInfo() {
+            const info = document.getElementById('gameInfo');
+            info.style.display = info.style.display === 'block' ? 'none' : 'block';
+        }
     </script>
 </body>
 </html>
