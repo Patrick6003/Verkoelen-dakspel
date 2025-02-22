@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DakVormCalculator</title>
+    <title>Digitaal Opnameformulier</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -136,13 +136,14 @@
         }
         .checkbox-group {
             display: flex;
-            gap: 15px;
+            align-items: center;
+            gap: 5px;
             margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
-    <h1>DakVormCalculator</h1>
+    <h1>Digitaal Opnameformulier</h1>
     <div class="container">
         <div class="input-section">
             <div class="tabs">
@@ -168,7 +169,7 @@
                         <input type="number" id="breedte" step="0.1" value="5" oninput="validateInput(this); updateAlles()" aria-label="Breedte van het dak in meters, zijden 2 en 4">
                         <div id="breedte-error" class="error">Voer een getal groter dan 0 in</div>
                         <div class="checkbox-group">
-                            <label><input type="checkbox" id="indicatief" oninput="updateAlles()" aria-label="Afmetingen zijn indicatief"> Afmetingen indicatief</label>
+                            <label>Indicatief <input type="checkbox" id="indicatief" oninput="updateAlles()" aria-label="Afmetingen zijn indicatief"></label>
                         </div>
                         <label>Detailomschrijvingen (4 zijden):</label>
                         <div class="detail-input">
@@ -240,7 +241,7 @@
                         <input type="number" id="breedte2" step="0.1" value="3" oninput="validateInput(this); updateAlles()" aria-label="Breedte deel 2 van L-vorm in meters, zijde 4">
                         <div id="breedte2-error" class="error">Voer een getal groter dan 0 in</div>
                         <div class="checkbox-group">
-                            <label><input type="checkbox" id="indicatief" oninput="updateAlles()" aria-label="Afmetingen zijn indicatief"> Afmetingen indicatief</label>
+                            <label>Indicatief <input type="checkbox" id="indicatief" oninput="updateAlles()" aria-label="Afmetingen zijn indicatief"></label>
                         </div>
                         <label>Detailomschrijvingen (6 zijden):</label>
                         <div class="detail-input">
@@ -325,8 +326,8 @@
                         <input type="checkbox" id="spiegel" oninput="updateAlles()" aria-label="Spiegel de L-vorm schets horizontaal">
                     </div>
 
-                    <label for="hellingsgraad">Hellingsgraad (°):</label>
-                    <input type="number" id="hellingsgraad" step="0.1" min="0" max="90" value="0" oninput="validateInput(this, true); updateAlles()" aria-label="Hellingsgraad van het dak in graden">
+                    <label for="hellingsgraad">Hellingsgraad t.o.v. dakranden (°):</label>
+                    <input type="number" id="hellingsgraad" step="0.1" min="0" max="90" value="0" oninput="validateInput(this, true); updateAlles()" aria-label="Hellingsgraad ten opzichte van dakranden in graden">
                     <div id="hellingsgraad-error" class="error">Voer een getal tussen 0 en 90 in</div>
                     <button type="button" onclick="resetForm()" aria-label="Formulier resetten">Reset</button>
                     <button type="button" onclick="exportPNG('invoer')" aria-label="Exporteren als PNG">Export PNG</button>
@@ -352,8 +353,13 @@
                 <label for="waarnemingen-extra">Extra waarnemingen:</label>
                 <textarea id="waarnemingen-extra" rows="3" placeholder="Bijv. Toegankelijkheid, bijzonderheden" aria-label="Extra waarnemingen over het dak"></textarea>
                 <div class="checkbox-group">
-                    <label><input type="checkbox" id="grind-vast" aria-label="Grind zit vast"> Grind zit vast</label>
-                    <label><input type="checkbox" id="isolatie-nat" aria-label="Isolatie is nat"> Isolatie is nat</label>
+                    <label>Grind zit vast <input type="checkbox" id="grind-vast" aria-label="Grind zit vast"></label>
+                </div>
+                <div class="checkbox-group">
+                    <label>Isolatie is nat <input type="checkbox" id="isolatie-nat" aria-label="Isolatie is nat"></label>
+                </div>
+                <div class="checkbox-group">
+                    <label>Plasvorming <input type="checkbox" id="plasvorming" aria-label="Plasvorming aanwezig"></label>
                 </div>
                 <label for="toestand">Algemene onderhoudsstaat (NEN 2767):</label>
                 <select id="toestand" aria-label="Algemene onderhoudsstaat van het dak volgens NEN 2767">
@@ -425,6 +431,39 @@
             return isValid;
         }
 
+        function drawGrid(schaal, maxLengte, maxBreedte) {
+            ctx.beginPath();
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 0.5;
+            const maxAfmeting = Math.max(maxLengte, maxBreedte);
+            const stapMeter = maxAfmeting <= 10 ? 1 : maxAfmeting <= 50 ? 5 : 10;
+            const stap = stapMeter * schaal;
+            for (let i = 0; i <= canvas.width; i += stap) {
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+            }
+            for (let i = 0; i <= canvas.height; i += stap) {
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+            }
+            ctx.stroke();
+
+            ctx.font = '10px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            for (let i = 0; i <= canvas.width; i += stap) {
+                const meter = (i / schaal).toFixed(0);
+                if (i === 0 || i + stap <= canvas.width) ctx.fillText(`${meter}m`, i + 2, 2);
+            }
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            for (let i = 0; i <= canvas.height; i += stap) {
+                const meter = (i / schaal).toFixed(0);
+                if (i === 0 || i + stap <= canvas.height) ctx.fillText(`${meter}m`, canvas.width - 2, i + 2);
+            }
+        }
+
         function updateAlles() {
             const vorm = document.getElementById('vorm').value;
             const daknaam = document.getElementById('daknaam').value;
@@ -448,6 +487,10 @@
                 const breedte = parseFloat(document.getElementById('breedte').value) || 0;
                 oppervlakte = lengte * breedte;
                 omtrek = 2 * (lengte + breedte);
+                if (hellingsgraad > 0) {
+                    const cosinus = Math.cos(hellingsgraad * Math.PI / 180);
+                    oppervlakte = oppervlakte / cosinus;
+                }
                 lengtes = [lengte, breedte, lengte, breedte];
                 detailsList = [1, 2, 3, 4].map(i => ({
                     detail: document.getElementById(`detail${i}`).value,
@@ -464,6 +507,10 @@
                 const lengte4 = breedte2;
                 oppervlakte = (lengte1 * lengte2) + (lengte5 * lengte4);
                 omtrek = lengte1 + breedte1 + lengte2 + breedte2 + lengte5 + (breedte1 + breedte2);
+                if (hellingsgraad > 0) {
+                    const cosinus = Math.cos(hellingsgraad * Math.PI / 180);
+                    oppervlakte = oppervlakte / cosinus;
+                }
                 lengtes = [lengte1, breedte1, lengte2, breedte2, lengte5, breedte1 + breedte2];
                 detailsList = [1, 2, 3, 4, 5, 6].map(i => ({
                     detail: document.getElementById(`l-detail${i}`).value,
@@ -471,11 +518,6 @@
                 }));
                 omschrijvingen = detailsList.map(d => d.detail + (d.oms ? ` - ${d.oms}` : ''));
                 tekenLVorm(lengte1, breedte1, lengte2, breedte2, detailsList, spiegel, oppervlakte, omtrek, hellingsgraad);
-            }
-
-            if (hellingsgraad > 0) {
-                const cosinus = Math.cos(hellingsgraad * Math.PI / 180);
-                oppervlakte = oppervlakte / cosinus;
             }
 
             const resultaatDiv = document.getElementById('resultaat');
@@ -505,25 +547,34 @@
             return details;
         }
 
-        function drawGrid() {
+        function drawGrid(schaal, maxLengte, maxBreedte) {
             ctx.beginPath();
             ctx.strokeStyle = '#e0e0e0';
             ctx.lineWidth = 0.5;
-            for (let i = 0; i <= canvas.width; i += 20 * zoom) {
+            const maxAfmeting = Math.max(maxLengte, maxBreedte);
+            const stapMeter = maxAfmeting <= 10 ? 1 : maxAfmeting <= 50 ? 5 : 10;
+            const stap = stapMeter * schaal;
+            for (let i = 0; i <= canvas.width; i += stap) {
                 ctx.moveTo(i, 0);
                 ctx.lineTo(i, canvas.height);
             }
-            for (let i = 0; i <= canvas.height; i += 20 * zoom) {
+            for (let i = 0; i <= canvas.height; i += stap) {
                 ctx.moveTo(0, i);
                 ctx.lineTo(canvas.width, i);
             }
             ctx.stroke();
+
+            ctx.font = '10px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`${stapMeter}m`, stap + 2, 2);
         }
 
         function tekenRechthoek(lengte, breedte, detailsList, oppervlakte, omtrek, hellingsgraad) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawGrid();
             const schaal = Math.min(350 / lengte, 350 / breedte) * zoom || zoom;
+            drawGrid(schaal, lengte, breedte);
             const x = (canvas.width - lengte * schaal) / 2;
             const y = (canvas.height - breedte * schaal) / 2;
             const lijnen = [
@@ -554,8 +605,8 @@
 
         function tekenLVorm(lengte1, breedte1, lengte2, breedte2, detailsList, spiegel, oppervlakte, omtrek, hellingsgraad) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawGrid();
             const schaal = Math.min(350 / lengte1, 350 / (breedte1 + breedte2)) * zoom || zoom;
+            drawGrid(schaal, lengte1, breedte1 + breedte2);
             const x = (canvas.width - lengte1 * schaal) / 2;
             const y = (canvas.height - (breedte1 + breedte2) * schaal) / 2;
             let lijnen;
@@ -654,9 +705,9 @@
         function exportPNG(tabId) {
             switchTab(tabId);
             setTimeout(() => {
-                html2canvas(document.querySelector('.container')).then(canvas => {
+                html2canvas(document.body, { scale: 2 }).then(canvas => {
                     const link = document.createElement('a');
-                    link.download = `${document.getElementById('daknaam').value || 'dakvorm'}_${tabId}.png`;
+                    link.download = `${document.getElementById('daknaam').value || 'opnameformulier'}_${tabId}.png`;
                     link.href = canvas.toDataURL('image/png');
                     link.click();
                 });
@@ -666,14 +717,25 @@
         function exportPDF(tabId) {
             switchTab(tabId);
             setTimeout(() => {
-                html2canvas(document.querySelector('.container'), { scale: 2 }).then(canvas => {
+                html2canvas(document.body, { scale: 2 }).then(canvas => {
                     const imgData = canvas.toDataURL('image/png');
-                    const pdf = new jsPDF();
+                    const pdf = new jsPDF('p', 'mm', 'a4');
                     const imgProps = pdf.getImageProperties(imgData);
                     const pdfWidth = pdf.internal.pageSize.getWidth();
                     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-                    pdf.save(`${document.getElementById('daknaam').value || 'dakvorm'}_${tabId}.pdf`);
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+                    let heightLeft = pdfHeight;
+                    let position = 0;
+
+                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+                    heightLeft -= pageHeight;
+                    while (heightLeft > 0) {
+                        position = heightLeft - pdfHeight;
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+                        heightLeft -= pageHeight;
+                    }
+                    pdf.save(`${document.getElementById('daknaam').value || 'opnameformulier'}_${tabId}.pdf`);
                 });
             }, 100);
         }
@@ -694,6 +756,7 @@
             document.getElementById('indicatief').checked = false;
             document.getElementById('grind-vast').checked = false;
             document.getElementById('isolatie-nat').checked = false;
+            document.getElementById('plasvorming').checked = false;
             document.querySelectorAll('.error').forEach(e => e.style.display = 'none');
             zoom = 1;
             updateAlles();
