@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DakRenovatieCalculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #resultaat {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .reset-btn {
+            background-color: #dc3545;
+        }
+        .reset-btn:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <h1>DakRenovatieCalculator</h1>
+    <div class="container">
+        <form id="dakForm" onsubmit="berekenKosten(event)">
+            <label for="lengte">Lengte dak (m):</label>
+            <input type="number" id="lengte" step="0.1" min="0" required>
+
+            <label for="breedte">Breedte dak (m):</label>
+            <input type="number" id="breedte" step="0.1" min="0" required>
+
+            <label for="hellingsgraad">Hellingsgraad (°):</label>
+            <input type="number" id="hellingsgraad" step="0.1" min="0" max="90" value="0">
+
+            <label for="materiaal">Materiaal:</label>
+            <select id="materiaal" required>
+                <option value="10">Bitumen (€10/m²)</option>
+                <option value="15">EPDM (€15/m²)</option>
+                <option value="12">PVC (€12/m²)</option>
+            </select>
+
+            <label for="uurloon">Uurloon (€):</label>
+            <input type="number" id="uurloon" step="0.1" min="0" value="40" required>
+
+            <label for="uren">Geschatte uren:</label>
+            <input type="number" id="uren" step="1" min="0" value="10" required>
+
+            <button type="submit">Bereken</button>
+            <button type="button" class="reset-btn" onclick="resetForm()">Reset</button>
+        </form>
+
+        <div id="resultaat"></div>
+    </div>
+
+    <script>
+        function berekenKosten(event) {
+            event.preventDefault();
+
+            // Haal waarden op
+            const lengte = parseFloat(document.getElementById('lengte').value);
+            const breedte = parseFloat(document.getElementById('breedte').value);
+            const hellingsgraad = parseFloat(document.getElementById('hellingsgraad').value);
+            const materiaalPrijs = parseFloat(document.getElementById('materiaal').value);
+            const uurloon = parseFloat(document.getElementById('uurloon').value);
+            const uren = parseFloat(document.getElementById('uren').value);
+
+            // Bereken oppervlakte (met hellingsgraadcorrectie)
+            let oppervlakte = lengte * breedte;
+            if (hellingsgraad > 0) {
+                const cosinus = Math.cos(hellingsgraad * Math.PI / 180);
+                oppervlakte = oppervlakte / cosinus; // Verhoogt bij helling
+            }
+
+            // Bereken kosten
+            const materiaalKosten = oppervlakte * materiaalPrijs;
+            const arbeidKosten = uurloon * uren;
+            const totaalExBtw = materiaalKosten + arbeidKosten;
+            const btw = totaalExBtw * 0.21; // 21% BTW
+            const totaalInclBtw = totaalExBtw + btw;
+
+            // Toon resultaat
+            const resultaatDiv = document.getElementById('resultaat');
+            resultaatDiv.innerHTML = `
+                <h3>Resultaat</h3>
+                <p>Oppervlakte: ${oppervlakte.toFixed(2)} m²</p>
+                <p>Materiaalkosten: €${materiaalKosten.toFixed(2)}</p>
+                <p>Arbeidskosten: €${arbeidKosten.toFixed(2)}</p>
+                <p>Totaal (excl. BTW): €${totaalExBtw.toFixed(2)}</p>
+                <p>BTW (21%): €${btw.toFixed(2)}</p>
+                <p><strong>Totaal (incl. BTW): €${totaalInclBtw.toFixed(2)}</strong></p>
+                <p><em>Druk op Ctrl+P om als PDF op te slaan</em></p>
+            `;
+        }
+
+        function resetForm() {
+            document.getElementById('dakForm').reset();
+            document.getElementById('hellingsgraad').value = 0;
+            document.getElementById('uurloon').value = 40;
+            document.getElementById('uren').value = 10;
+            document.getElementById('resultaat').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
