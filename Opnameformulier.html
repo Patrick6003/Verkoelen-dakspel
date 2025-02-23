@@ -167,6 +167,17 @@
             flex-wrap: wrap;
             margin-top: 20px;
         }
+        .checklist {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #888;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .checklist ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
     </style>
 </head>
 <body>
@@ -177,6 +188,7 @@
                 <button class="tab-button active" onclick="switchTab('invoer')" aria-label="Invoertabblad">Afmetingen & Details</button>
                 <button class="tab-button" onclick="switchTab('waarnemingen')" aria-label="Waarnemingen tabblad">Waarnemingen</button>
                 <button class="tab-button" onclick="switchTab('rc-berekeningen')" aria-label="RC Berekeningen tabblad">RC Berekeningen</button>
+                <button class="tab-button" onclick="switchTab('checklist')" aria-label="Checklist tabblad">Checklist</button>
             </div>
 
             <!-- Tabblad 1: Afmetingen & Details -->
@@ -477,6 +489,38 @@
 
                 <div id="rc-resultaat" role="region" aria-live="polite"></div>
             </div>
+
+            <!-- Tabblad 4: Checklist -->
+            <div id="checklist" class="tab-content">
+                <label for="daknaam-checklist">Daknaam:</label>
+                <input type="text" id="daknaam-checklist" readonly aria-label="Naam van het dak" value="Dak 1">
+
+                <h3>Checklist voor Platte Daken (voorafgaand aan renovatie)</h3>
+                <div class="checklist">
+                    <ul>
+                        <li>Controleer de huidige dakbedekking op scheuren, blazen of loslating.</li>
+                        <li>Inspecteer de afwatering (dakafvoeren, noodafvoeren) op verstoppingen of beschadigingen.</li>
+                        <li>Controleer de staat van de dakranden (bijv. afwerkstroken, lood).</li>
+                        <li>Beoordeel de aanwezigheid en conditie van ontluchtingen.</li>
+                        <li>Controleer op plasvorming en hellingsgraad van het dakvlak.</li>
+                        <li>Inspecteer de onderconstructie op vocht, rot of structurele schade.</li>
+                        <li>Controleer de isolatielaag op natte plekken of degradatie.</li>
+                        <li>Beoordeel de aanwezigheid en staat van grind of ballastlaag.</li>
+                        <li>Inspecteer opgaand werk (zoals muren, schoorstenen) op aansluitingen en waterdichtheid.</li>
+                        <li>Controleer dilatatievoegen op scheuren of slijtage.</li>
+                        <li>Beoordeel de algemene toegankelijkheid van het dak voor renovatiewerk.</li>
+                        <li>Controleer op tekenen van lekkages (binnen en buiten).</li>
+                        <li>Inspecteer eventuele dakdoorvoeren (kabels, pijpen) op afdichting.</li>
+                        <li>Controleer de staat van de dampremmende laag (indien toegankelijk).</li>
+                        <li>Beoordeel de algehele structurele integriteit van het dak.</li>
+                    </ul>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" onclick="exportPNG('checklist')" aria-label="Exporteren als PNG">Export PNG</button>
+                    <button type="button" onclick="exportPDF('checklist')" aria-label="Exporteren als PDF">Export PDF</button>
+                </div>
+            </div>
         </div>
 
         <div class="schets-section">
@@ -555,13 +599,14 @@
             document.querySelector(`#${tabId}`).classList.add('active');
             document.querySelector(`[onclick="switchTab('${tabId}')"]`).classList.add('active');
             if (tabId === 'rc-berekeningen') updateRC();
-            else updateAlles();
+            else if (tabId !== 'checklist') updateAlles();
         }
 
         function syncDaknaam() {
             const daknaamInvoer = document.getElementById('daknaam').value;
             document.getElementById('daknaam-waarnemingen').value = daknaamInvoer;
             document.getElementById('daknaam-rc').value = daknaamInvoer;
+            document.getElementById('daknaam-checklist').value = daknaamInvoer;
             updateAlles();
             updateRC();
         }
@@ -988,6 +1033,7 @@
             document.getElementById('daknaam').value = "Dak 1";
             document.getElementById('daknaam-waarnemingen').value = "Dak 1";
             document.getElementById('daknaam-rc').value = "Dak 1";
+            document.getElementById('daknaam-checklist').value = "Dak 1";
             document.getElementById('lengte').value = 10;
             document.getElementById('breedte').value = 5;
             document.getElementById('lengte1').value = 10;
