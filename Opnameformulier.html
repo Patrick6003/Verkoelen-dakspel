@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digitaal Opnameformulier - Platte Daken</title>
+    <title>Digitaal Opnameformulier</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -18,6 +18,7 @@
         h1 {
             text-align: center;
             color: #222;
+            margin-bottom: 20px;
         }
         .container {
             display: grid;
@@ -40,6 +41,7 @@
             display: flex;
             gap: 10px;
             margin-bottom: 15px;
+            flex-wrap: wrap;
         }
         .tab-button {
             background-color: #ddd;
@@ -47,13 +49,13 @@
             border: none;
             border-radius: 4px 4px 0 0;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: background-color 0.3s;
         }
         .tab-button.active {
             background-color: #007BFF;
             color: white;
         }
-        .tab-button:hover:not(.active) {
+        .tab-button:hover {
             background-color: #ccc;
         }
         .tab-content {
@@ -61,6 +63,10 @@
         }
         .tab-content.active {
             display: block;
+        }
+        h3 {
+            margin-top: 20px;
+            color: #007BFF;
         }
         label {
             display: block;
@@ -82,6 +88,7 @@
             color: #d32f2f;
             font-size: 12px;
             margin-top: -5px;
+            margin-bottom: 10px;
             display: none;
         }
         button {
@@ -92,7 +99,7 @@
             border-radius: 4px;
             cursor: pointer;
             margin-right: 5px;
-            transition: background-color 0.2s;
+            transition: background-color 0.3s;
         }
         button:hover {
             background-color: #0056b3;
@@ -104,7 +111,7 @@
             border-radius: 4px;
             background-color: #f9f9f9;
         }
-        .vorm-specifiek {
+        .vorm-specifiek, .niet-standaard-vorm {
             display: none;
         }
         canvas {
@@ -119,6 +126,7 @@
             display: flex;
             gap: 5px;
             margin-bottom: 10px;
+            align-items: center;
         }
         .detail-input select, .detail-input input[type="text"],
         .laag-input select, .laag-input input[type="number"] {
@@ -153,229 +161,250 @@
             gap: 5px;
             margin-bottom: 10px;
         }
-        .checklist-item {
+        .button-group {
             display: flex;
-            align-items: center;
             gap: 10px;
-            margin-bottom: 8px;
+            flex-wrap: wrap;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>Digitaal Opnameformulier - Platte Daken</h1>
+    <h1>Digitaal Opnameformulier</h1>
     <div class="container">
         <div class="input-section">
             <div class="tabs">
-                <button class="tab-button active" onclick="switchTab('invoer')" aria-label="Invoertabblad">Invoer</button>
+                <button class="tab-button active" onclick="switchTab('invoer')" aria-label="Invoertabblad">Afmetingen & Details</button>
                 <button class="tab-button" onclick="switchTab('waarnemingen')" aria-label="Waarnemingen tabblad">Waarnemingen</button>
                 <button class="tab-button" onclick="switchTab('rc-berekeningen')" aria-label="RC Berekeningen tabblad">RC Berekeningen</button>
-                <button class="tab-button" onclick="switchTab('checklist')" aria-label="Checklist tabblad">Checklist</button>
             </div>
+
+            <!-- Tabblad 1: Afmetingen & Details -->
             <div id="invoer" class="tab-content active">
                 <form id="dakForm">
                     <label for="daknaam">Daknaam:</label>
                     <input type="text" id="daknaam" placeholder="Bijv. Dak Noord" aria-label="Naam van het dak" value="Dak 1" oninput="syncDaknaam()">
-                    <label for="dakmerk">Dakmerk (bijv. BDA, IKO, Derbigum):</label>
-                    <input type="text" id="dakmerk" placeholder="Bijv. BDA" aria-label="Dakmerk" oninput="updateAlles()">
-                    <label for="vorm">Dakvorm:</label>
-                    <select id="vorm" onchange="updateAlles()" aria-label="Kies dakvorm">
+
+                    <h3>Dakvorm</h3>
+                    <label for="vorm">Vorm:</label>
+                    <select id="vorm" onchange="updateVorm()" aria-label="Kies dakvorm">
                         <option value="rechthoek">⬜ Rechthoek</option>
                         <option value="l-vorm">🡒 L-vorm</option>
+                        <option value="niet-standaard">⚠ Niet-standaard</option>
                     </select>
 
                     <!-- Rechthoek -->
                     <div id="rechthoek" class="vorm-specifiek">
                         <label for="lengte">Lengte (m) - Zijden 1 en 3:</label>
-                        <input type="number" id="lengte" step="0.1" min="0.1" value="10" oninput="validateInput(this); updateAlles()" aria-label="Lengte van het dak in meters, zijden 1 en 3">
+                        <input type="number" id="lengte" step="0.1" min="0" value="10" oninput="validateInput(this); updateAlles()" aria-label="Lengte van het dak in meters, zijden 1 en 3">
                         <div id="lengte-error" class="error">Voer een getal groter dan 0 in</div>
                         <label for="breedte">Breedte (m) - Zijden 2 en 4:</label>
-                        <input type="number" id="breedte" step="0.1" min="0.1" value="5" oninput="validateInput(this); updateAlles()" aria-label="Breedte van het dak in meters, zijden 2 en 4">
+                        <input type="number" id="breedte" step="0.1" min="0" value="5" oninput="validateInput(this); updateAlles()" aria-label="Breedte van het dak in meters, zijden 2 en 4">
                         <div id="breedte-error" class="error">Voer een getal groter dan 0 in</div>
+                    </div>
+
+                    <!-- L-vorm -->
+                    <div id="l-vorm" class="vorm-specifiek">
+                        <label for="lengte1">Lengte deel 1 (m) - Zijden 1 en 5:</label>
+                        <input type="number" id="lengte1" step="0.1" min="0" value="10" oninput="validateInput(this); updateAlles()" aria-label="Lengte deel 1 van L-vorm in meters, zijden 1 en 5">
+                        <div id="lengte1-error" class="error">Voer een getal groter dan 0 in</div>
+                        <label for="breedte1">Breedte deel 1 (m) - Zijden 2 en 6:</label>
+                        <input type="number" id="breedte1" step="0.1" min="0" value="5" oninput="validateInput(this); updateAlles()" aria-label="Breedte deel 1 van L-vorm in meters, zijden 2 en 6">
+                        <div id="breedte1-error" class="error">Voer een getal groter dan 0 in</div>
+                        <label for="lengte2">Lengte deel 2 (m) - Zijde 3:</label>
+                        <input type="number" id="lengte2" step="0.1" min="0" value="4" oninput="validateInput(this); updateAlles()" aria-label="Lengte deel 2 van L-vorm in meters, zijde 3">
+                        <div id="lengte2-error" class="error">Voer een getal groter dan 0 in of kleiner dan Lengte deel 1</div>
+                        <label for="breedte2">Breedte deel 2 (m) - Zijde 4:</label>
+                        <input type="number" id="breedte2" step="0.1" min="0" value="3" oninput="validateInput(this); updateAlles()" aria-label="Breedte deel 2 van L-vorm in meters, zijde 4">
+                        <div id="breedte2-error" class="error">Voer een getal groter dan 0 in</div>
                         <div class="checkbox-group">
-                            <label>Indicatief <input type="checkbox" id="indicatief" oninput="updateAlles()" aria-label="Afmetingen zijn indicatief"></label>
+                            <label>Spiegel L-vorm <input type="checkbox" id="spiegel" oninput="updateAlles()" aria-label="Spiegel de L-vorm schets horizontaal"></label>
                         </div>
-                        <label>Detailomschrijvingen (4 zijden):</label>
+                    </div>
+
+                    <!-- Niet-standaard vorm -->
+                    <div id="niet-standaard" class="niet-standaard-vorm">
+                        <label for="niet-standaard-opp">Geschatte oppervlakte (m²):</label>
+                        <input type="number" id="niet-standaard-opp" step="0.1" min="0" value="0" oninput="validateInput(this); updateAlles()" aria-label="Geschatte oppervlakte in m²">
+                        <div id="niet-standaard-opp-error" class="error">Voer een getal groter dan 0 in</div>
+                        <div class="checkbox-group">
+                            <label>Nakijken achter computer <input type="checkbox" id="nakijken-computer" oninput="updateAlles()" aria-label="Dakvorm nakijken achter computer of tekening maken"></label>
+                        </div>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <label>Indicatief <input type="checkbox" id="indicatief" oninput="updateAlles()" aria-label="Afmetingen zijn indicatief"></label>
+                    </div>
+
+                    <label for="hellingsgraad">Hellingsgraad t.o.v. dakranden (°):</label>
+                    <input type="number" id="hellingsgraad" step="0.1" min="0" max="90" value="0" oninput="validateInput(this, true); updateAlles()" aria-label="Hellingsgraad ten opzichte van dakranden in graden">
+                    <div id="hellingsgraad-error" class="error">Voer een getal tussen 0 en 90 in</div>
+
+                    <h3>Detailomschrijvingen</h3>
+                    <div id="details-rechthoek" class="vorm-specifiek">
                         <div class="detail-input">
                             <select id="detail1" oninput="updateAlles()" aria-label="Detail voor zijde 1">
                                 <option value="">Kies detail (1)</option>
-                                <option value="Lood">Lood (1)</option>
-                                <option value="Afwerkstrook">Afwerkstrook (1)</option>
-                                <option value="Dilatatie">Dilatatie (1)</option>
-                                <option value="Overig">Overig (1)</option>
-                                <option value="Verschillende">Verschillende (1)</option>
-                                <option value="Opgaandwerk">Opgaandwerk (1)</option>
+                                <option value="Lood">Lood</option>
+                                <option value="Afwerkstrook">Afwerkstrook</option>
+                                <option value="Dilatatie">Dilatatie</option>
+                                <option value="Dakpannen">Dakpannen</option>
+                                <option value="Overig">Overig</option>
+                                <option value="Verschillende">Verschillende</option>
+                                <option value="Opgaandwerk">Opgaandwerk</option>
                             </select>
                             <input type="text" id="oms1" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 1">
                         </div>
                         <div class="detail-input">
                             <select id="detail2" oninput="updateAlles()" aria-label="Detail voor zijde 2">
                                 <option value="">Kies detail (2)</option>
-                                <option value="Lood">Lood (2)</option>
-                                <option value="Afwerkstrook">Afwerkstrook (2)</option>
-                                <option value="Dilatatie">Dilatatie (2)</option>
-                                <option value="Overig">Overig (2)</option>
-                                <option value="Verschillende">Verschillende (2)</option>
-                                <option value="Opgaandwerk">Opgaandwerk (2)</option>
+                                <option value="Lood">Lood</option>
+                                <option value="Afwerkstrook">Afwerkstrook</option>
+                                <option value="Dilatatie">Dilatatie</option>
+                                <option value="Dakpannen">Dakpannen</option>
+                                <option value="Overig">Overig</option>
+                                <option value="Verschillende">Verschillende</option>
+                                <option value="Opgaandwerk">Opgaandwerk</option>
                             </select>
                             <input type="text" id="oms2" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 2">
                         </div>
                         <div class="detail-input">
                             <select id="detail3" oninput="updateAlles()" aria-label="Detail voor zijde 3">
                                 <option value="">Kies detail (3)</option>
-                                <option value="Lood">Lood (3)</option>
-                                <option value="Afwerkstrook">Afwerkstrook (3)</option>
-                                <option value="Dilatatie">Dilatatie (3)</option>
-                                <option value="Overig">Overig (3)</option>
-                                <option value="Verschillende">Verschillende (3)</option>
-                                <option value="Opgaandwerk">Opgaandwerk (3)</option>
+                                <option value="Lood">Lood</option>
+                                <option value="Afwerkstrook">Afwerkstrook</option>
+                                <option value="Dilatatie">Dilatatie</option>
+                                <option value="Dakpannen">Dakpannen</option>
+                                <option value="Overig">Overig</option>
+                                <option value="Verschillende">Verschillende</option>
+                                <option value="Opgaandwerk">Opgaandwerk</option>
                             </select>
                             <input type="text" id="oms3" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 3">
                         </div>
                         <div class="detail-input">
                             <select id="detail4" oninput="updateAlles()" aria-label="Detail voor zijde 4">
                                 <option value="">Kies detail (4)</option>
-                                <option value="Lood">Lood (4)</option>
-                                <option value="Afwerkstrook">Afwerkstrook (4)</option>
-                                <option value="Dilatatie">Dilatatie (4)</option>
-                                <option value="Overig">Overig (4)</option>
-                                <option value="Verschillende">Verschillende (4)</option>
-                                <option value="Opgaandwerk">Opgaandwerk (4)</option>
+                                <option value="Lood">Lood</option>
+                                <option value="Afwerkstrook">Afwerkstrook</option>
+                                <option value="Dilatatie">Dilatatie</option>
+                                <option value="Dakpannen">Dakpannen</option>
+                                <option value="Overig">Overig</option>
+                                <option value="Verschillende">Verschillende</option>
+                                <option value="Opgaandwerk">Opgaandwerk</option>
                             </select>
                             <input type="text" id="oms4" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 4">
                         </div>
                     </div>
 
-                    <!-- L-vorm -->
-                    <div id="l-vorm" class="vorm-specifiek">
-                        <label for="lengte1">Lengte deel 1 (m) - Zijden 1 en 5:</label>
-                        <input type="number" id="lengte1" step="0.1" min="0.1" value="10" oninput="validateInput(this); updateAlles()" aria-label="Lengte deel 1 van L-vorm in meters, zijden 1 en 5">
-                        <div id="lengte1-error" class="error">Voer een getal groter dan 0 in</div>
-                        <label for="breedte1">Breedte deel 1 (m) - Zijden 2 en 6:</label>
-                        <input type="number" id="breedte1" step="0.1" min="0.1" value="5" oninput="validateInput(this); updateAlles()" aria-label="Breedte deel 1 van L-vorm in meters, zijden 2 en 6">
-                        <div id="breedte1-error" class="error">Voer een getal groter dan 0 in</div>
-                        <label for="lengte2">Lengte deel 2 (m) - Zijde 3:</label>
-                        <input type="number" id="lengte2" step="0.1" min="0.1" value="4" oninput="validateInput(this); updateAlles()" aria-label="Lengte deel 2 van L-vorm in meters, zijde 3">
-                        <div id="lengte2-error" class="error">Voer een getal groter dan 0 in of kleiner dan Lengte deel 1</div>
-                        <label for="breedte2">Breedte deel 2 (m) - Zijde 4:</label>
-                        <input type="number" id="breedte2" step="0.1" min="0.1" value="3" oninput="validateInput(this); updateAlles()" aria-label="Breedte deel 2 van L-vorm in meters, zijde 4">
-                        <div id="breedte2-error" class="error">Voer een getal groter dan 0 in</div>
-                        <div class="checkbox-group">
-                            <label>Indicatief <input type="checkbox" id="indicatief" oninput="updateAlles()" aria-label="Afmetingen zijn indicatief"></label>
-                        </div>
-                        <label>Detailomschrijvingen (6 zijden):</label>
+                    <div id="details-l-vorm" class="vorm-specifiek">
                         <div class="detail-input">
                             <select id="l-detail1" oninput="updateAlles()" aria-label="Detail voor zijde 1 van L-vorm">
                                 <option value="">Kies detail (1)</option>
-                                <option value="Lood">Lood (1)</option>
-                                <option value="Afwerkstrook">Afwerkstrook (1)</option>
-                                <option value="Dilatatie">Dilatatie (1)</option>
-                                <option value="Overig">Overig (1)</option>
-                                <option value="Verschillende">Verschillende (1)</option>
-                                <option value="Opgaandwerk">Opgaandwerk (1)</option>
+                                <option value="Lood">Lood</option>
+                                <option value="Afwerkstrook">Afwerkstrook</option>
+                                <option value="Dilatatie">Dilatatie</option>
+                                <option value="Dakpannen">Dakpannen</option>
+                                <option value="Overig">Overig</option>
+                                <option value="Verschillende">Verschillende</option>
+                                <option value="Opgaandwerk">Opgaandwerk</option>
                             </select>
                             <input type="text" id="l-oms1" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 1 van L-vorm">
                         </div>
                         <div class="detail-input">
                             <select id="l-detail2" oninput="updateAlles()" aria-label="Detail voor zijde 2 van L-vorm">
                                 <option value="">Kies detail (2)</option>
-                                <option value="Lood">Lood (2)</option>
-                                <option value="Afwerkstrook">Afwerkstrook (2)</option>
-                                <option value="Dilatatie">Dilatatie (2)</option>
-                                <option value="Overig">Overig (2)</option>
-                                <option value="Verschillende">Verschillende (2)</option>
-                                <option value="Opgaandwerk">Opgaandwerk (2)</option>
+                                <option value="Lood">Lood</option>
+                                <option value="Afwerkstrook">Afwerkstrook</option>
+                                <option value="Dilatatie">Dilatatie</option>
+                                <option value="Dakpannen">Dakpannen</option>
+                                <option value="Overig">Overig</option>
+                                <option value="Verschillende">Verschillende</option>
+                                <option value="Opgaandwerk">Opgaandwerk</option>
                             </select>
                             <input type="text" id="l-oms2" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 2 van L-vorm">
                         </div>
                         <div class="detail-input">
                             <select id="l-detail3" oninput="updateAlles()" aria-label="Detail voor zijde 3 van L-vorm">
                                 <option value="">Kies detail (3)</option>
-                                <option value="Lood">Lood (3)</option>
-                                <option value="Afwerkstrook">Afwerkstrook (3)</option>
-                                <option value="Dilatatie">Dilatatie (3)</option>
-                                <option value="Overig">Overig (3)</option>
-                                <option value="Verschillende">Verschillende (3)</option>
-                                <option value="Opgaandwerk">Opgaandwerk (3)</option>
+                                <option value="Lood">Lood</option>
+                                <option value="Afwerkstrook">Afwerkstrook</option>
+                                <option value="Dilatatie">Dilatatie</option>
+                                <option value="Dakpannen">Dakpannen</option>
+                                <option value="Overig">Overig</option>
+                                <option value="Verschillende">Verschillende</option>
+                                <option value="Opgaandwerk">Opgaandwerk</option>
                             </select>
                             <input type="text" id="l-oms3" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 3 van L-vorm">
                         </div>
                         <div class="detail-input">
                             <select id="l-detail4" oninput="updateAlles()" aria-label="Detail voor zijde 4 van L-vorm">
                                 <option value="">Kies detail (4)</option>
-                                <option value="Lood">Lood (4)</option>
-                                <option value="Afwerkstrook">Afwerkstrook (4)</option>
-                                <option value="Dilatatie">Dilatatie (4)</option>
-                                <option value="Overig">Overig (4)</option>
-                                <option value="Verschillende">Verschillende (4)</option>
-                                <option value="Opgaandwerk">Opgaandwerk (4)</option>
+                                <option value="Lood">Lood</option>
+                                <option value="Afwerkstrook">Afwerkstrook</option>
+                                <option value="Dilatatie">Dilatatie</option>
+                                <option value="Dakpannen">Dakpannen</option>
+                                <option value="Overig">Overig</option>
+                                <option value="Verschillende">Verschillende</option>
+                                <option value="Opgaandwerk">Opgaandwerk</option>
                             </select>
                             <input type="text" id="l-oms4" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 4 van L-vorm">
                         </div>
                         <div class="detail-input">
                             <select id="l-detail5" oninput="updateAlles()" aria-label="Detail voor zijde 5 van L-vorm">
                                 <option value="">Kies detail (5)</option>
-                                <option value="Lood">Lood (5)</option>
-                                <option value="Afwerkstrook">Afwerkstrook (5)</option>
-                                <option value="Dilatatie">Dilatatie (5)</option>
-                                <option value="Overig">Overig (5)</option>
-                                <option value="Verschillende">Verschillende (5)</option>
-                                <option value="Opgaandwerk">Opgaandwerk (5)</option>
+                                <option value="Lood">Lood</option>
+                                <option value="Afwerkstrook">Afwerkstrook</option>
+                                <option value="Dilatatie">Dilatatie</option>
+                                <option value="Dakpannen">Dakpannen</option>
+                                <option value="Overig">Overig</option>
+                                <option value="Verschillende">Verschillende</option>
+                                <option value="Opgaandwerk">Opgaandwerk</option>
                             </select>
                             <input type="text" id="l-oms5" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 5 van L-vorm">
                         </div>
                         <div class="detail-input">
                             <select id="l-detail6" oninput="updateAlles()" aria-label="Detail voor zijde 6 van L-vorm">
                                 <option value="">Kies detail (6)</option>
-                                <option value="Lood">Lood (6)</option>
-                                <option value="Afwerkstrook">Afwerkstrook (6)</option>
-                                <option value="Dilatatie">Dilatatie (6)</option>
-                                <option value="Overig">Overig (6)</option>
-                                <option value="Verschillende">Verschillende (6)</option>
-                                <option value="Opgaandwerk">Opgaandwerk (6)</option>
+                                <option value="Lood">Lood</option>
+                                <option value="Afwerkstrook">Afwerkstrook</option>
+                                <option value="Dilatatie">Dilatatie</option>
+                                <option value="Dakpannen">Dakpannen</option>
+                                <option value="Overig">Overig</option>
+                                <option value="Verschillende">Verschillende</option>
+                                <option value="Opgaandwerk">Opgaandwerk</option>
                             </select>
                             <input type="text" id="l-oms6" placeholder="Extra omschrijving" oninput="updateAlles()" aria-label="Extra omschrijving voor zijde 6 van L-vorm">
                         </div>
-                        <label for="spiegel">Spiegel L-vorm:</label>
-                        <input type="checkbox" id="spiegel" oninput="updateAlles()" aria-label="Spiegel de L-vorm schets horizontaal">
                     </div>
 
-                    <label for="hellingsgraad">Hellingsgraad t.o.v. dakranden (°):</label>
-                    <input type="number" id="hellingsgraad" step="0.1" min="0" max="90" value="0" oninput="validateInput(this, true); updateAlles()" aria-label="Hellingsgraad ten opzichte van dakranden in graden">
-                    <div id="hellingsgraad-error" class="error">Voer een getal tussen 0 en 90 in</div>
-                    <button type="button" onclick="resetForm()" aria-label="Formulier resetten">Reset</button>
-                    <button type="button" onclick="exportPNG('invoer')" aria-label="Exporteren als PNG">Export PNG</button>
-                    <button type="button" onclick="exportPDF('invoer')" aria-label="Exporteren als PDF">Export PDF</button>
-                    <button type="button" onclick="zoomIn()" aria-label="Inzoomen op schets">Zoom In</button>
-                    <button type="button" onclick="zoomOut()" aria-label="Uitzoomen op schets">Zoom Uit</button>
+                    <div class="button-group">
+                        <button type="button" onclick="resetForm()" aria-label="Formulier resetten">Reset</button>
+                        <button type="button" onclick="exportPNG('invoer')" aria-label="Exporteren als PNG">Export PNG</button>
+                        <button type="button" onclick="exportPDF('invoer')" aria-label="Exporteren als PDF">Export PDF</button>
+                        <button type="button" onclick="zoomIn()" aria-label="Inzoomen op schets">Zoom In</button>
+                        <button type="button" onclick="zoomOut()" aria-label="Uitzoomen op schets">Zoom Uit</button>
+                    </div>
                 </form>
                 <div id="resultaat" role="region" aria-live="polite"></div>
             </div>
+
+            <!-- Tabblad 2: Waarnemingen -->
             <div id="waarnemingen" class="tab-content">
                 <label for="daknaam-waarnemingen">Daknaam:</label>
                 <input type="text" id="daknaam-waarnemingen" readonly aria-label="Naam van het dak" value="Dak 1">
+
+                <h3>Algemene Informatie</h3>
                 <label for="dakhoogte">Dakhoogte (m, indien bekend):</label>
-                <input type="number" id="dakhoogte" step="0.1" min="0" placeholder="Bijv. 5.5" oninput="updateRCFromWaarnemingen()" aria-label="Hoogte van het dak in meters">
-                <label for="dakopbouw">Dakopbouw (scheid lagen met ;):</label>
-                <textarea id="dakopbouw" rows="3" placeholder="Bijv. Bitumen (5 mm); IKO Enertherm PIR (100 mm); Beton (200 mm)" oninput="updateRCFromWaarnemingen()" aria-label="Beschrijving van de dakopbouw"></textarea>
-                <label for="gebreken">Gebreken:</label>
-                <textarea id="gebreken" rows="3" placeholder="Bijv. Scheuren, lekkages" oninput="updateRCFromWaarnemingen()" aria-label="Geconstateerde gebreken op het dak"></textarea>
-                <label for="details">Details (ontluchtingen, afvoeren, noodafvoeren):</label>
-                <textarea id="details" rows="3" placeholder="Bijv. 2 ontluchtingen, 1 afvoer" oninput="updateRCFromWaarnemingen()" aria-label="Details van ontluchtingen, afvoeren en noodafvoeren"></textarea>
+                <input type="number" id="dakhoogte" step="0.1" min="0" placeholder="Bijv. 5.5" oninput="validateInput(this, true)" aria-label="Hoogte van het dak in meters">
+                <div id="dakhoogte-error" class="error">Voer een getal groter dan of gelijk aan 0 in</div>
+
                 <label for="situatie-omgeving">Situatie/Omgeving:</label>
-                <textarea id="situatie-omgeving" rows="3" placeholder="Bijv. Nabij bomen, stedelijk gebied" oninput="updateRCFromWaarnemingen()" aria-label="Opmerkingen over situatie en omgeving"></textarea>
-                <label for="waarnemingen-extra">Extra waarnemingen:</label>
-                <textarea id="waarnemingen-extra" rows="3" placeholder="Bijv. Toegankelijkheid, bijzonderheden" oninput="updateRCFromWaarnemingen()" aria-label="Extra waarnemingen over het dak"></textarea>
-                <div class="checkbox-group">
-                    <label>Grind zit vast <input type="checkbox" id="grind-vast" oninput="updateRCFromWaarnemingen()" aria-label="Grind zit vast"></label>
-                </div>
-                <div class="checkbox-group">
-                    <label>Isolatie is nat <input type="checkbox" id="isolatie-nat" oninput="updateRCFromWaarnemingen()" aria-label="Isolatie is nat"></label>
-                </div>
-                <div class="checkbox-group">
-                    <label>Plasvorming <input type="checkbox" id="plasvorming" oninput="updateRCFromWaarnemingen()" aria-label="Plasvorming aanwezig"></label>
-                </div>
+                <textarea id="situatie-omgeving" rows="3" placeholder="Bijv. Nabij bomen, stedelijk gebied" aria-label="Opmerkingen over situatie en omgeving"></textarea>
+
+                <h3>Conditie</h3>
                 <label for="toestand">Algemene onderhoudsstaat (NEN 2767):</label>
-                <select id="toestand" oninput="updateRCFromWaarnemingen()" aria-label="Algemene onderhoudsstaat van het dak volgens NEN 2767">
+                <select id="toestand" aria-label="Algemene onderhoudsstaat van het dak volgens NEN 2767">
+                    <option value="0" selected>0 - Onbekend</option>
                     <option value="1">1 - Uitstekend</option>
                     <option value="2">2 - Goed</option>
                     <option value="3">3 - Redelijk</option>
@@ -383,19 +412,52 @@
                     <option value="5">5 - Slecht</option>
                     <option value="6">6 - Zeer slecht</option>
                 </select>
-                <button type="button" onclick="exportPNG('waarnemingen')" aria-label="Exporteren als PNG met waarnemingen">Export PNG</button>
-                <button type="button" onclick="exportPDF('waarnemingen')" aria-label="Exporteren als PDF met waarnemingen">Export PDF</button>
+
+                <label for="gebreken">Gebreken:</label>
+                <textarea id="gebreken" rows="3" placeholder="Bijv. Scheuren, lekkages" aria-label="Geconstateerde gebreken op het dak"></textarea>
+
+                <div class="checkbox-group">
+                    <label>Grind zit vast <input type="checkbox" id="grind-vast" aria-label="Grind zit vast"></label>
+                </div>
+                <div class="checkbox-group">
+                    <label>Isolatie is nat <input type="checkbox" id="isolatie-nat" aria-label="Isolatie is nat"></label>
+                </div>
+                <div class="checkbox-group">
+                    <label>Plasvorming <input type="checkbox" id="plasvorming" aria-label="Plasvorming aanwezig"></label>
+                </div>
+
+                <h3>Dakopbouw & Details</h3>
+                <label for="dakopbouw">Dakopbouw:</label>
+                <textarea id="dakopbouw" rows="3" placeholder="Bijv. Bitumen, isolatie, grind" aria-label="Beschrijving van de dakopbouw"></textarea>
+
+                <label for="details">Details (ontluchtingen, afvoeren, noodafvoeren):</label>
+                <textarea id="details" rows="3" placeholder="Bijv. 2 ontluchtingen, 1 afvoer" aria-label="Details van ontluchtingen, afvoeren en noodafvoeren"></textarea>
+
+                <h3>Extra Opmerkingen</h3>
+                <label for="waarnemingen-extra">Extra waarnemingen:</label>
+                <textarea id="waarnemingen-extra" rows="3" placeholder="Bijv. Toegankelijkheid, bijzonderheden" aria-label="Extra waarnemingen over het dak"></textarea>
+
+                <div class="button-group">
+                    <button type="button" onclick="resetForm()" aria-label="Formulier resetten">Reset</button>
+                    <button type="button" onclick="exportPNG('waarnemingen')" aria-label="Exporteren als PNG met waarnemingen">Export PNG</button>
+                    <button type="button" onclick="exportPDF('waarnemingen')" aria-label="Exporteren als PDF met waarnemingen">Export PDF</button>
+                </div>
             </div>
+
+            <!-- Tabblad 3: RC Berekeningen -->
             <div id="rc-berekeningen" class="tab-content">
                 <label for="daknaam-rc">Daknaam:</label>
                 <input type="text" id="daknaam-rc" readonly aria-label="Naam van het dak" value="Dak 1">
+
                 <h3>Huidige Dakopbouw</h3>
                 <div id="lagen-container"></div>
                 <button type="button" onclick="voegLaagToe()" aria-label="Nieuwe laag toevoegen">Laag Toevoegen</button>
-                <h3>Gewenste RC-waarde (BBL: min. 6,0 m²K/W bij renovatie)</h3>
+
+                <h3>Gewenste RC-waarde</h3>
                 <label for="gewenste-rc">Gewenste RC-waarde (m²K/W):</label>
-                <input type="number" id="gewenste-rc" step="0.1" min="0" value="6" oninput="validateInput(this, true); updateRC()" aria-label="Gewenste RC-waarde in m²K/W">
-                <div id="gewenste-rc-error" class="error">Voer een getal groter dan 0 in</div>
+                <input type="number" id="gewenste-rc" step="0.1" min="0" value="5" oninput="validateInput(this, true); updateRC()" aria-label="Gewenste RC-waarde in m²K/W">
+                <div id="gewenste-rc-error" class="error">Voer een getal groter dan of gelijk aan 0 in</div>
+
                 <label for="extra-materiaal">Extra isolatiemateriaal:</label>
                 <select id="extra-materiaal" oninput="updateRC()" aria-label="Kies extra isolatiemateriaal">
                     <option value="IKO Enertherm PIR">IKO Enertherm PIR (λ = 0,0235 W/mK)</option>
@@ -406,44 +468,20 @@
                     <option value="Mineralenwol">Mineralenwol (λ = 0,0375 W/mK)</option>
                     <option value="Cellenglas">Cellenglas (λ = 0,047 W/mK)</option>
                 </select>
-                <button type="button" onclick="resetForm()" aria-label="RC Berekeningen resetten">Reset</button>
-                <button type="button" onclick="exportPNG('rc-berekeningen')" aria-label="Exporteren als PNG">Export PNG</button>
-                <button type="button" onclick="exportPDF('rc-berekeningen')" aria-label="Exporteren als PDF">Export PDF</button>
+
+                <div class="button-group">
+                    <button type="button" onclick="resetForm()" aria-label="RC Berekeningen resetten">Reset</button>
+                    <button type="button" onclick="exportPNG('rc-berekeningen')" aria-label="Exporteren als PNG">Export PNG</button>
+                    <button type="button" onclick="exportPDF('rc-berekeningen')" aria-label="Exporteren als PDF">Export PDF</button>
+                </div>
+
                 <div id="rc-resultaat" role="region" aria-live="polite"></div>
             </div>
-            <div id="checklist" class="tab-content">
-                <h3>Checklist Renovatie Platte Daken</h3>
-                <div class="checklist-item">
-                    <input type="checkbox" id="check1" aria-label="Waterdichtheid dakbedekking">
-                    <label for="check1">Waterdichtheid dakbedekking</label>
-                </div>
-                <div class="checklist-item">
-                    <input type="checkbox" id="check2" aria-label="Afwatering (min. 1:100)">
-                    <label for="check2">Afwatering (min. 1:100)</label>
-                </div>
-                <div class="checklist-item">
-                    <input type="checkbox" id="check3" aria-label="RC-waarde (min. 6,0 m²K/W)">
-                    <label for="check3">RC-waarde (min. 6,0 m²K/W)</label>
-                </div>
-                <div class="checklist-item">
-                    <input type="checkbox" id="check4" aria-label="Conditie onderconstructie">
-                    <label for="check4">Conditie onderconstructie</label>
-                </div>
-                <div class="checklist-item">
-                    <input type="checkbox" id="check5" aria-label="Details (afvoeren, randen)">
-                    <label for="check5">Details (afvoeren, randen)</label>
-                </div>
-                <div class="checklist-item">
-                    <input type="checkbox" id="check6" aria-label="Veiligheid (valbeveiliging)">
-                    <label for="check6">Veiligheid (valbeveiliging)</label>
-                </div>
-                <button type="button" onclick="exportPNG('checklist')" aria-label="Exporteren als PNG">Export PNG</button>
-                <button type="button" onclick="exportPDF('checklist')" aria-label="Exporteren als PDF">Export PDF</button>
-            </div>
         </div>
+
         <div class="schets-section">
-            <h3>Schets / Doorsnede</h3>
-            <canvas id="dakCanvas" aria-label="Schets of doorsnede van het dakvlak"></canvas>
+            <h3>Schets</h3>
+            <canvas id="dakCanvas" aria-label="Schets van het dakvlak"></canvas>
             <div id="schets-beschrijving" class="visually-hidden" aria-live="polite"></div>
             <div class="legenda" role="region" aria-label="Legenda van de schets">
                 <h4>Legenda</h4>
@@ -464,17 +502,11 @@
             "Lood": "#FF4136",
             "Afwerkstrook": "#2ECC40",
             "Dilatatie": "#7FDBFF",
+            "Dakpannen": "#FFDC00",
             "Overig": "#AAAAAA",
             "Verschillende": "#B10DC9",
             "Opgaandwerk": "#FF851B",
-            "": "#333333",
-            "Dakbedekking": "#4A4A4A",
-            "Isolatie": "#FFD700",
-            "Dampremmer": "#87CEEB",
-            "Onderconstructie": "#8B4513",
-            "Ondergrond": "#A9A9A9",
-            "Afwerking": "#D3D3D3",
-            "Dakgrind": "#696969"
+            "": "#333333"
         };
 
         const materialen = {
@@ -503,9 +535,7 @@
             },
             "Onderconstructie": {
                 "Hout": 0.155,
-                "Staal (600 mm)": 50,
-                "Staal (900 mm)": 50,
-                "Staal (1200 mm)": 50
+                "Staal": 50
             },
             "Ondergrond": {
                 "HWC (Houtwolcement)": 0.11,
@@ -514,9 +544,6 @@
             },
             "Afwerking": {
                 "Gipsplaat": 0.2
-            },
-            "Dakgrind": {
-                "Grind (16-32 mm)": 1.3
             }
         };
 
@@ -550,6 +577,16 @@
             }
             if (errorDiv) errorDiv.style.display = isValid ? 'none' : 'block';
             return isValid;
+        }
+
+        function updateVorm() {
+            const vorm = document.getElementById('vorm').value;
+            document.getElementById('rechthoek').style.display = vorm === 'rechthoek' ? 'block' : 'none';
+            document.getElementById('l-vorm').style.display = vorm === 'l-vorm' ? 'block' : 'none';
+            document.getElementById('niet-standaard').style.display = vorm === 'niet-standaard' ? 'block' : 'none';
+            document.getElementById('details-rechthoek').style.display = vorm === 'rechthoek' ? 'block' : 'none';
+            document.getElementById('details-l-vorm').style.display = vorm === 'l-vorm' ? 'block' : 'none';
+            updateAlles();
         }
 
         function drawGrid(schaal, maxLengte, maxBreedte) {
@@ -588,17 +625,16 @@
         function updateAlles() {
             const vorm = document.getElementById('vorm').value;
             const daknaam = document.getElementById('daknaam').value;
-            const dakmerk = document.getElementById('dakmerk').value;
             const hellingsgraad = parseFloat(document.getElementById('hellingsgraad').value) || 0;
             const spiegel = document.getElementById('spiegel')?.checked || false;
             const indicatief = document.getElementById('indicatief')?.checked || false;
+            const nakijkenComputer = document.getElementById('nakijken-computer')?.checked || false;
             let oppervlakte = 0, omtrek = 0, lengtes = [], omschrijvingen = [], detailsList = [];
 
-            document.getElementById('rechthoek').style.display = vorm === 'rechthoek' ? 'block' : 'none';
-            document.getElementById('l-vorm').style.display = vorm === 'l-vorm' ? 'block' : 'none';
-
             let isValid = true;
-            const inputs = vorm === 'rechthoek' ? ['lengte', 'breedte', 'hellingsgraad'] : ['lengte1', 'breedte1', 'lengte2', 'breedte2', 'hellingsgraad'];
+            const inputs = vorm === 'rechthoek' ? ['lengte', 'breedte', 'hellingsgraad'] :
+                           vorm === 'l-vorm' ? ['lengte1', 'breedte1', 'lengte2', 'breedte2', 'hellingsgraad'] :
+                           ['niet-standaard-opp', 'hellingsgraad'];
             inputs.forEach(id => {
                 if (!validateInput(document.getElementById(id), id === 'hellingsgraad')) isValid = false;
             });
@@ -640,24 +676,32 @@
                 }));
                 omschrijvingen = detailsList.map(d => d.detail + (d.oms ? ` - ${d.oms}` : ''));
                 tekenLVorm(lengte1, breedte1, lengte2, breedte2, detailsList, spiegel, oppervlakte, omtrek, hellingsgraad);
+            } else if (vorm === 'niet-standaard') {
+                oppervlakte = parseFloat(document.getElementById('niet-standaard-opp').value) || 0;
+                omtrek = 0; // Geen omtrek beschikbaar
+                lengtes = [];
+                omschrijvingen = [];
+                detailsList = [];
+                tekenNietStandaard(oppervlakte, hellingsgraad, nakijkenComputer);
             }
 
             const resultaatDiv = document.getElementById('resultaat');
-            let detailText = '<h4>Details:</h4><ul>';
+            let detailText = vorm !== 'niet-standaard' ? '<h4>Details:</h4><ul>' : '';
             detailsList.forEach((d, i) => {
                 const oms = d.detail + (d.oms ? ` - ${d.oms}` : '');
                 detailText += `<li>${i + 1}: ${oms}: ${lengtes[i].toFixed(2)} m</li>`;
             });
-            detailText += '</ul>';
+            detailText += vorm !== 'niet-standaard' ? '</ul>' : '';
             resultaatDiv.innerHTML = `
-                <h3>Resultaat - ${daknaam} (${dakmerk})</h3>
-                <p>Oppervlakte: ${oppervlakte.toFixed(2)} m²${indicatief ? ' (indicatief)' : ''}</p>
-                <p>Totale omtrek: ${omtrek.toFixed(2)} m${indicatief ? ' (indicatief)' : ''}</p>
+                <h3>Resultaat - ${daknaam}</h3>
+                <p>Oppervlakte: ${oppervlakte.toFixed(2)} m²${indicatief ? ' (indicatief)' : ''}${vorm === 'niet-standaard' && nakijkenComputer ? ' (nakijken achter computer)' : ''}</p>
+                ${vorm !== 'niet-standaard' ? `<p>Totale omtrek: ${omtrek.toFixed(2)} m${indicatief ? ' (indicatief)' : ''}</p>` : ''}
                 ${detailText}
             `;
 
-            updateLegenda(detailsList, lengtes);
-            updateSchetsBeschrijving(vorm, lengtes, omschrijvingen, daknaam, spiegel, indicatief);
+            if (vorm !== 'niet-standaard') updateLegenda(detailsList, lengtes);
+            else document.getElementById('legenda-content').innerHTML = '';
+            updateSchetsBeschrijving(vorm, lengtes, omschrijvingen, daknaam, spiegel, indicatief, nakijkenComputer);
         }
 
         function tekenRechthoek(lengte, breedte, detailsList, oppervlakte, omtrek, hellingsgraad) {
@@ -738,6 +782,23 @@
             }
         }
 
+        function tekenNietStandaard(oppervlakte, hellingsgraad, nakijkenComputer) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const schaal = 1; // Geen dynamische schaling, alleen tekst
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#000';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Niet-standaard vorm`, canvas.width / 2, canvas.height / 2 - 32);
+            ctx.fillText(`${oppervlakte.toFixed(2)} m²`, canvas.width / 2, canvas.height / 2 - 16);
+            if (hellingsgraad > 0) {
+                ctx.fillText(`${hellingsgraad.toFixed(1)}°`, canvas.width / 2, canvas.height / 2);
+            }
+            if (nakijkenComputer) {
+                ctx.fillStyle = '#D81B60';
+                ctx.fillText(`Nakijken achter computer`, canvas.width / 2, canvas.height / 2 + 16);
+            }
+        }
+
         function tekenNummersEnLabels(lijnen, detailsList) {
             ctx.font = '12px Arial';
             ctx.fillStyle = '#000';
@@ -771,32 +832,39 @@
             legendaContent.innerHTML = html;
         }
 
-        function updateSchetsBeschrijving(vorm, lengtes, omschrijvingen, daknaam, spiegel, indicatief) {
+        function updateSchetsBeschrijving(vorm, lengtes, omschrijvingen, daknaam, spiegel, indicatief, nakijkenComputer) {
             const beschrijving = document.getElementById('schets-beschrijving');
-            let text = `Schets van ${daknaam}, een ${vorm === 'rechthoek' ? 'rechthoekig' : 'L-vormig'} dak${vorm === 'l-vorm' && spiegel ? ' (gespiegeld)' : ''}${indicatief ? ' met indicatieve afmetingen' : ''}. `;
-            lengtes.forEach((lengte, i) => {
-                text += `Zijde ${i + 1}: ${lengte.toFixed(1)} meter, detail: ${omschrijvingen[i]}. `;
-            });
+            let text = `Schets van ${daknaam}, een ${vorm === 'rechthoek' ? 'rechthoekig' : vorm === 'l-vorm' ? 'L-vormig' : 'niet-standaard'} dak${vorm === 'l-vorm' && spiegel ? ' (gespiegeld)' : ''}${indicatief ? ' met indicatieve afmetingen' : ''}${vorm === 'niet-standaard' && nakijkenComputer ? ' (nakijken achter computer)' : ''}. `;
+            if (vorm !== 'niet-standaard') {
+                lengtes.forEach((lengte, i) => {
+                    text += `Zijde ${i + 1}: ${lengte.toFixed(1)} meter, detail: ${omschrijvingen[i]}. `;
+                });
+            }
             beschrijving.textContent = text;
         }
 
-        function voegLaagToe(type = 'Dakbedekking', materiaal = Object.keys(materialen['Dakbedekking'])[0], dikte = 0) {
+        function voegLaagToe() {
             const container = document.getElementById('lagen-container');
             const laagId = lagen.length;
             const div = document.createElement('div');
             div.className = 'laag-input';
             div.innerHTML = `
                 <select onchange="updateMaterialen(this, ${laagId}); updateRC()" aria-label="Kies laagtype">
-                    ${Object.keys(materialen).map(t => `<option value="${t}" ${t === type ? 'selected' : ''}>${t}</option>`).join('')}
+                    <option value="Ondergrond">Ondergrond</option>
+                    <option value="Onderconstructie">Onderconstructie</option>
+                    <option value="Dampremmer">Dampremmer</option>
+                    <option value="Isolatie">Isolatie</option>
+                    <option value="Dakbedekking">Dakbedekking</option>
+                    <option value="Afwerking">Afwerking</option>
                 </select>
                 <select id="materiaal-${laagId}" onchange="updateRC()" aria-label="Kies materiaal">
-                    ${Object.keys(materialen[type]).map(m => `<option value="${m}" ${m === materiaal ? 'selected' : ''}>${m} (λ = ${materialen[type][m]} W/mK)</option>`).join('')}
+                    ${Object.keys(materialen['Ondergrond']).map(m => `<option value="${m}">${m} (λ = ${materialen['Ondergrond'][m]} W/mK)</option>`).join('')}
                 </select>
-                <input type="number" id="dikte-${laagId}" min="0" step="1" value="${dikte}" oninput="validateInput(this, true); updateRC()" aria-label="Dikte van de laag in mm">
+                <input type="number" id="dikte-${laagId}" min="0" step="1" value="0" oninput="validateInput(this, true); updateRC()" aria-label="Dikte van de laag in mm">
                 <button type="button" onclick="verwijderLaag(${laagId})" aria-label="Laag verwijderen">X</button>
             `;
             container.appendChild(div);
-            lagen.push({ type, materiaal, dikte });
+            lagen.push({ type: 'Ondergrond', materiaal: Object.keys(materialen['Ondergrond'])[0], dikte: 0 });
             updateRC();
         }
 
@@ -814,52 +882,37 @@
             const container = document.getElementById('lagen-container');
             container.innerHTML = '';
             lagen.forEach((laag, i) => {
-                voegLaagToe(laag.type, laag.materiaal, laag.dikte);
+                const div = document.createElement('div');
+                div.className = 'laag-input';
+                div.innerHTML = `
+                    <select onchange="updateMaterialen(this, ${i}); updateRC()" aria-label="Kies laagtype">
+                        ${Object.keys(materialen).map(t => `<option value="${t}" ${t === laag.type ? 'selected' : ''}>${t}</option>`).join('')}
+                    </select>
+                    <select id="materiaal-${i}" onchange="updateRC()" aria-label="Kies materiaal">
+                        ${Object.keys(materialen[laag.type]).map(m => `<option value="${m}" ${m === laag.materiaal ? 'selected' : ''}>${m} (λ = ${materialen[laag.type][m]} W/mK)</option>`).join('')}
+                    </select>
+                    <input type="number" id="dikte-${i}" min="0" step="1" value="${laag.dikte}" oninput="validateInput(this, true); updateRC()" aria-label="Dikte van de laag in mm">
+                    <button type="button" onclick="verwijderLaag(${i})" aria-label="Laag verwijderen">X</button>
+                `;
+                container.appendChild(div);
             });
-            updateRC();
-        }
-
-        function updateRCFromWaarnemingen() {
-            const dakopbouw = document.getElementById('dakopbouw').value;
-            lagen = [];
-            if (dakopbouw) {
-                const lagenArray = dakopbouw.split(';').map(l => l.trim());
-                lagenArray.forEach(laag => {
-                    const match = laag.match(/(.+?)\s*\((\d+)\s*mm\)/i);
-                    if (match) {
-                        const naam = match[1].trim();
-                        const dikte = parseFloat(match[2]);
-                        let found = false;
-                        for (const [type, mats] of Object.entries(materialen)) {
-                            for (const mat in mats) {
-                                if (mat.toLowerCase().includes(naam.toLowerCase())) {
-                                    lagen.push({ type, materiaal: mat, dikte });
-                                    found = true;
-                                    break;
-                                }
-                            }
-                            if (found) break;
-                        }
-                    }
-                });
-            }
             updateRC();
         }
 
         function updateRC() {
             const daknaam = document.getElementById('daknaam-rc').value;
-            const container = document.getElementById('lagen-container');
-            container.innerHTML = '';
-            lagen.forEach((laag, i) => {
-                voegLaagToe(laag.type, laag.materiaal, laag.dikte);
-            });
+            lagen = lagen.map((laag, i) => ({
+                type: document.querySelectorAll('#lagen-container select')[i * 2].value,
+                materiaal: document.getElementById(`materiaal-${i}`).value,
+                dikte: parseFloat(document.getElementById(`dikte-${i}`).value) || 0
+            }));
 
             let totaleRC = 0;
             const rcResultaat = document.getElementById('rc-resultaat');
             let lagenText = '<h4>Huidige Lagen:</h4><ul>';
             lagen.forEach((laag, i) => {
                 const lambda = materialen[laag.type][laag.materiaal];
-                const dikteM = laag.dikte / 1000;
+                const dikteM = laag.dikte / 1000; // mm naar m
                 const rd = dikteM / lambda;
                 totaleRC += rd;
                 lagenText += `<li>${i + 1}: ${laag.type} - ${laag.materiaal} (${laag.dikte} mm): Rd = ${rd.toFixed(2)} m²K/W</li>`;
@@ -873,65 +926,12 @@
             const benodigdeRd = gewensteRC - totaleRC;
             const benodigdeDikte = benodigdeRd > 0 ? (benodigdeRd * extraLambda * 1000).toFixed(1) : 0;
 
-            const waarnemingen = {
-                hoogte: document.getElementById('dakhoogte').value,
-                gebreken: document.getElementById('gebreken').value,
-                details: document.getElementById('details').value,
-                omgeving: document.getElementById('situatie-omgeving').value,
-                extra: document.getElementById('waarnemingen-extra').value,
-                grindVast: document.getElementById('grind-vast').checked,
-                isolatieNat: document.getElementById('isolatie-nat').checked,
-                plasvorming: document.getElementById('plasvorming').checked,
-                toestand: document.getElementById('toestand').value
-            };
-
-            let waarnemingenText = '<h4>Waarnemingen:</h4><ul>';
-            if (waarnemingen.hoogte) waarnemingenText += `<li>Hoogte: ${waarnemingen.hoogte} m</li>`;
-            if (waarnemingen.gebreken) waarnemingenText += `<li>Gebreken: ${waarnemingen.gebreken}</li>`;
-            if (waarnemingen.details) waarnemingenText += `<li>Details: ${waarnemingen.details}</li>`;
-            if (waarnemingen.omgeving) waarnemingenText += `<li>Omgeving: ${waarnemingen.omgeving}</li>`;
-            if (waarnemingen.extra) waarnemingenText += `<li>Extra: ${waarnemingen.extra}</li>`;
-            if (waarnemingen.grindVast) waarnemingenText += `<li>Grind zit vast</li>`;
-            if (waarnemingen.isolatieNat) waarnemingenText += `<li>Isolatie is nat</li>`;
-            if (waarnemingen.plasvorming) waarnemingenText += `<li>Plasvorming aanwezig</li>`;
-            waarnemingenText += `<li>Toestand (NEN 2767): ${waarnemingen.toestand}</li>`;
-            waarnemingenText += '</ul>';
-
             rcResultaat.innerHTML = `
                 <h3>RC Berekening - ${daknaam}</h3>
                 ${lagenText}
                 <p>Gewenste RC-waarde: ${gewensteRC.toFixed(2)} m²K/W</p>
                 <p>Benodigde extra dikte ${extraMateriaal}: ${benodigdeDikte} mm</p>
-                ${waarnemingenText}
             `;
-
-            tekenDoorsnede();
-        }
-
-        function tekenDoorsnede() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const totaleDikte = lagen.reduce((sum, laag) => sum + (parseFloat(laag.dikte) || 0), 0);
-            if (totaleDikte === 0) return;
-
-            const schaal = (canvas.height - 50) / totaleDikte;
-            let yPos = 20;
-            ctx.font = '12px Arial';
-            ctx.textBaseline = 'middle';
-
-            lagen.forEach((laag, i) => {
-                const dikte = parseFloat(laag.dikte) || 0;
-                const hoogte = dikte * schaal;
-                ctx.fillStyle = kleuren[laag.type] || '#000000';
-                ctx.fillRect(50, yPos, canvas.width - 100, hoogte);
-                ctx.fillStyle = '#FFFFFF';
-                ctx.textAlign = 'center';
-                ctx.fillText(`${laag.materiaal} (${dikte} mm)`, canvas.width / 2, yPos + hoogte / 2);
-                yPos += hoogte;
-            });
-
-            ctx.fillStyle = '#000';
-            ctx.textAlign = 'center';
-            ctx.fillText(`Totale dikte: ${totaleDikte} mm`, canvas.width / 2, 10);
         }
 
         function zoomIn() {
@@ -960,13 +960,24 @@
         function exportPDF(tabId) {
             switchTab(tabId);
             setTimeout(() => {
-                html2canvas(document.querySelector(`#${tabId}`), { scale: 2 }).then(canvas => {
+                html2canvas(document.body, { scale: 2 }).then(canvas => {
                     const imgData = canvas.toDataURL('image/png');
                     const pdf = new jsPDF('p', 'mm', 'a4');
                     const imgProps = pdf.getImageProperties(imgData);
                     const pdfWidth = pdf.internal.pageSize.getWidth();
                     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+                    let heightLeft = pdfHeight;
+                    let position = 0;
+
+                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+                    heightLeft -= pageHeight;
+                    while (heightLeft > 0) {
+                        position = heightLeft - pdfHeight;
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+                        heightLeft -= pageHeight;
+                    }
                     pdf.save(`${document.getElementById('daknaam').value || 'opnameformulier'}_${tabId}.pdf`);
                 });
             }, 100);
@@ -974,6 +985,9 @@
 
         function resetForm() {
             document.getElementById('dakForm').reset();
+            document.getElementById('daknaam').value = "Dak 1";
+            document.getElementById('daknaam-waarnemingen').value = "Dak 1";
+            document.getElementById('daknaam-rc').value = "Dak 1";
             document.getElementById('lengte').value = 10;
             document.getElementById('breedte').value = 5;
             document.getElementById('lengte1').value = 10;
@@ -981,38 +995,38 @@
             document.getElementById('lengte2').value = 4;
             document.getElementById('breedte2').value = 3;
             document.getElementById('hellingsgraad').value = 0;
-            document.getElementById('daknaam').value = "Dak 1";
-            document.getElementById('dakmerk').value = "";
-            document.getElementById('daknaam-waarnemingen').value = "Dak 1";
-            document.getElementById('daknaam-rc').value = "Dak 1";
-            document.getElementById('toestand').value = "1";
+            document.getElementById('niet-standaard-opp').value = 0;
             document.getElementById('spiegel').checked = false;
             document.getElementById('indicatief').checked = false;
+            document.getElementById('nakijken-computer').checked = false;
+            document.getElementById('dakhoogte').value = '';
+            document.getElementById('situatie-omgeving').value = '';
+            document.getElementById('toestand').value = "0";
+            document.getElementById('gebreken').value = '';
             document.getElementById('grind-vast').checked = false;
             document.getElementById('isolatie-nat').checked = false;
             document.getElementById('plasvorming').checked = false;
-            document.getElementById('dakhoogte').value = "";
-            document.getElementById('dakopbouw').value = "";
-            document.getElementById('gebreken').value = "";
-            document.getElementById('details').value = "";
-            document.getElementById('situatie-omgeving').value = "";
-            document.getElementById('waarnemingen-extra').value = "";
+            document.getElementById('dakopbouw').value = '';
+            document.getElementById('details').value = '';
+            document.getElementById('waarnemingen-extra').value = '';
             document.querySelectorAll('.error').forEach(e => e.style.display = 'none');
-            document.querySelectorAll('#checklist input[type="checkbox"]').forEach(cb => cb.checked = false);
             zoom = 1;
 
+            // Reset RC Berekeningen
             lagen = [];
             document.getElementById('lagen-container').innerHTML = '';
-            document.getElementById('gewenste-rc').value = 6;
+            document.getElementById('gewenste-rc').value = 5;
             document.getElementById('extra-materiaal').value = 'IKO Enertherm PIR';
             voegLaagToe();
 
+            updateVorm();
             updateAlles();
             updateRC();
         }
 
         // Initiële weergave
         voegLaagToe();
+        updateVorm();
         updateAlles();
         updateRC();
     </script>
