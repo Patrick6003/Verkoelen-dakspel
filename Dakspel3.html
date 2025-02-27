@@ -32,22 +32,6 @@
             z-index: 10;
             cursor: pointer;
         }
-        .button-container {
-            margin-top: 10px;
-        }
-        .game-button {
-            background-color: #FFA500;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            margin: 5px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .game-button:hover {
-            background-color: #FF8C00;
-        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
 </head>
@@ -65,10 +49,6 @@
     <!-- Achtergrondmuziek -->
     <audio id="bgMusic" src="roof_work.mp3" loop></audio>
     <audio id="bgMusicIntense" src="roof_work_intense.mp3" loop></audio>
-    <div class="button-container">
-        <button class="game-button" onclick="resetLevel()">Reset Level</button>
-        <button class="game-button" onclick="togglePause()">Pauze</button>
-    </div>
     <script>
         // Variabelen
         let character;
@@ -82,15 +62,16 @@
         let totalFixedRoofs = parseInt(localStorage.getItem('totalFixedRoofs')) || 0; // Totale gerepareerde daken over alle sessies
         let lives = 3;
         let gameState = 'playing';
-        let isPaused = false;
         let cameraY = 0;
         let shieldCount = 0; // Aantal schildjes
         let shieldBlinkTimer = 0;
         let repairEffect = [];
         let boostEffect = [];
         let fireworkEffect = [];
-        let multiplier = 1;
+        let multiplier = 1; // Tijdelijke multiplier (bijv. bij dakreparaties)
+        let baseMultiplier = 1; // Permanente basismultiplier gebaseerd op level
         let multiplierTimer = 0;
+        let invincibilityTimer = 0; // Voor onkwetsbaarheid bij Manager-beloning
 
         // Levelsysteem variabelen
         let level = 1;
@@ -98,6 +79,9 @@
         let previousLevel = 1; // Om te checken of we een nieuw level hebben bereikt
         let showLevelPopup = false;
         let levelPopupTimer = 0;
+
+        // Schildlimiet
+        const maxShields = 5;
 
         // Canvas en initiële setup
         function setup() {
@@ -119,7 +103,7 @@
         // Hoofdgame-loop
         function draw() {
             drawBackground();
-            if (gameState === 'playing' && !isPaused) {
+            if (gameState === 'playing') {
                 updateMusic();
                 updateCharacter();
                 updatePlatforms();
@@ -127,43 +111,77 @@
                 updateCamera();
                 updateShield();
                 updateMultiplier();
+                updateInvincibility();
                 updateLevel(); // Controleer of we een nieuw level hebben bereikt
                 drawLevelPopup(); // Toon level-up pop-up als nodig
-                drawStars();
                 drawPlatforms();
                 drawFireworks();
                 drawCharacter();
                 drawScore();
             } else if (gameState === 'gameOver') {
                 drawGameOverScreen();
-            } else if (isPaused) {
-                drawPauseScreen();
             }
         }
 
-        // Achtergrond tekenen
+        // Achtergrond tekenen met level-specifieke veranderingen
         function drawBackground() {
-            let blue = map(min(score / 1000, 1), 0, 1, 235, 204); // Licht naar donker blauw
-            let green = map(min(score / 1000, 1), 0, 1, 206, 102);
-            let red = map(min(score / 1000, 1), 0, 1, 135, 0);
+            let red, green, blue;
+
+            // Achtergrondkleur gebaseerd op level
+            if (level === 1) { // Dakdekker: Heldere dag
+                red = 135;
+                green = 206;
+                blue = 235;
+            } else if (level === 2) { // Voorman: Lichte bewolking
+                red = 150;
+                green = 190;
+                blue = 220;
+            } else if (level === 3) { // Uitvoerder: Zonsondergang
+                red = 255;
+                green = 165;
+                blue = 0;
+            } else if (level === 4) { // Projectleider: Schemering
+                red = 147;
+                green = 112;
+                blue = 219;
+            } else if (level === 5) { // Manager: Nacht
+                red = 25;
+                green = 25;
+                blue = 112;
+            } else if (level === 6) { // Directeur: Gouden zonsopgang
+                red = 255;
+                green = 215;
+                blue = 0;
+            }
+
             background(red, green, blue);
-            fill(255, 215, 0);
-            ellipse(50, 50, 50, 50); // Zonnetje
+
+            // Zon of maan gebaseerd op level
+            if (level <= 4) {
+                fill(255, 215, 0); // Zon
+                ellipse(50, 50, 50, 50);
+            } else if (level === 5) {
+                fill(200); // Maan
+                ellipse(50, 50, 40, 40);
+                fill(150);
+                ellipse(60, 55, 20, 20); // Krater
+            } else {
+                fill(255, 215, 0); // Grote gouden zon
+                ellipse(50, 50, 70, 70);
+            }
+
+            // Wolken
             fill(255);
             noStroke();
-            ellipse(100, 100, 60, 40);
-            ellipse(130, 90, 70, 50);
-            ellipse(300, 150, 80, 50);
-            ellipse(270, 140, 60, 40);
-        }
-
-        // Sterren tekenen
-        function drawStars() {
-            if (score > 500) {
-                let starCount = min(floor(score / 2000) * 10, 50); // Max 50 sterren
-                for (let i = 0; i < starCount; i++) {
+            if (level <= 2) { // Wolken alleen bij Dakdekker en Voorman
+                ellipse(100, 100, 60, 40);
+                ellipse(130, 90, 70, 50);
+                ellipse(300, 150, 80, 50);
+                ellipse(270, 140, 60, 40);
+            } else if (level === 5) { // Kleine sterren bij Manager (nacht)
+                for (let i = 0; i < 5; i++) {
                     fill(255, random(100, 255));
-                    ellipse(random(width), random(height), 2, 2);
+                    ellipse(random(width), random(height), 3, 3);
                 }
             }
         }
@@ -245,16 +263,7 @@
             platforms = platforms.filter(p => p.y - cameraY < height);
             let maxPlatforms = max(3, 6 - floor(score / 500)); // Minder platforms
             while (platforms.length < maxPlatforms) generatePlatform();
-            score += 0.1;
-
-            // Effecten bijwerken
-            repairEffect = repairEffect.filter(e => e.timer > 0);
-            for (let effect of repairEffect) effect.timer--;
-            boostEffect = boostEffect.filter(e => e.timer > 0);
-            for (let effect of boostEffect) {
-                effect.y += 2;
-                effect.timer--;
-            }
+            score += 0.1 * baseMultiplier; // Pas score toe met basismultiplier
         }
 
         // Camera bijwerken
@@ -279,42 +288,69 @@
             }
         }
 
+        // Onkwetsbaarheid bijwerken (voor Manager-beloning)
+        function updateInvincibility() {
+            if (invincibilityTimer > 0) {
+                invincibilityTimer--;
+            }
+        }
+
         // Level bijwerken
         function updateLevel() {
             previousLevel = level;
 
-            // Bepaal level en titel op basis van totalFixedRoofs
+            // Bepaal level, titel, spronghoogte en basismultiplier
             if (totalFixedRoofs >= 200) {
                 level = 6;
                 levelTitle = "Directeur";
                 jumpSpeed = -24; // +100% spronghoogte (basis -12)
+                baseMultiplier = 2.0;
             } else if (totalFixedRoofs >= 100) {
                 level = 5;
                 levelTitle = "Manager";
                 jumpSpeed = -20; // +67% spronghoogte
+                baseMultiplier = 1.8;
             } else if (totalFixedRoofs >= 50) {
                 level = 4;
                 levelTitle = "Projectleider";
                 jumpSpeed = -18; // +50% spronghoogte
+                baseMultiplier = 1.6;
             } else if (totalFixedRoofs >= 25) {
                 level = 3;
                 levelTitle = "Uitvoerder";
                 jumpSpeed = -16; // +33% spronghoogte
+                baseMultiplier = 1.4;
             } else if (totalFixedRoofs >= 10) {
                 level = 2;
                 levelTitle = "Voorman";
                 jumpSpeed = -14; // +17% spronghoogte
+                baseMultiplier = 1.2;
             } else {
                 level = 1;
                 levelTitle = "Dakdekker";
                 jumpSpeed = -12; // Basis spronghoogte
+                baseMultiplier = 1.0;
             }
 
-            // Als we een nieuw level hebben bereikt, toon een pop-up
+            // Als we een nieuw level hebben bereikt, toon een pop-up en geef een beloning
             if (level > previousLevel) {
                 showLevelPopup = true;
                 levelPopupTimer = 120; // 2 seconden (60 fps)
                 document.getElementById('levelUpSound').play();
+
+                // Beloningen per level
+                if (level === 2) { // Voorman
+                    lives = min(lives + 1, 5); // +1 leven, max 5
+                } else if (level === 3) { // Uitvoerder
+                    multiplier = 2;
+                    multiplierTimer = 600; // 10 seconden
+                } else if (level === 4) { // Projectleider
+                    lives = min(lives + 2, 5); // +2 levens, max 5
+                } else if (level === 5) { // Manager
+                    invincibilityTimer = 300; // 5 seconden onkwetsbaarheid
+                } else if (level === 6) { // Directeur
+                    baseMultiplier = 2; // Permanente 2x multiplier
+                }
             }
         }
 
@@ -347,7 +383,7 @@
                     character.y + character.size / 2 < platform.y + platform.height &&
                     character.velocity > 0
                 ) {
-                    if (platform.hasBat && shieldCount === 0) {
+                    if (platform.hasBat && shieldCount === 0 && invincibilityTimer === 0) {
                         lives--;
                         if (lives <= 0) {
                             gameState = 'gameOver';
@@ -370,13 +406,13 @@
                             fixedRoofs++;
                             totalFixedRoofs++;
                             localStorage.setItem('totalFixedRoofs', totalFixedRoofs); // Opslaan in localStorage
-                            score += 50 * multiplier;
+                            score += 50 * multiplier * baseMultiplier; // Pas score toe met beide multipliers
                             multiplier = min(multiplier + 1, 3);
                             multiplierTimer = 120; // 2 seconden
                             repairEffect.push({ x: platform.x + platform.width / 2, y: platform.y, timer: 30 });
                             document.getElementById('repairSound').play();
                         } else {
-                            score += 10;
+                            score += 10 * baseMultiplier; // Pas score toe met basismultiplier
                         }
                         if (platform.hasBat && shieldCount > 0) {
                             shieldCount--;
@@ -408,9 +444,11 @@
                     character.y + character.size / 2 > platform.y - 40 &&
                     character.y - character.size / 2 < platform.y
                 ) {
-                    shieldCount++;
-                    platform.hasShield = false;
-                    document.getElementById('bonusSound').play();
+                    if (shieldCount < maxShields) {
+                        shieldCount++;
+                        platform.hasShield = false;
+                        document.getElementById('bonusSound').play();
+                    }
                 }
             }
         }
@@ -459,6 +497,11 @@
                     fill(0, 255, 0, 100);
                     ellipse(character.x, character.y - cameraY, character.size + 20, character.size + 20);
                 }
+            }
+            // Onkwetsbaarheidseffect
+            if (invincibilityTimer > 0) {
+                fill(255, 215, 0, 100);
+                ellipse(character.x, character.y - cameraY, character.size + 30, character.size + 30);
             }
 
             // Boost-effect (vonken)
@@ -528,14 +571,25 @@
             }
         }
 
-        // Power-up tekenen (grijze ladder)
+        // Power-up tekenen (realistische ladder)
         function drawPowerUp(x, y) {
             push();
             translate(x, y);
-            fill(169, 169, 169); // Grijze kleur
-            rect(-5, -40, 10, 40); // Hoofdstructuur ladder
+            // Zijbalken (donkergrijs, metallic)
+            fill(105, 105, 105); // Donkergrijs
+            rect(-8, -40, 6, 40, 2); // Linker zijbalk
+            rect(2, -40, 6, 40, 2);  // Rechter zijbalk
+            // Schaduw voor diepte
+            fill(0, 0, 0, 50);
+            rect(-8, -40, 2, 40); // Schaduw links
+            rect(6, -40, 2, 40);  // Schaduw rechts
+            // Sporten (lichtgrijs, stevig)
+            fill(169, 169, 169); // Lichtgrijs
             for (let i = 0; i < 5; i++) {
-                rect(-5, -35 + i * 8, 10, 2); // Sporten
+                rect(-8, -35 + i * 8, 16, 3, 1); // Sporten met lichte afronding
+                // Schaduw op sporten
+                fill(0, 0, 0, 30);
+                rect(-8, -35 + i * 8 + 2, 16, 1);
             }
             pop();
         }
@@ -565,7 +619,8 @@
             text('Levens: ' + lives, 10, 90);
             text('Schilden: ' + shieldCount, 10, 110);
             text('Level: ' + levelTitle, 10, 130);
-            if (multiplier > 1) text('Multiplier: x' + multiplier, 10, 150);
+            text('Basismultiplier: x' + baseMultiplier.toFixed(1), 10, 150);
+            if (multiplier > 1) text('Tijdelijke multiplier: x' + multiplier, 10, 170);
             textAlign(RIGHT);
             text('Highscore: ' + floor(highScore), width - 10, 30);
         }
@@ -580,16 +635,6 @@
             text('Score: ' + floor(score), width / 2, height / 2);
             textSize(18);
             text('Klik of tik om te herstarten', width / 2, height / 2 + 50);
-        }
-
-        // Pauzescherm
-        function drawPauseScreen() {
-            textAlign(CENTER);
-            fill(0);
-            textSize(32);
-            text('Pauze', width / 2, height / 2 - 50);
-            textSize(18);
-            text('Druk op de Pauze-knop om te hervatten', width / 2, height / 2);
         }
 
         // Platforms genereren
@@ -682,7 +727,6 @@
         // Reset game
         function resetGame() {
             gameState = 'playing';
-            isPaused = false;
             score = 0;
             fixedRoofs = 0; // Reset alleen de sessie-teller
             lives = 3;
@@ -693,32 +737,17 @@
             character.hasBoost = false;
             shieldBlinkTimer = 0;
             multiplier = 1;
+            baseMultiplier = 1;
             multiplierTimer = 0;
+            invincibilityTimer = 0;
             cameraY = 0;
             repairEffect = [];
             boostEffect = [];
             fireworkEffect = [];
             generateInitialPlatforms();
+            updateLevel(); // Reset level-specifieke instellingen
             document.getElementById('bgMusicIntense').pause();
             document.getElementById('bgMusic').play();
-        }
-
-        // Level resetten
-        function resetLevel() {
-            totalFixedRoofs = 0;
-            localStorage.setItem('totalFixedRoofs', totalFixedRoofs);
-            updateLevel();
-        }
-
-        // Pauze togglen
-        function togglePause() {
-            isPaused = !isPaused;
-            if (isPaused) {
-                document.getElementById('bgMusic').pause();
-                document.getElementById('bgMusicIntense').pause();
-            } else {
-                updateMusic();
-            }
         }
 
         // Popup verbergen
