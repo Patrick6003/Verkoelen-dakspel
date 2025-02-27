@@ -32,6 +32,22 @@
             z-index: 10;
             cursor: pointer;
         }
+        .button-container {
+            margin-top: 10px;
+        }
+        .game-button {
+            background-color: #FFA500;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .game-button:hover {
+            background-color: #FF8C00;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
 </head>
@@ -49,6 +65,10 @@
     <!-- Achtergrondmuziek -->
     <audio id="bgMusic" src="roof_work.mp3" loop></audio>
     <audio id="bgMusicIntense" src="roof_work_intense.mp3" loop></audio>
+    <div class="button-container">
+        <button class="game-button" onclick="resetLevel()">Reset Level</button>
+        <button class="game-button" onclick="togglePause()">Pauze</button>
+    </div>
     <script>
         // Variabelen
         let character;
@@ -62,10 +82,9 @@
         let totalFixedRoofs = parseInt(localStorage.getItem('totalFixedRoofs')) || 0; // Totale gerepareerde daken over alle sessies
         let lives = 3;
         let gameState = 'playing';
+        let isPaused = false;
         let cameraY = 0;
-        let bonusActive = false;
-        let bonusTimer = 0;
-        let shieldActive = false;
+        let shieldCount = 0; // Aantal schildjes
         let shieldBlinkTimer = 0;
         let repairEffect = [];
         let boostEffect = [];
@@ -100,7 +119,7 @@
         // Hoofdgame-loop
         function draw() {
             drawBackground();
-            if (gameState === 'playing') {
+            if (gameState === 'playing' && !isPaused) {
                 updateMusic();
                 updateCharacter();
                 updatePlatforms();
@@ -117,6 +136,8 @@
                 drawScore();
             } else if (gameState === 'gameOver') {
                 drawGameOverScreen();
+            } else if (isPaused) {
+                drawPauseScreen();
             }
         }
 
@@ -245,7 +266,7 @@
 
         // Schild bijwerken (knipperen)
         function updateShield() {
-            if (shieldActive && shieldBlinkTimer > 0) {
+            if (shieldCount > 0 && shieldBlinkTimer > 0) {
                 shieldBlinkTimer--;
             }
         }
@@ -266,23 +287,23 @@
             if (totalFixedRoofs >= 200) {
                 level = 6;
                 levelTitle = "Directeur";
-                jumpSpeed = -16; // +33% spronghoogte (basis -12)
+                jumpSpeed = -24; // +100% spronghoogte (basis -12)
             } else if (totalFixedRoofs >= 100) {
                 level = 5;
                 levelTitle = "Manager";
-                jumpSpeed = -15.6; // +30% spronghoogte
+                jumpSpeed = -20; // +67% spronghoogte
             } else if (totalFixedRoofs >= 50) {
                 level = 4;
                 levelTitle = "Projectleider";
-                jumpSpeed = -15.2; // +27% spronghoogte
+                jumpSpeed = -18; // +50% spronghoogte
             } else if (totalFixedRoofs >= 25) {
                 level = 3;
                 levelTitle = "Uitvoerder";
-                jumpSpeed = -14.4; // +20% spronghoogte
+                jumpSpeed = -16; // +33% spronghoogte
             } else if (totalFixedRoofs >= 10) {
                 level = 2;
                 levelTitle = "Voorman";
-                jumpSpeed = -13.2; // +10% spronghoogte
+                jumpSpeed = -14; // +17% spronghoogte
             } else {
                 level = 1;
                 levelTitle = "Dakdekker";
@@ -326,7 +347,7 @@
                     character.y + character.size / 2 < platform.y + platform.height &&
                     character.velocity > 0
                 ) {
-                    if (platform.hasBat && !shieldActive) {
+                    if (platform.hasBat && shieldCount === 0) {
                         lives--;
                         if (lives <= 0) {
                             gameState = 'gameOver';
@@ -357,8 +378,8 @@
                         } else {
                             score += 10;
                         }
-                        if (platform.hasBat && shieldActive) {
-                            shieldActive = false;
+                        if (platform.hasBat && shieldCount > 0) {
+                            shieldCount--;
                             shieldBlinkTimer = 60; // Knippert 1 seconde
                         }
                         document.getElementById('jumpSound').play();
@@ -387,7 +408,7 @@
                     character.y + character.size / 2 > platform.y - 40 &&
                     character.y - character.size / 2 < platform.y
                 ) {
-                    shieldActive = true;
+                    shieldCount++;
                     platform.hasShield = false;
                     document.getElementById('bonusSound').play();
                 }
@@ -425,28 +446,6 @@
                 ellipse(40, 0, 20, 20);
             }
 
-            // Level-specifieke accessoires
-            if (level >= 2) { // Voorman: clipboard
-                fill(150);
-                rect(30, 20, 15, 20);
-            }
-            if (level >= 3) { // Uitvoerder: veiligheidsvest
-                fill(255, 255, 0, 150);
-                rect(-20, 0, 40, 30, 5);
-            }
-            if (level >= 4) { // Projectleider: tablet
-                fill(100);
-                rect(30, 20, 20, 15, 3);
-            }
-            if (level >= 5) { // Manager: stropdas
-                fill(255, 0, 0);
-                triangle(0, 10, -5, 30, 5, 30);
-            }
-            if (level >= 6) { // Directeur: gouden helm
-                fill(255, 215, 0);
-                arc(0, -40, 30, 20, PI, 0);
-            }
-
             pop();
 
             // Boost effect
@@ -455,7 +454,7 @@
                 ellipse(character.x, character.y - cameraY, character.size + 10, character.size + 10);
             }
             // Schild effect met knipperen
-            if (shieldActive) {
+            if (shieldCount > 0) {
                 if (shieldBlinkTimer == 0 || shieldBlinkTimer > 60 || (shieldBlinkTimer % 20 < 10)) {
                     fill(0, 255, 0, 100);
                     ellipse(character.x, character.y - cameraY, character.size + 20, character.size + 20);
@@ -533,11 +532,10 @@
         function drawPowerUp(x, y) {
             push();
             translate(x, y);
-            fill(169, 169, 169);
-            rect(-10, -40, 5, 40);
-            rect(5, -40, 5, 40);
-            for (let i = 0; i < 4; i++) {
-                rect(-8, -35 + i * 10, 16, 3);
+            fill(169, 169, 169); // Grijze kleur
+            rect(-5, -40, 10, 40); // Hoofdstructuur ladder
+            for (let i = 0; i < 5; i++) {
+                rect(-5, -35 + i * 8, 10, 2); // Sporten
             }
             pop();
         }
@@ -565,8 +563,9 @@
             text('Daken gerepareerd: ' + fixedRoofs, 10, 50);
             text('Totale daken: ' + totalFixedRoofs, 10, 70);
             text('Levens: ' + lives, 10, 90);
-            text('Level: ' + levelTitle, 10, 110);
-            if (multiplier > 1) text('Multiplier: x' + multiplier, 10, 130);
+            text('Schilden: ' + shieldCount, 10, 110);
+            text('Level: ' + levelTitle, 10, 130);
+            if (multiplier > 1) text('Multiplier: x' + multiplier, 10, 150);
             textAlign(RIGHT);
             text('Highscore: ' + floor(highScore), width - 10, 30);
         }
@@ -581,6 +580,16 @@
             text('Score: ' + floor(score), width / 2, height / 2);
             textSize(18);
             text('Klik of tik om te herstarten', width / 2, height / 2 + 50);
+        }
+
+        // Pauzescherm
+        function drawPauseScreen() {
+            textAlign(CENTER);
+            fill(0);
+            textSize(32);
+            text('Pauze', width / 2, height / 2 - 50);
+            textSize(18);
+            text('Druk op de Pauze-knop om te hervatten', width / 2, height / 2);
         }
 
         // Platforms genereren
@@ -673,16 +682,15 @@
         // Reset game
         function resetGame() {
             gameState = 'playing';
+            isPaused = false;
             score = 0;
             fixedRoofs = 0; // Reset alleen de sessie-teller
             lives = 3;
+            shieldCount = 0;
             character.x = width / 2;
             character.y = height / 2;
             character.velocity = 0;
             character.hasBoost = false;
-            bonusActive = false;
-            bonusTimer = 0;
-            shieldActive = false;
             shieldBlinkTimer = 0;
             multiplier = 1;
             multiplierTimer = 0;
@@ -693,6 +701,24 @@
             generateInitialPlatforms();
             document.getElementById('bgMusicIntense').pause();
             document.getElementById('bgMusic').play();
+        }
+
+        // Level resetten
+        function resetLevel() {
+            totalFixedRoofs = 0;
+            localStorage.setItem('totalFixedRoofs', totalFixedRoofs);
+            updateLevel();
+        }
+
+        // Pauze togglen
+        function togglePause() {
+            isPaused = !isPaused;
+            if (isPaused) {
+                document.getElementById('bgMusic').pause();
+                document.getElementById('bgMusicIntense').pause();
+            } else {
+                updateMusic();
+            }
         }
 
         // Popup verbergen
