@@ -1,0 +1,214 @@
+import pygame
+import sys
+import random
+
+# Initialize Pygame
+pygame.init()
+
+# Constants
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+TILE_SIZE = 20
+MAZE_WIDTH = SCREEN_WIDTH // TILE_SIZE
+MAZE_HEIGHT = SCREEN_HEIGHT // TILE_SIZE
+
+# Colors
+BLACK = (0, 0, 0)
+GREEN = (0, 255, 0)  # Green for roof vegetation
+GRAY = (128, 128, 128)  # Gray for tile paths
+ORANGE = (255, 165, 0)  # Orange for Vinky V
+WHITE = (255, 255, 255)
+BLUE = (0, 0, 255)
+RED = (255, 0, 0)
+YELLOW = (255, 255, 0)
+
+# Maze layout: 1 = wall (green vegetation), 0 = path (gray tiles), 2 = dot, 3 = power pellet
+maze = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+]
+
+# Place dots on paths
+dots = []
+for y in range(len(maze)):
+    for x in range(len(maze[y])):
+        if maze[y][x] == 0:
+            maze[y][x] = 2  # Dot
+            dots.append((x, y))
+        # Add some power pellets
+        if random.random() < 0.05 and maze[y][x] == 2:  # 5% chance
+            maze[y][x] = 3
+
+# Player starting position
+player_pos = [1, 1]
+player_dir = [1, 0]  # Right
+player_speed = TILE_SIZE // 4
+
+# Bat (enemy) positions and colors
+bats = [
+    {"pos": [MAZE_WIDTH // 2, MAZE_HEIGHT // 2], "dir": [0, 1], "color": RED},
+    {"pos": [MAZE_WIDTH // 2 + 2, MAZE_HEIGHT // 2], "dir": [0, -1], "color": BLUE},
+    {"pos": [MAZE_WIDTH // 2 - 2, MAZE_HEIGHT // 2], "dir": [1, 0], "color": YELLOW},
+    {"pos": [MAZE_WIDTH // 2, MAZE_HEIGHT // 2 + 2], "dir": [-1, 0], "color": WHITE}
+]
+
+# Game variables
+score = 0
+lives = 3
+power_mode = False
+power_timer = 0
+clock = pygame.time.Clock()
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("V-man")
+
+def draw_maze():
+    for y in range(len(maze)):
+        for x in range(len(maze[y])):
+            if maze[y][x] == 1:
+                pygame.draw.rect(screen, GREEN, (x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+            elif maze[y][x] == 0 or maze[y][x] == 2 or maze[y][x] == 3:
+                pygame.draw.rect(screen, GRAY, (x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+            if maze[y][x] == 2:
+                pygame.draw.circle(screen, WHITE, (x * TILE_SIZE + TILE_SIZE // 2, y * TILE_SIZE + TILE_SIZE // 2), 2)
+            elif maze[y][x] == 3:
+                pygame.draw.circle(screen, WHITE, (x * TILE_SIZE + TILE_SIZE // 2, y * TILE_SIZE + TILE_SIZE // 2), 5)
+
+def draw_vinky(pos, dir):
+    x, y = pos[0] * TILE_SIZE + TILE_SIZE // 2, pos[1] * TILE_SIZE + TILE_SIZE // 2
+    # Draw V shape
+    pygame.draw.polygon(screen, ORANGE, [(x - 10, y + 10), (x, y - 10), (x + 10, y + 10)])
+    # Eyes
+    pygame.draw.circle(screen, WHITE, (x - 5, y - 3), 3)
+    pygame.draw.circle(screen, WHITE, (x + 5, y - 3), 3)
+    pygame.draw.circle(screen, BLUE, (x - 5, y - 3), 1)
+    pygame.draw.circle(screen, BLUE, (x + 5, y - 3), 1)
+    # Mouth
+    pygame.draw.arc(screen, BLACK, (x - 7, y, 14, 10), 3.14, 0, 2)
+    # Pointing hand (simplified)
+    pygame.draw.line(screen, WHITE, (x + 10, y + 5), (x + 15, y), 3)
+
+def draw_bat(pos, color):
+    x, y = pos[0] * TILE_SIZE + TILE_SIZE // 2, pos[1] * TILE_SIZE + TILE_SIZE // 2
+    # Draw bat wings
+    pygame.draw.polygon(screen, color, [(x - 10, y), (x, y - 10), (x + 10, y)])
+    pygame.draw.polygon(screen, color, [(x - 10, y), (x, y + 10), (x + 10, y)])
+    # Body
+    pygame.draw.circle(screen, color, (x, y), 5)
+
+def is_valid_move(x, y):
+    if 0 <= x < MAZE_WIDTH and 0 <= y < MAZE_HEIGHT:
+        return maze[y][x] != 1
+    return False
+
+def move_entity(pos, dir):
+    new_x = pos[0] + dir[0]
+    new_y = pos[1] + dir[1]
+    if is_valid_move(new_x, new_y):
+        pos[0] = new_x
+        pos[1] = new_y
+        return True
+    return False
+
+def bat_ai(bat, player_pos):
+    directions = [[0, -1], [0, 1], [-1, 0], [1, 0]]
+    random.shuffle(directions)
+    for d in directions:
+        if move_entity(bat["pos"], d):
+            bat["dir"] = d
+            break
+
+# Main game loop
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                player_dir = [0, -1]
+            elif event.key == pygame.K_DOWN:
+                player_dir = [0, 1]
+            elif event.key == pygame.K_LEFT:
+                player_dir = [-1, 0]
+            elif event.key == pygame.K_RIGHT:
+                player_dir = [1, 0]
+
+    # Move player
+    if move_entity(player_pos, player_dir):
+        # Eat dot
+        if maze[player_pos[1]][player_pos[0]] == 2:
+            score += 10
+            maze[player_pos[1]][player_pos[0]] = 0
+        elif maze[player_pos[1]][player_pos[0]] == 3:
+            score += 50
+            maze[player_pos[1]][player_pos[0]] = 0
+            power_mode = True
+            power_timer = 300  # ~10 seconds at 30 FPS
+
+    # Move bats
+    for bat in bats:
+        bat_ai(bat, player_pos)
+
+    # Check collisions
+    for bat in bats:
+        if bat["pos"] == player_pos:
+            if power_mode:
+                score += 200
+                bat["pos"] = [MAZE_WIDTH // 2, MAZE_HEIGHT //  # Respawn
+            else:
+                lives -= 1
+                player_pos = [1, 1]
+                if lives <= 0:
+                    running = False
+
+    # Update power mode
+    if power_mode:
+        power_timer -= 1
+        if power_timer <= 0:
+            power_mode = False
+
+    # Draw everything
+    screen.fill(BLACK)
+    draw_maze()
+    draw_vinky(player_pos, player_dir)
+    for bat in bats:
+        draw_bat(bat["pos"], bat["color"] if not power_mode else BLUE)  # Bats turn blue in power mode
+
+    # Draw score and lives
+    font = pygame.font.Font(None, 36)
+    text = font.render(f"Score: {score} Lives: {lives}", True, WHITE)
+    screen.blit text, (10, 10)
+
+    pygame.display.flip()
+    clock.tick(30)
+
+pygame.quit()
+sys.exit()
