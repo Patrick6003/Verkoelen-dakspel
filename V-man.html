@@ -1,242 +1,429 @@
-import pygame
-import sys
-import random
-import asyncio
-import math
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Pac-Man</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: black;
+            overflow: hidden;
+        }
+        canvas {
+            border: 1px solid white;
+            background-color: black;
+        }
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+        }
+        .control-row {
+            display: flex;
+        }
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            margin: 5px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 1px solid white;
+            color: white;
+            font-size: 24px;
+            text-align: center;
+            line-height: 60px;
+            cursor: pointer;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        @media (orientation: landscape) {
+            #controls {
+                flex-direction: row;
+                bottom: auto;
+                right: 10px;
+                transform: none;
+                left: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="controls">
+        <div class="control-row">
+            <div class="control-btn" id="up">↑</div>
+        </div>
+        <div class="control-row">
+            <div class="control-btn" id="left">←</div>
+            <div class="control-btn" id="down">↓</div>
+            <div class="control-btn" id="right">→</div>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-# Initialize Pygame
-pygame.init()
+        // Game settings
+        const TILE_SIZE = 20;
+        const MAP = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1],
+            [1,2,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,2,1],
+            [1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,1,0,1],
+            [1,0,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1],
+            [1,1,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1],
+            [1,1,1,1,1,1,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,1,1,1,1],
+            [1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1],
+            [0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],
+            [1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1],
+            [1,1,1,1,1,1,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,1,1,1,1],
+            [1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1],
+            [1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1],
+            [1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1],
+            [1,2,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,2,1],
+            [1,1,1,0,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,0,1,1,1],
+            [1,1,1,0,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,0,1,1,1],
+            [1,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,1,1,1,0,1],
+            [1,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
 
-# Constants
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
-TILE_SIZE = 20
-MAZE_WIDTH = SCREEN_WIDTH // TILE_SIZE
-MAZE_HEIGHT = SCREEN_HEIGHT // TILE_SIZE
-PLAYER_SPEED = 0.2  # tiles per frame
-BAT_SPEED = 0.15
+        const ROWS = MAP.length;
+        const COLS = MAP[0];
+        canvas.height = ROWS * TILE_SIZE;
+        canvas.width = COLS * TILE_SIZE;
 
-# Colors
-BLACK = (0, 0, 0)
-GREEN = (0, 255, 0)  # Green for roof vegetation
-GRAY = (128, 128, 128)  # Gray for tile paths
-ORANGE = (255, 165, 0)  # Orange for Vinky V
-WHITE = (255, 255, 255)
-BLUE = (0, 0, 255)
-RED = (255, 0, 0)
-YELLOW = (255, 255, 0)
-PINK = (255, 192, 203)
+No, fix: COLS = MAP[0].length;
+        canvas.width = ROWS * TILE_SIZE; No, width = COLS * TILE_SIZE, height = ROWS * TILE_SIZE. Wait, standard Pac-Man map is 28x31 or so.
 
-# Maze layout: 1 = wall (green vegetation), 0 = path (gray tiles), 2 = dot, 3 = power pellet
-maze = [
-    [1] * MAZE_WIDTH,
-    [1] + [0] * (MAZE_WIDTH - 2) + [1],
-    [1, 0] + [1] * (MAZE_WIDTH - 4) + [0, 1],
-    [1, 0, 1] + [0] * (MAZE_WIDTH - 5) + [1, 0, 1],
-    [1, 0, 1, 0] + [1] * (MAZE_WIDTH - 7) + [0, 1, 0, 1],
-    [1, 0, 1, 0, 1] + [0] * (MAZE_WIDTH - 9) + [1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0] + [1] * (MAZE_WIDTH - 11) + [0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1] + [0] * (MAZE_WIDTH - 13) + [1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0] + [1] * (MAZE_WIDTH - 15) + [0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1] + [0] * (MAZE_WIDTH - 17) + [1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0] + [1] * (MAZE_WIDTH - 19) + [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] + [0] * (MAZE_WIDTH - 21) + [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0] + [1] * (MAZE_WIDTH - 23) + [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] + [0] * (MAZE_WIDTH - 25) + [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1] + [0] * 11 + [1, 0, 1] + [1] * 12 + [0, 1] + [0] * 11 + [1],
-    [1] + [1] * 10 + [0, 1, 0, 1] + [0] * 10 + [1, 0, 1] + [1] * 11,
-    [1] + [0] * 11 + [1, 0, 1, 0, 1] + [1] * 8 + [0, 1] + [0] * 11 + [1],
-    [1, 0, 1] + [1] * 9 + [1, 0, 1, 0, 1, 0] + [1] * (MAZE_WIDTH - 28) + [0, 1],
-    [1, 0, 1, 0] + [0] * 13 + [0, 1, 0, 1] + [1] * 4 + [0, 1] + [0] * 13 + [0, 1],
-    [1, 0, 1, 0, 1] + [1] * 11 + [1, 1, 1, 0, 1, 0, 0, 1, 0] + [1] * 11 + [0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0] + [0] * 11 + [0, 0, 1, 0, 0, 1, 0] + [0] * 11 + [1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1] + [1] * 11 + [1, 0, 1, 1, 1] + [1] * 11 + [0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0] + [0] * 11 + [0, 0, 1, 0] + [0] * 11 + [1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1] + [1] * 11 + [1, 0, 1] + [1] * 11 + [0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0] + [0] * 11 + [0, 1, 0] + [0] * 11 + [1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] + [1] * 11 + [0, 1] + [1] * 11 + [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0] + [0] * 11 + [0, 1, 0] + [0] * 11 + [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] + [1] * 11 + [0, 1] + [1] * 8 + [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1] + [0] * (MAZE_WIDTH - 2) + [1],
-    [1] * MAZE_WIDTH
-]
+The map I have is 28 columns, 29 rows? Let me count.
 
-# Place dots and power pellets
-total_dots = 0
-for y in range(MAZE_HEIGHT):
-    for x in range(MAZE_WIDTH):
-        if maze[y][x] == 0:
-            maze[y][x] = 2
-            total_dots += 1
-            if random.random() < 0.05:
-                maze[y][x] = 3
+Anyway, proceed.
 
-# Player
-player_pos = [1.0, 1.0]  # Float for smooth movement
-player_dir = [1.0, 0.0]
-intended_dir = [1.0, 0.0]
+        // 1 = wall, 0 = dot, 2 = power pellet, 3 = empty
 
-# Bats
-bat_colors = [RED, PINK, BLUE, YELLOW]
-bats = []
-for i in range(4):
-    bats.append({
-        "pos": [MAZE_WIDTH // 2 + (i % 2) * 2 - 1, MAZE_HEIGHT // 2 + (i // 2) * 2 - 1],
-        "dir": random.choice([[0,1], [0,-1], [1,0], [-1,0]]),
-        "color": bat_colors[i]
-    })
+        // Pacman
+        let pacman = {
+            x: 14 * TILE_SIZE,
+            y: 23 * TILE_SIZE, // Start position
+            speed: 2,
+            dir: 'right',
+            nextDir: 'right',
+            mouthOpen: false,
+            mouthTimer: 0
+        };
 
-# Game vars
-score = 0
-lives = 3
-power_mode = False
-power_timer = 0
-remaining_dots = total_dots
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("V-man")
+        // Ghosts
+        let ghosts = [
+            { x: 13.5 * TILE_SIZE, y: 11 * TILE_SIZE, dir: 'up', color: 'red', mode: 'scatter', target: {row: 2, col: 25}, home: {row: 2, col: 25} }, // Blinky
+            { x: 11.5 * TILE_SIZE, y: 14 * TILE_SIZE, dir: 'left', color: 'pink', mode: 'scatter', target: {row: 2, col: 2}, home: {row: 2, col: 2} }, // Pinky
+            { x: 13.5 * TILE_SIZE, y: 14 * TILE_SIZE, dir: 'right', color: 'cyan', mode: 'scatter', target: {row: 32, col: 25}, home: {row: 32, col: 25} }, // Inky (adjust targets)
+            { x: 15.5 * TILE_SIZE, y: 14 * TILE_SIZE, dir: 'left', color: 'orange', mode: 'scatter', target: {row: 32, col: 2}, home: {row: 32, col: 2} } // Clyde
+        ];
 
-# Virtual buttons for mobile
-button_size = 60
-pad_x = 20
-pad_y = SCREEN_HEIGHT - button_size * 2 - 20
-left_rect = pygame.Rect(pad_x, pad_y + button_size / 2, button_size, button_size)
-right_rect = pygame.Rect(pad_x + button_size * 2, pad_y + button_size / 2, button_size, button_size)
-up_rect = pygame.Rect(pad_x + button_size, pad_y, button_size, button_size)
-down_rect = pygame.Rect(pad_x + button_size, pad_y + button_size, button_size, button_size)
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let frightenedTime = 0;
+        let gameRunning = true;
+        // Dot count for level completion
+        let dots = 0;
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (MAP[r][c] === 0 || MAP[r][c] === 2) dots++;
+            }
+        }
 
-def draw_arrow(rect, dir, color):
-    cx, cy = rect.center
-    if dir == 'left':
-        pygame.draw.polygon(screen, color, [(cx + 20, cy), (cx - 20, cy - 20), (cx - 20, cy + 20)])
-    elif dir == 'right':
-        pygame.draw.polygon(screen, color, [(cx - 20, cy), (cx + 20, cy - 20), (cx + 20, cy + 20)])
-    elif dir == 'up':
-        pygame.draw.polygon(screen, color, [(cx, cy + 20), (cx - 20, cy - 20), (cx + 20, cy - 20)])
-    elif dir == 'down':
-        pygame.draw.polygon(screen, color, [(cx, cy - 20), (cx - 20, cy + 20), (cx + 20, cy + 20)])
+        // Directions map
+        const DIR_VECTORS = {
+            'up': {dx: 0, dy: 0},
+            'right': {dx: 1, dy: 0},
+            'down': {dx: 0, dy:1},
+            'left': {dx: -1, dy:0}
+        };
 
-def draw_maze():
-    for y in range(MAZE_HEIGHT):
-        for x in range(MAZE_WIDTH):
-            color = GREEN if maze[y][x] == 1 else GRAY
-            pygame.draw.rect(screen, color, (x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE))
-            if maze[y][x] == 2:
-                pygame.draw.circle(screen, WHITE, (x * TILE_SIZE + TILE_SIZE // 2, y * TILE_SIZE + TILE_SIZE // 2), 3)
-            elif maze[y][x] == 3:
-                pygame.draw.circle(screen, WHITE, (x * TILE_SIZE + TILE_SIZE // 2, y * TILE_SIZE + TILE_SIZE // 2), 6)
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'ArrowUp': pacman.nextDir = 'up'; break;
+                case 'ArrowRight': pacman.nextDir = 'right'; break;
+                case 'ArrowDown': pacman.nextDir = 'down'; break;
+                case 'ArrowLeft': pacman.nextDir = 'left'; break;
+            }
+        });
 
-def draw_vinky(pos, dir):
-    px = pos[0] * TILE_SIZE
-    py = pos[1] * TILE_SIZE
-    # V body
-    pygame.draw.polygon(screen, ORANGE, [(px, py + TILE_SIZE), (px + TILE_SIZE / 2, py), (px + TILE_SIZE, py + TILE_SIZE)])
-    # Eyes
-    eye_offset = TILE_SIZE / 4
-    pygame.draw.circle(screen, WHITE, (int(px + eye_offset), int(py + eye_offset)), int(TILE_SIZE / 8))
-    pygame.draw.circle(screen, WHITE, (int(px + TILE_SIZE - eye_offset), int(py + eye_offset)), int(TILE_SIZE / 8))
-    pygame.draw.circle(screen, BLUE, (int(px + eye_offset), int(py + eye_offset)), int(TILE_SIZE / 16))
-    pygame.draw.circle(screen, BLUE, (int(px + TILE_SIZE - eye_offset), int(py + eye_offset)), int(TILE_SIZE / 16))
-    # Mouth
-    pygame.draw.arc(screen, BLACK, (px + TILE_SIZE / 4, py + TILE_SIZE / 2, TILE_SIZE / 2, TILE_SIZE / 2), 0, math.pi, 2)
-    # Glove pointing
-    hand_x = px + TILE_SIZE if dir[0] > 0 else px if dir[0] < 0 else px + TILE_SIZE / 2
-    hand_y = py + TILE_SIZE / 2
-    pygame.draw.circle(screen, WHITE, (int(hand_x), int(hand_y)), int(TILE_SIZE / 4))
+        // Touch controls
+        document.getElementById('up').addEventListener('touchstart', () => pacman.nextDir = 'up');
+        document.getElementById('down').addEventListener('touchstart', () => pacman.nextDir = 'down');
+        document.getElementById('left').addEventListener('touchstart', () => pacman.nextDir = 'left');
+        document.getElementById('right').addEventListener('touchstart', () => pacman.nextDir = 'right');
 
-def draw_bat(bat, power_mode):
-    px = bat["pos"][0] * TILE_SIZE
-    py = bat["pos"][1] * TILE_SIZE
-    color = BLUE if power_mode else bat["color"]
-    # Body
-    pygame.draw.circle(screen, color, (int(px + TILE_SIZE / 2), int(py + TILE_SIZE / 2)), int(TILE_SIZE / 3))
-    # Wings
-    pygame.draw.polygon(screen, color, [(px, py + TILE_SIZE / 2), (px + TILE_SIZE / 2, py), (px + TILE_SIZE, py + TILE_SIZE / 2)])
-    pygame.draw.polygon(screen, color, [(px, py + TILE_SIZE / 2), (px + TILE_SIZE / 2, py + TILE_SIZE), (px + TILE_SIZE, py + TILE_SIZE / 2)])
+        function drawMap() {
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    if (MAP[row][col] === 1) {
+                        ctx.fillStyle = 'blue';
+                        ctx.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    } else if (MAP[row][col] === 0) {
+                        ctx.fillStyle = 'yellow';
+                        ctx.beginPath();
+                        ctx.arc(col * TILE_SIZE + TILE_SIZE / 2, row * TILE_SIZE + TILE_SIZE / 2, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (MAP[row][col] === 2) {
+                        ctx.fillStyle = 'yellow';
+                        ctx.beginPath();
+                        ctx.arc(col * TILE_SIZE + TILE_SIZE / 2, row * TILE_SIZE + TILE_SIZE / 2, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
 
-def get_tile(pos):
-    return int(pos[0]), int(pos[1])
+        function drawPacman() {
+            ctx.fillStyle = 'yellow';
+            ctx.beginPath();
+            let startAngle, endAngle;
+            const centerX = pacman.x + TILE_SIZE / 2;
+            const centerY = pacman.y + TILE_SIZE / 2;
+            if (pacman.mouthOpen) {
+                switch (pacman.dir) {
+                    case 'right': startAngle = 0.25 * Math.PI; endAngle = 1.75 * Math.PI; break;
+                    case 'down': startAngle = 0.75 * Math.PI; endAngle = 2.25 * Math.PI; break;
+                    case 'left': startAngle = 1.25 * Math.PI; endAngle = 2.75 * Math.PI; break;
+                    case 'up': startAngle = 1.75 * Math.PI; endAngle = 3.25 * Math.PI; break;
+                }
+            } else {
+                startAngle = 0;
+                endAngle = 2 * Math.PI;
+            }
+            ctx.arc(centerX, centerY, TILE_SIZE / 2, startAngle, endAngle);
+            ctx.lineTo(centerX, centerY);
+            ctx.fill();
+            pacman.mouthTimer++;
+            if (pacman.mouthTimer > 5) {
+                pacman.mouthOpen = !pacman.mouthOpen;
+                pacman.mouthTimer = 0;
+            }
+        }
 
-def is_wall(x, y):
-    if 0 <= x < MAZE_WIDTH and 0 <= y < MAZE_HEIGHT:
-        return maze[y][x] == 1
-    return True
+        function drawGhosts() {
+            ghosts.forEach(ghost => {
+                ctx.fillStyle = frightenedTime > 0 ? ghost.color : 'blue'; // Frightened mode blue
+                ctx.beginPath();
+                ctx.arc(ghost.x + TILE_SIZE / 2, ghost.y + TILE_SIZE / 2, TILE_SIZE / 2, Math.PI, 0);
+                ctx.lineTo(ghost.x + TILE_SIZE, ghost.y + TILE_SIZE);
+                ctx.lineTo(ghost.x + TILE_SIZE * 2/3, ghost.y + TILE_SIZE * 3/4);
+                ctx.lineTo(ghost.y + TILE_SIZE / 2, ghost.y + TILE_SIZE);
+                ctx.lineTo(ghost.x + TILE_SIZE / 3, ghost.y + TILE_SIZE * 3/4);
+                ctx.lineTo(ghost.x, ghost.y + TILE_SIZE);
+                ctx.lineTo(ghost.x, ghost.y + TILE_SIZE / 2);
+                ctx.fill();
+                // Eyes
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(ghost.x + TILE_SIZE / 3, ghost.y + TILE_SIZE / 2, TILE_SIZE / 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(ghost.x + TILE_SIZE * 2 / 3, ghost.y + TILE_SIZE / 2, TILE_SIZE / 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(ghost.x + TILE_SIZE / 3 + (ghost.dir === 'right' ? 2 : ghost.dir === 'left' ? -2 : 0), ghost.y + TILE_SIZE / 2 + (ghost.dir === 'down' ? 2 : ghost.dir = 'up' ? -2 : 0), TILE_SIZE / 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(ghost.x + TILE_SIZE * 2 / 3 + (ghost.dir === 'right' ? 2 : ghost.dir === 'left' ? -2 : 0), ghost.y + TILE_SIZE / 2 + (ghost.dir === 'down' ? 2 : ghost.dir === 'up' ? -2 : 0), TILE_SIZE / 12, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
 
-def can_move(pos, dir, speed):
-    new_pos = [pos[0] + dir[0] * speed, pos[1] + dir[1] * speed]
-    nx, ny = get_tile(new_pos)
-    if is_wall(nx, ny):
-        return False
-    # Check if crossing wall
-    if dir[0] > 0 and new_pos[0] % 1 > pos[0] % 1 and is_wall(nx + 1, ny):
-        return False
-    # Similar for other dirs
-    if dir[0] < 0 and new_pos[0] % 1 < pos[0] % 1 and is_wall(nx - 1, ny):
-        return False
-    if dir[1] > 0 and new_pos[1] % 1 > pos[1] % 1 and is_wall(nx, ny + 1):
-        return False
-    if dir[1] < 0 and new_pos[1] % 1 < pos[1] % 1 and is_wall(nx, ny - 1):
-        return False
-    return True
+        function movePacman() {
+            let nextX = pacman.x + DIR_VECTORS[pacman.nextDir].dx * pacman.speed;
+            let nextY = pacman.y + DIR_VECTORS[pacman.nextDir].dy * pacman.speed;
 
-def move_entity(pos, dir, speed):
-    if can_move(pos, dir, speed):
-        pos[0] += dir[0] * speed
-        pos[1] += dir[1] * speed
-        return True
-    return False
+            if (!isWall(nextX, nextY)) {
+                pacman.dir = pacman.nextDir;
+            }
 
-def eat_dot():
-    global score, remaining_dots, power_mode, power_timer
-    x, y = get_tile(player_pos)
-    if maze[y][x] == 2:
-        score += 10
-        maze[y][x] = 0
-        remaining_dots -= 1
-    elif maze[y][x] == 3:
-        score += 50
-        maze[y][x] = 0
-        remaining_dots -= 1
-        power_mode = True
-        power_timer = 300
+            nextX = pacman.x + DIR_VECTORS[pacman.dir].dx * pacman.speed;
+            nextY = pacman.y + DIR_VECTORS[pacman.dir].dy * pacman.speed;
 
-def bat_ai(bat, player_pos, power_mode):
-    directions = [[0, -1], [0, 1], [-1, 0], [1, 0]]
-    if power_mode:
-        # Flee
-        best_dir = bat["dir"]
-        max_dist = -1
-        for d in directions:
-            if d[0] == -bat["dir"][0] and d[1] == -bat["dir"][1]: continue  # Avoid reverse if possible
-            nx = bat["pos"][0] + d[0] * BAT_SPEED
-            ny = bat["pos"][1] + d[1] * BAT_SPEED
-            if not is_wall(int(nx), int(ny)):
-                dist = math.hypot(nx - player_pos[0], ny - player_pos[1])
-                if dist > max_dist:
-                    max_dist = dist
-                    best_dir = d
-        bat["dir"] = best_dir
-    else:
-        # Chase
-        best_dir = bat["dir"]
-        min_dist = float('inf')
-        for d in directions:
-            if d[0] == -bat["dir"][0] and d[1] == -bat["dir"][1]: continue
-            nx = bat["pos"][0] + d[0] * BAT_SPEED
-            ny = bat["pos"][1] + d[1] * BAT_SPEED
-            if not is_wall(int(nx), int(ny)):
-                dist = math.hypot(nx - player_pos[0], ny - player_pos[1])
-                if dist < min_dist:
-                    min_dist = dist
-                    best_dir = d
-        bat["dir"] = best_dir
-    move_entity(bat["pos"], bat["dir"], BAT_SPEED)
+            if (!isWall(nextX, nextY)) {
+                pacman.x = nextX;
+                pacman.y = nextY;
+            }
 
-def check_collisions():
-    global lives, score, power_mode
-    px, py = get_tile(player_pos)
-    for bat in bats:
-        bx, by = get_tile(bat["pos"])
-        if px == bx and py == by:
-            if power_mode:
-                score += 200
-                bat["pos"] = [MAZE_WIDTH // 2, MAZE_HEIGHT //
+            // Tunnel wrap-around
+            if (pacman.x < 0) pacman.x = canvas.width - TILE_SIZE;
+            if (pacman.x >= canvas.width) pacman.x = 0;
+
+            // Eat dot
+            let row = Math.floor(pacman.y / TILE_SIZE);
+            let col = Math.floor(pacman.x / TILE_SIZE);
+            if (MAP[row][col] === 0) {
+                MAP[row][col] = 3; // empty
+                score += 10;
+                dots--;
+            } else if (MAP[row][col] === 2) {
+                MAP[row][col] = 3;
+                score += 50;
+                dots--;
+                frightenedTime = 300; // ~5 seconds at 60fps
+                ghosts.forEach(ghost => ghost.mode = 'frightened');
+            }
+            if (dots === 0) {
+                // Level complete
+                level++;
+                resetPositions();
+                // Increase speed or other level changes
+            }
+        }
+
+        function isWall(x, y) {
+            let row = Math.floor(y / TILE_SIZE);
+            let col = Math.floor(x / TILE_SIZE);
+            if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return true;
+            return MAP[row][col] === 1;
+        }
+
+        function moveGhosts() {
+            ghosts.forEach(ghost => {
+                if (frightenedTime > 0) {
+                    frightenedTime--;
+                    if (frightenedTime === 0) ghost.mode = 'scatter';
+                }
+
+                let target = getGhostTarget(ghost);
+
+                // Simple A* or random for simplicity, but for basic, choose direction towards target
+                let possibleDirs = ['up', 'down', 'left', 'right'].filter(dir => dir !== oppositeDir(ghost.dir) && !isWall(ghost.x + DIR_VECTORS[dir].dx * TILE_SIZE, ghost.y + DIR_VECTORS[dir].dy * TILE_SIZE));
+
+                if (possibleDirs.length > 1) {
+                    possibleDirs.sort((a, b) => distanceToTarget(ghost.x + DIR_VECTORS[a].dx * TILE_SIZE, ghost.y + DIR_VECTORS[a].dy * TILE_SIZE, target) - distanceToTarget(ghost.x + DIR_VECTORS[b].dx * TILE_SIZE, ghost.y + DIR_VECTORS[b].dy * TILE_SIZE, target));
+                }
+
+                if (possibleDirs.length > 0) ghost.dir = possibleDirs[0];
+
+                ghost.x += DIR_VECTORS[ghost.dir].dx * (frightenedTime > 0 ? 1 : 1.5); // Slower when frightened
+                ghost.y += DIR_VECTORS[ghost.dir].dy * (frightenedTime > 0 ? 1 : 1.5);
+
+                // Check collision with Pac-Man
+                if (Math.abs(ghost.x - pacman.x) < TILE_SIZE / 2 && Math.abs(ghost.y - pacman.y) < TILE_SIZE / 2) {
+                    if (frightenedTime > 0) {
+                        score += 200;
+                        ghost.x = 13.5 * TILE_SIZE;
+                        ghost.y = 14 * TILE_SIZE; // Back to home
+                        ghost.mode = 'scatter';
+                    } else {
+                        lives--;
+                        if (lives === 0) gameRunning = false;
+                        resetPositions();
+                    }
+                }
+            });
+        }
+
+        function oppositeDir(dir) {
+            if (dir === 'up') return 'down';
+            if (dir === 'down') return 'up';
+            if (dir === 'left') return 'right';
+            if (dir === 'right') return 'left';
+        }
+
+        function distanceToTarget(x, y, target) {
+            let tRow = target.row;
+            let tCol = target.col;
+            return Math.sqrt(Math.pow(x / TILE_SIZE - tCol, 2) + Math.pow(y / TILE_SIZE - tRow, 2));
+        }
+
+        function getGhostTarget(ghost) {
+            if (ghost.mode === 'frightened') {
+                // Random target or home
+                return ghost.home;
+            } else if (ghost.mode === 'scatter') {
+                return ghost.home;
+            } else { // chase
+                let target = {row: pacman.y / TILE_SIZE, col: pacman.x / TILE_SIZE};
+                if (ghost.color === 'red') {
+                    // Blinky targets Pac-Man directly
+                    return target;
+                } else if (ghost.color === 'pink') {
+                    // Pinky targets 4 tiles ahead of Pac-Man
+                    let dx = DIR_VECTORS[pacman.dir].dx * 4;
+                    let dy = DIR_VECTORS[pacman.dir].dy * 4;
+                    return {row: target.row + dy, col: target.col + dx};
+                } else if (ghost.color === 'cyan') {
+                    // Inky uses Blinky position
+                    let blinky = ghosts[0];
+                    let pivot = {row: target.row + DIR_VECTORS[pacman.dir].dy * 2, col: target.col + DIR_VECTORS[pacman.dir].dx * 2};
+                    return {row: pivot.row + (pivot.row - blinky.y / TILE_SIZE), col: pivot.col + (pivot.col - blinky.x / TILE_SIZE)};
+                } else if (ghost.color === 'orange') {
+                    // Clyde targets Pac-Man if far, else scatter
+                    if (distanceToTarget(ghost.x, ghost.y, target) > 8) return target;
+                    return ghost.home;
+                }
+            }
+        }
+
+        function resetPositions() {
+            pacman.x = 14 * TILE_SIZE;
+            pacman.y = 23 * TILE_SIZE;
+            pacman.dir = 'right';
+            pacman.nextDir = 'right';
+            ghosts.forEach((ghost, i) => {
+                ghost.x = (12 + i % 3) * TILE_SIZE + TILE_SIZE / 2;
+                ghost.y = 14 * TILE_SIZE;
+                ghost.dir = i % 2 === 0 ? 'left' : 'right';
+                ghost.mode = 'scatter';
+            });
+        }
+
+        function drawScore() {
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Score: ${score}`, 10, canvas.height - 10);
+            ctx.fillText(`Lives: ${lives}`, canvas.width - 100, canvas.height - 10);
+        }
+
+        function gameLoop() {
+            if (!gameRunning) {
+                ctx.fillStyle = 'white';
+                ctx.font = '40px Arial';
+                ctx.fillText('Game Over', canvas.width / 2 - 100, canvas.height / 2);
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawMap();
+            drawPacman();
+            drawGhosts();
+            movePacman();
+            moveGhosts();
+            drawScore();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        resetPositions();
+        gameLoop();
+    </script>
+</body>
+</html>
