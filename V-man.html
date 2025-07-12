@@ -1,6 +1,8 @@
 import pygame
 import sys
 import random
+import asyncio
+import math
 
 # Initialize Pygame
 pygame.init()
@@ -11,6 +13,8 @@ SCREEN_HEIGHT = 600
 TILE_SIZE = 20
 MAZE_WIDTH = SCREEN_WIDTH // TILE_SIZE
 MAZE_HEIGHT = SCREEN_HEIGHT // TILE_SIZE
+PLAYER_SPEED = 0.2  # tiles per frame
+BAT_SPEED = 0.15
 
 # Colors
 BLACK = (0, 0, 0)
@@ -21,194 +25,218 @@ WHITE = (255, 255, 255)
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
+PINK = (255, 192, 203)
 
 # Maze layout: 1 = wall (green vegetation), 0 = path (gray tiles), 2 = dot, 3 = power pellet
 maze = [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    [1] * MAZE_WIDTH,
+    [1] + [0] * (MAZE_WIDTH - 2) + [1],
+    [1, 0] + [1] * (MAZE_WIDTH - 4) + [0, 1],
+    [1, 0, 1] + [0] * (MAZE_WIDTH - 5) + [1, 0, 1],
+    [1, 0, 1, 0] + [1] * (MAZE_WIDTH - 7) + [0, 1, 0, 1],
+    [1, 0, 1, 0, 1] + [0] * (MAZE_WIDTH - 9) + [1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0] + [1] * (MAZE_WIDTH - 11) + [0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1] + [0] * (MAZE_WIDTH - 13) + [1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0] + [1] * (MAZE_WIDTH - 15) + [0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1] + [0] * (MAZE_WIDTH - 17) + [1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0] + [1] * (MAZE_WIDTH - 19) + [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] + [0] * (MAZE_WIDTH - 21) + [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0] + [1] * (MAZE_WIDTH - 23) + [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] + [0] * (MAZE_WIDTH - 25) + [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1] + [0] * 11 + [1, 0, 1] + [1] * 12 + [0, 1] + [0] * 11 + [1],
+    [1] + [1] * 10 + [0, 1, 0, 1] + [0] * 10 + [1, 0, 1] + [1] * 11,
+    [1] + [0] * 11 + [1, 0, 1, 0, 1] + [1] * 8 + [0, 1] + [0] * 11 + [1],
+    [1, 0, 1] + [1] * 9 + [1, 0, 1, 0, 1, 0] + [1] * (MAZE_WIDTH - 28) + [0, 1],
+    [1, 0, 1, 0] + [0] * 13 + [0, 1, 0, 1] + [1] * 4 + [0, 1] + [0] * 13 + [0, 1],
+    [1, 0, 1, 0, 1] + [1] * 11 + [1, 1, 1, 0, 1, 0, 0, 1, 0] + [1] * 11 + [0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0] + [0] * 11 + [0, 0, 1, 0, 0, 1, 0] + [0] * 11 + [1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1] + [1] * 11 + [1, 0, 1, 1, 1] + [1] * 11 + [0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0] + [0] * 11 + [0, 0, 1, 0] + [0] * 11 + [1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1] + [1] * 11 + [1, 0, 1] + [1] * 11 + [0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0] + [0] * 11 + [0, 1, 0] + [0] * 11 + [1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] + [1] * 11 + [0, 1] + [1] * 11 + [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0] + [0] * 11 + [0, 1, 0] + [0] * 11 + [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1] + [1] * 11 + [0, 1] + [1] * 8 + [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1] + [0] * (MAZE_WIDTH - 2) + [1],
+    [1] * MAZE_WIDTH
 ]
 
-# Place dots on paths
-dots = []
-for y in range(len(maze)):
-    for x in range(len(maze[y])):
+# Place dots and power pellets
+total_dots = 0
+for y in range(MAZE_HEIGHT):
+    for x in range(MAZE_WIDTH):
         if maze[y][x] == 0:
-            maze[y][x] = 2  # Dot
-            dots.append((x, y))
-        # Add some power pellets
-        if random.random() < 0.05 and maze[y][x] == 2:  # 5% chance
-            maze[y][x] = 3
+            maze[y][x] = 2
+            total_dots += 1
+            if random.random() < 0.05:
+                maze[y][x] = 3
 
-# Player starting position
-player_pos = [1, 1]
-player_dir = [1, 0]  # Right
-player_speed = TILE_SIZE // 4
+# Player
+player_pos = [1.0, 1.0]  # Float for smooth movement
+player_dir = [1.0, 0.0]
+intended_dir = [1.0, 0.0]
 
-# Bat (enemy) positions and colors
-bats = [
-    {"pos": [MAZE_WIDTH // 2, MAZE_HEIGHT // 2], "dir": [0, 1], "color": RED},
-    {"pos": [MAZE_WIDTH // 2 + 2, MAZE_HEIGHT // 2], "dir": [0, -1], "color": BLUE},
-    {"pos": [MAZE_WIDTH // 2 - 2, MAZE_HEIGHT // 2], "dir": [1, 0], "color": YELLOW},
-    {"pos": [MAZE_WIDTH // 2, MAZE_HEIGHT // 2 + 2], "dir": [-1, 0], "color": WHITE}
-]
+# Bats
+bat_colors = [RED, PINK, BLUE, YELLOW]
+bats = []
+for i in range(4):
+    bats.append({
+        "pos": [MAZE_WIDTH // 2 + (i % 2) * 2 - 1, MAZE_HEIGHT // 2 + (i // 2) * 2 - 1],
+        "dir": random.choice([[0,1], [0,-1], [1,0], [-1,0]]),
+        "color": bat_colors[i]
+    })
 
-# Game variables
+# Game vars
 score = 0
 lives = 3
 power_mode = False
 power_timer = 0
-clock = pygame.time.Clock()
+remaining_dots = total_dots
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("V-man")
 
+# Virtual buttons for mobile
+button_size = 60
+pad_x = 20
+pad_y = SCREEN_HEIGHT - button_size * 2 - 20
+left_rect = pygame.Rect(pad_x, pad_y + button_size / 2, button_size, button_size)
+right_rect = pygame.Rect(pad_x + button_size * 2, pad_y + button_size / 2, button_size, button_size)
+up_rect = pygame.Rect(pad_x + button_size, pad_y, button_size, button_size)
+down_rect = pygame.Rect(pad_x + button_size, pad_y + button_size, button_size, button_size)
+
+def draw_arrow(rect, dir, color):
+    cx, cy = rect.center
+    if dir == 'left':
+        pygame.draw.polygon(screen, color, [(cx + 20, cy), (cx - 20, cy - 20), (cx - 20, cy + 20)])
+    elif dir == 'right':
+        pygame.draw.polygon(screen, color, [(cx - 20, cy), (cx + 20, cy - 20), (cx + 20, cy + 20)])
+    elif dir == 'up':
+        pygame.draw.polygon(screen, color, [(cx, cy + 20), (cx - 20, cy - 20), (cx + 20, cy - 20)])
+    elif dir == 'down':
+        pygame.draw.polygon(screen, color, [(cx, cy - 20), (cx - 20, cy + 20), (cx + 20, cy + 20)])
+
 def draw_maze():
-    for y in range(len(maze)):
-        for x in range(len(maze[y])):
-            if maze[y][x] == 1:
-                pygame.draw.rect(screen, GREEN, (x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE))
-            elif maze[y][x] == 0 or maze[y][x] == 2 or maze[y][x] == 3:
-                pygame.draw.rect(screen, GRAY, (x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+    for y in range(MAZE_HEIGHT):
+        for x in range(MAZE_WIDTH):
+            color = GREEN if maze[y][x] == 1 else GRAY
+            pygame.draw.rect(screen, color, (x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE))
             if maze[y][x] == 2:
-                pygame.draw.circle(screen, WHITE, (x * TILE_SIZE + TILE_SIZE // 2, y * TILE_SIZE + TILE_SIZE // 2), 2)
+                pygame.draw.circle(screen, WHITE, (x * TILE_SIZE + TILE_SIZE // 2, y * TILE_SIZE + TILE_SIZE // 2), 3)
             elif maze[y][x] == 3:
-                pygame.draw.circle(screen, WHITE, (x * TILE_SIZE + TILE_SIZE // 2, y * TILE_SIZE + TILE_SIZE // 2), 5)
+                pygame.draw.circle(screen, WHITE, (x * TILE_SIZE + TILE_SIZE // 2, y * TILE_SIZE + TILE_SIZE // 2), 6)
 
 def draw_vinky(pos, dir):
-    x, y = pos[0] * TILE_SIZE + TILE_SIZE // 2, pos[1] * TILE_SIZE + TILE_SIZE // 2
-    # Draw V shape
-    pygame.draw.polygon(screen, ORANGE, [(x - 10, y + 10), (x, y - 10), (x + 10, y + 10)])
+    px = pos[0] * TILE_SIZE
+    py = pos[1] * TILE_SIZE
+    # V body
+    pygame.draw.polygon(screen, ORANGE, [(px, py + TILE_SIZE), (px + TILE_SIZE / 2, py), (px + TILE_SIZE, py + TILE_SIZE)])
     # Eyes
-    pygame.draw.circle(screen, WHITE, (x - 5, y - 3), 3)
-    pygame.draw.circle(screen, WHITE, (x + 5, y - 3), 3)
-    pygame.draw.circle(screen, BLUE, (x - 5, y - 3), 1)
-    pygame.draw.circle(screen, BLUE, (x + 5, y - 3), 1)
+    eye_offset = TILE_SIZE / 4
+    pygame.draw.circle(screen, WHITE, (int(px + eye_offset), int(py + eye_offset)), int(TILE_SIZE / 8))
+    pygame.draw.circle(screen, WHITE, (int(px + TILE_SIZE - eye_offset), int(py + eye_offset)), int(TILE_SIZE / 8))
+    pygame.draw.circle(screen, BLUE, (int(px + eye_offset), int(py + eye_offset)), int(TILE_SIZE / 16))
+    pygame.draw.circle(screen, BLUE, (int(px + TILE_SIZE - eye_offset), int(py + eye_offset)), int(TILE_SIZE / 16))
     # Mouth
-    pygame.draw.arc(screen, BLACK, (x - 7, y, 14, 10), 3.14, 0, 2)
-    # Pointing hand (simplified)
-    pygame.draw.line(screen, WHITE, (x + 10, y + 5), (x + 15, y), 3)
+    pygame.draw.arc(screen, BLACK, (px + TILE_SIZE / 4, py + TILE_SIZE / 2, TILE_SIZE / 2, TILE_SIZE / 2), 0, math.pi, 2)
+    # Glove pointing
+    hand_x = px + TILE_SIZE if dir[0] > 0 else px if dir[0] < 0 else px + TILE_SIZE / 2
+    hand_y = py + TILE_SIZE / 2
+    pygame.draw.circle(screen, WHITE, (int(hand_x), int(hand_y)), int(TILE_SIZE / 4))
 
-def draw_bat(pos, color):
-    x, y = pos[0] * TILE_SIZE + TILE_SIZE // 2, pos[1] * TILE_SIZE + TILE_SIZE // 2
-    # Draw bat wings
-    pygame.draw.polygon(screen, color, [(x - 10, y), (x, y - 10), (x + 10, y)])
-    pygame.draw.polygon(screen, color, [(x - 10, y), (x, y + 10), (x + 10, y)])
+def draw_bat(bat, power_mode):
+    px = bat["pos"][0] * TILE_SIZE
+    py = bat["pos"][1] * TILE_SIZE
+    color = BLUE if power_mode else bat["color"]
     # Body
-    pygame.draw.circle(screen, color, (x, y), 5)
+    pygame.draw.circle(screen, color, (int(px + TILE_SIZE / 2), int(py + TILE_SIZE / 2)), int(TILE_SIZE / 3))
+    # Wings
+    pygame.draw.polygon(screen, color, [(px, py + TILE_SIZE / 2), (px + TILE_SIZE / 2, py), (px + TILE_SIZE, py + TILE_SIZE / 2)])
+    pygame.draw.polygon(screen, color, [(px, py + TILE_SIZE / 2), (px + TILE_SIZE / 2, py + TILE_SIZE), (px + TILE_SIZE, py + TILE_SIZE / 2)])
 
-def is_valid_move(x, y):
+def get_tile(pos):
+    return int(pos[0]), int(pos[1])
+
+def is_wall(x, y):
     if 0 <= x < MAZE_WIDTH and 0 <= y < MAZE_HEIGHT:
-        return maze[y][x] != 1
-    return False
+        return maze[y][x] == 1
+    return True
 
-def move_entity(pos, dir):
-    new_x = pos[0] + dir[0]
-    new_y = pos[1] + dir[1]
-    if is_valid_move(new_x, new_y):
-        pos[0] = new_x
-        pos[1] = new_y
+def can_move(pos, dir, speed):
+    new_pos = [pos[0] + dir[0] * speed, pos[1] + dir[1] * speed]
+    nx, ny = get_tile(new_pos)
+    if is_wall(nx, ny):
+        return False
+    # Check if crossing wall
+    if dir[0] > 0 and new_pos[0] % 1 > pos[0] % 1 and is_wall(nx + 1, ny):
+        return False
+    # Similar for other dirs
+    if dir[0] < 0 and new_pos[0] % 1 < pos[0] % 1 and is_wall(nx - 1, ny):
+        return False
+    if dir[1] > 0 and new_pos[1] % 1 > pos[1] % 1 and is_wall(nx, ny + 1):
+        return False
+    if dir[1] < 0 and new_pos[1] % 1 < pos[1] % 1 and is_wall(nx, ny - 1):
+        return False
+    return True
+
+def move_entity(pos, dir, speed):
+    if can_move(pos, dir, speed):
+        pos[0] += dir[0] * speed
+        pos[1] += dir[1] * speed
         return True
     return False
 
-def bat_ai(bat, player_pos):
+def eat_dot():
+    global score, remaining_dots, power_mode, power_timer
+    x, y = get_tile(player_pos)
+    if maze[y][x] == 2:
+        score += 10
+        maze[y][x] = 0
+        remaining_dots -= 1
+    elif maze[y][x] == 3:
+        score += 50
+        maze[y][x] = 0
+        remaining_dots -= 1
+        power_mode = True
+        power_timer = 300
+
+def bat_ai(bat, player_pos, power_mode):
     directions = [[0, -1], [0, 1], [-1, 0], [1, 0]]
-    random.shuffle(directions)
-    for d in directions:
-        if move_entity(bat["pos"], d):
-            bat["dir"] = d
-            break
+    if power_mode:
+        # Flee
+        best_dir = bat["dir"]
+        max_dist = -1
+        for d in directions:
+            if d[0] == -bat["dir"][0] and d[1] == -bat["dir"][1]: continue  # Avoid reverse if possible
+            nx = bat["pos"][0] + d[0] * BAT_SPEED
+            ny = bat["pos"][1] + d[1] * BAT_SPEED
+            if not is_wall(int(nx), int(ny)):
+                dist = math.hypot(nx - player_pos[0], ny - player_pos[1])
+                if dist > max_dist:
+                    max_dist = dist
+                    best_dir = d
+        bat["dir"] = best_dir
+    else:
+        # Chase
+        best_dir = bat["dir"]
+        min_dist = float('inf')
+        for d in directions:
+            if d[0] == -bat["dir"][0] and d[1] == -bat["dir"][1]: continue
+            nx = bat["pos"][0] + d[0] * BAT_SPEED
+            ny = bat["pos"][1] + d[1] * BAT_SPEED
+            if not is_wall(int(nx), int(ny)):
+                dist = math.hypot(nx - player_pos[0], ny - player_pos[1])
+                if dist < min_dist:
+                    min_dist = dist
+                    best_dir = d
+        bat["dir"] = best_dir
+    move_entity(bat["pos"], bat["dir"], BAT_SPEED)
 
-# Main game loop
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
-                player_dir = [0, -1]
-            elif event.key == pygame.K_DOWN:
-                player_dir = [0, 1]
-            elif event.key == pygame.K_LEFT:
-                player_dir = [-1, 0]
-            elif event.key == pygame.K_RIGHT:
-                player_dir = [1, 0]
-
-    # Move player
-    if move_entity(player_pos, player_dir):
-        # Eat dot
-        if maze[player_pos[1]][player_pos[0]] == 2:
-            score += 10
-            maze[player_pos[1]][player_pos[0]] = 0
-        elif maze[player_pos[1]][player_pos[0]] == 3:
-            score += 50
-            maze[player_pos[1]][player_pos[0]] = 0
-            power_mode = True
-            power_timer = 300  # ~10 seconds at 30 FPS
-
-    # Move bats
+def check_collisions():
+    global lives, score, power_mode
+    px, py = get_tile(player_pos)
     for bat in bats:
-        bat_ai(bat, player_pos)
-
-    # Check collisions
-    for bat in bats:
-        if bat["pos"] == player_pos:
+        bx, by = get_tile(bat["pos"])
+        if px == bx and py == by:
             if power_mode:
                 score += 200
-                bat["pos"] = [MAZE_WIDTH // 2, MAZE_HEIGHT //  # Respawn
-            else:
-                lives -= 1
-                player_pos = [1, 1]
-                if lives <= 0:
-                    running = False
-
-    # Update power mode
-    if power_mode:
-        power_timer -= 1
-        if power_timer <= 0:
-            power_mode = False
-
-    # Draw everything
-    screen.fill(BLACK)
-    draw_maze()
-    draw_vinky(player_pos, player_dir)
-    for bat in bats:
-        draw_bat(bat["pos"], bat["color"] if not power_mode else BLUE)  # Bats turn blue in power mode
-
-    # Draw score and lives
-    font = pygame.font.Font(None, 36)
-    text = font.render(f"Score: {score} Lives: {lives}", True, WHITE)
-    screen.blit text, (10, 10)
-
-    pygame.display.flip()
-    clock.tick(30)
-
-pygame.quit()
-sys.exit()
+                bat["pos"] = [MAZE_WIDTH // 2, MAZE_HEIGHT //
