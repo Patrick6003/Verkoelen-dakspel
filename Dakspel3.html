@@ -3,757 +3,301 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vinky V Jump</title>
+    <title>Dak Runner - Verkoelen Dakspecialisten Weert</title>
     <style>
-        body {
-            background-color: #DCDCDC; /* Lichtgrijs */
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            font-family: Arial, sans-serif;
-        }
-        canvas {
-            border: 2px solid #FFA500; /* Oranje */
-        }
-        .popup {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: #FFA500;
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            max-width: 80%;
-            z-index: 10;
-            cursor: pointer;
-        }
+        body { margin: 0; overflow: hidden; background: linear-gradient(#D3D3D3, #FFFFFF); } /* Huisstijl: Licht grijs naar wit */
+        canvas { display: block; margin: 0 auto; border: 1px solid #FF6600; } /* Oranje border */
+        #score { position: absolute; top: 10px; left: 10px; font-family: Arial; font-size: 24px; color: #FF6600; } /* Oranje tekst */
+        #game-over { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: Arial; font-size: 32px; color: #FF6600; display: none; text-align: center; background: rgba(255, 255, 255, 0.8); padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #D3D3D3; }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
 </head>
 <body>
-    <div class="popup" id="gamePopup" onclick="hidePopup()">
-        <h2>Vinky V Jump</h2>
-        <p>Spring met Vinky V van dak naar dak! Beweeg met pijltjestoetsen of tik (links/rechts). Grijp een ladder voor een turbo-sprong, pak een schild (groen, vanaf 300 punten) tegen vleermuizen, repareer lekkende daken voor bonuspunten. Hoe meer daken je repareert, hoe hoger je springt! Stoer dakwerk gegarandeerd!</p>
+    <canvas id="gameCanvas"></canvas>
+    <div id="score">Score: 0</div>
+    <div id="game-over">
+        Game Over!<br>
+        Score: <span id="final-score">0</span><br>
+        Hoogste Score: <span id="high-score">0</span><br>
+        Verkoelen Dakspecialisten: Bereik Nieuwe Hoogtes!<br>
+        Bezoek www.verkoelen.nl voor uw dakbehoeften.<br>
+        Druk op spatie of tik om te herstarten.
     </div>
-    <!-- Geluidseffecten -->
-    <audio id="jumpSound" src="https://www.soundjay.com/buttons/sounds/button-1.mp3"></audio>
-    <audio id="boostSound" src="https://www.soundjay.com/mechanical/sounds/whoosh-01.mp3"></audio>
-    <audio id="repairSound" src="https://www.soundjay.com/nature/sounds/water-splash-1.mp3"></audio>
-    <audio id="bonusSound" src="https://www.soundjay.com/buttons/sounds/beep-01a.mp3"></audio>
-    <audio id="levelUpSound" src="https://www.soundjay.com/buttons/sounds/beep-02.mp3"></audio>
-    <!-- Achtergrondmuziek -->
-    <audio id="bgMusic" src="roof_work.mp3" loop></audio>
-    <audio id="bgMusicIntense" src="roof_work_intense.mp3" loop></audio>
     <script>
-        // Variabelen
-        let character;
-        let platforms = [];
-        let gravity = 0.25;
-        let jumpSpeed = -12; // Basis spronghoogte, wordt aangepast door levels
-        let boostJumpSpeed = -18;
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 800; // Breder voor runner feel
+        canvas.height = 600;
+
+        // Huisstijl kleuren
+        const ORANGE = '#FF6600';
+        const LIGHT_GRAY = '#D3D3D3';
+        const WHITE = '#FFFFFF';
+
+        // Speler (dakdekker)
+        let player = {
+            x: 100,
+            y: canvas.height - 100,
+            width: 40,
+            height: 60,
+            velocityY: 0,
+            gravity: 0.8,
+            jumpForce: -18,
+            isJumping: false,
+            animationFrame: 0 // Voor lopende animatie
+        };
+
+        // Grond (dak)
+        let groundY = canvas.height - 50;
+        let groundSpeed = 5;
+
+        // Obstakels en items
+        let obstacles = [];
+        let items = [];
+        let obstacleSpawnRate = 100; // Frames tussen spawns
+        let frameCount = 0;
+
+        // Achtergrond (parallax)
+        let bgClouds = []; // Wolken voor parallax
+        for (let i = 0; i < 5; i++) {
+            bgClouds.push({ x: Math.random() * canvas.width, y: Math.random() * 200 + 50, size: Math.random() * 50 + 50 });
+        }
+
+        // Score en game state
         let score = 0;
-        let highScore = parseInt(localStorage.getItem('highScore')) || 0;
-        let fixedRoofs = 0; // Aantal gerepareerde daken in de huidige sessie
-        let totalFixedRoofs = parseInt(localStorage.getItem('totalFixedRoofs')) || 0; // Totale gerepareerde daken over alle sessies
-        let lives = 3;
-        let gameState = 'playing';
-        let cameraY = 0;
-        let shieldCount = 0; // Aantal schildjes
-        let shieldBlinkTimer = 0;
-        let repairEffect = [];
-        let boostEffect = [];
-        let fireworkEffect = [];
-        let multiplier = 1; // Tijdelijke multiplier (bijv. bij dakreparaties)
-        let baseMultiplier = 1; // Permanente basismultiplier gebaseerd op level
-        let multiplierTimer = 0;
-        let invincibilityTimer = 0; // Voor onkwetsbaarheid bij Manager-beloning
+        let highScore = 0;
+        let gameOver = false;
+        let speed = 5; // Basis snelheid, verhoogt over tijd
 
-        // Levelsysteem variabelen
-        let level = 1;
-        let levelTitle = "Dakdekker";
-        let previousLevel = 1; // Om te checken of we een nieuw level hebben bereikt
-        let showLevelPopup = false;
-        let levelPopupTimer = 0;
-
-        // Schildlimiet
-        const maxShields = 5;
-
-        // Canvas en initiële setup
-        function setup() {
-            createCanvas(400, 600);
-            character = {
-                x: width / 2,
-                y: height / 2, // Start in het midden
-                size: 60,
-                velocity: 0,
-                hasBoost: false
+        // Genereer obstakel (schoorsteen of gat)
+        function generateObstacle() {
+            let type = Math.random() > 0.5 ? 'chimney' : 'gap';
+            let obs = {
+                x: canvas.width,
+                y: groundY - (type === 'chimney' ? 60 : 0),
+                width: type === 'chimney' ? 40 : 80,
+                height: type === 'chimney' ? 60 : 20, // Gat is laag
+                type: type
             };
-            updateLevel(); // Bereken initieel level en spronghoogte
-            generateInitialPlatforms();
-            setTimeout(hidePopup, 5000);
-            // Start achtergrondmuziek
-            document.getElementById('bgMusic').play();
+            obstacles.push(obs);
         }
 
-        // Hoofdgame-loop
-        function draw() {
-            drawBackground();
-            if (gameState === 'playing') {
-                updateMusic();
-                updateCharacter();
-                updatePlatforms();
-                checkCollisions();
-                updateCamera();
-                updateShield();
-                updateMultiplier();
-                updateInvincibility();
-                updateLevel(); // Controleer of we een nieuw level hebben bereikt
-                drawLevelPopup(); // Toon level-up pop-up als nodig
-                drawPlatforms();
-                drawFireworks();
-                drawCharacter();
-                drawScore();
-            } else if (gameState === 'gameOver') {
-                drawGameOverScreen();
-            }
+        // Genereer item (dakpan)
+        function generateItem() {
+            let item = {
+                x: canvas.width + Math.random() * 200,
+                y: groundY - 80 - Math.random() * 50,
+                size: 20,
+                collected: false
+            };
+            items.push(item);
         }
 
-        // Achtergrond tekenen met level-specifieke veranderingen
+        // Teken achtergrond met parallax
         function drawBackground() {
-            let red, green, blue;
+            // Gradient lucht
+            let gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, WHITE);
+            gradient.addColorStop(1, LIGHT_GRAY);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Achtergrondkleur gebaseerd op level
-            if (level === 1) { // Dakdekker: Heldere dag
-                red = 135;
-                green = 206;
-                blue = 235;
-            } else if (level === 2) { // Voorman: Lichte bewolking
-                red = 150;
-                green = 190;
-                blue = 220;
-            } else if (level === 3) { // Uitvoerder: Zonsondergang
-                red = 255;
-                green = 165;
-                blue = 0;
-            } else if (level === 4) { // Projectleider: Schemering
-                red = 147;
-                green = 112;
-                blue = 219;
-            } else if (level === 5) { // Manager: Nacht
-                red = 25;
-                green = 25;
-                blue = 112;
-            } else if (level === 6) { // Directeur: Gouden zonsopgang
-                red = 255;
-                green = 215;
-                blue = 0;
+            // Wolken (parallax: beweeg langzamer)
+            bgClouds.forEach(cloud => {
+                ctx.fillStyle = WHITE;
+                ctx.beginPath();
+                ctx.arc(cloud.x, cloud.y, cloud.size / 2, 0, Math.PI * 2);
+                ctx.arc(cloud.x + cloud.size / 3, cloud.y - cloud.size / 4, cloud.size / 3, 0, Math.PI * 2);
+                ctx.arc(cloud.x - cloud.size / 3, cloud.y - cloud.size / 4, cloud.size / 3, 0, Math.PI * 2);
+                ctx.fill();
+                cloud.x -= speed / 2; // Parallax snelheid
+                if (cloud.x < -cloud.size) cloud.x = canvas.width + cloud.size;
+            });
+        }
+
+        // Teken grond (dak met pannenpatroon)
+        function drawGround() {
+            ctx.fillStyle = LIGHT_GRAY;
+            ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+            // Pannenpatroon
+            for (let x = 0; x < canvas.width; x += 20) {
+                ctx.fillStyle = '#B0B0B0'; // Donkerder grijs voor patroon
+                ctx.fillRect(x, groundY, 18, 5);
             }
+        }
 
-            background(red, green, blue);
+        // Teken speler met animatie
+        function drawPlayer() {
+            // Body (oranje overall)
+            ctx.fillStyle = ORANGE;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            // Helm (wit)
+            ctx.fillStyle = WHITE;
+            ctx.fillRect(player.x + 5, player.y - 10, player.width - 10, 10);
+            // Animatie: Bewegende benen/armen
+            player.animationFrame += 0.2;
+            let legOffset = Math.sin(player.animationFrame) * 5;
+            ctx.fillStyle = ORANGE;
+            ctx.fillRect(player.x + 5, player.y + player.height - 10, 10, 10 + legOffset); // Linkerbeen
+            ctx.fillRect(player.x + player.width - 15, player.y + player.height - 10, 10, 10 - legOffset); // Rechterbeen
+            // Shadow voor diepte
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = 5;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+        }
 
-            // Zon of maan gebaseerd op level
-            if (level <= 4) {
-                fill(255, 215, 0); // Zon
-                ellipse(50, 50, 50, 50);
-            } else if (level === 5) {
-                fill(200); // Maan
-                ellipse(50, 50, 40, 40);
-                fill(150);
-                ellipse(60, 55, 20, 20); // Krater
-            } else {
-                fill(255, 215, 0); // Grote gouden zon
-                ellipse(50, 50, 70, 70);
-            }
-
-            // Wolken
-            fill(255);
-            noStroke();
-            if (level <= 2) { // Wolken alleen bij Dakdekker en Voorman
-                ellipse(100, 100, 60, 40);
-                ellipse(130, 90, 70, 50);
-                ellipse(300, 150, 80, 50);
-                ellipse(270, 140, 60, 40);
-            } else if (level === 5) { // Kleine sterren bij Manager (nacht)
-                for (let i = 0; i < 5; i++) {
-                    fill(255, random(100, 255));
-                    ellipse(random(width), random(height), 3, 3);
+        // Teken obstakels
+        function drawObstacles() {
+            obstacles.forEach(obs => {
+                if (obs.type === 'chimney') {
+                    ctx.fillStyle = LIGHT_GRAY;
+                    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                    // Schoorsteen top
+                    ctx.fillStyle = '#A0A0A0';
+                    ctx.fillRect(obs.x - 5, obs.y - 10, obs.width + 10, 10);
+                } else { // Gap
+                    ctx.fillStyle = '#333333'; // Donker gat
+                    ctx.fillRect(obs.x, groundY, obs.width, obs.height);
                 }
-            }
+            });
         }
 
-        // Vuurwerk tekenen
-        function drawFireworks() {
-            if (floor(score / 1000) > floor((score - 0.1) / 1000)) {
-                for (let i = 0; i < 10; i++) {
-                    fireworkEffect.push({
-                        x: random(width),
-                        y: height,
-                        vx: random(-2, 2),
-                        vy: random(-5, -2),
-                        color: [random(255), random(255), random(255)],
-                        timer: 60
-                    });
+        // Teken items (dakpannen)
+        function drawItems() {
+            items.forEach(item => {
+                if (!item.collected) {
+                    ctx.fillStyle = ORANGE;
+                    ctx.beginPath();
+                    ctx.moveTo(item.x, item.y);
+                    ctx.lineTo(item.x + item.size, item.y);
+                    ctx.lineTo(item.x + item.size / 2, item.y - item.size);
+                    ctx.closePath();
+                    ctx.fill();
                 }
-            }
-            fireworkEffect = fireworkEffect.filter(f => f.timer > 0);
-            for (let f of fireworkEffect) {
-                f.x += f.vx;
-                f.y += f.vy;
-                f.timer--;
-                fill(f.color[0], f.color[1], f.color[2], f.timer * 4);
-                ellipse(f.x, f.y - cameraY, 10, 10);
-            }
+            });
         }
 
-        // Muziek bijwerken
-        function updateMusic() {
-            let bgMusic = document.getElementById('bgMusic');
-            let bgMusicIntense = document.getElementById('bgMusicIntense');
-            if (score > 500 && bgMusicIntense.paused) {
-                bgMusic.pause();
-                bgMusicIntense.play();
-            } else if (score <= 500 && bgMusic.paused) {
-                bgMusicIntense.pause();
-                bgMusic.play();
-            }
-        }
+        // Update spel
+        function update() {
+            if (gameOver) return;
 
-        // Karakter bijwerken
-        function updateCharacter() {
-            character.velocity += gravity;
-            character.y += character.velocity;
+            frameCount++;
+            speed = 5 + score / 1000; // Verhoog snelheid over tijd
 
-            if (character.y - cameraY > height) {
-                lives--;
-                if (lives <= 0) {
-                    gameState = 'gameOver';
-                    if (score > highScore) {
-                        highScore = score;
-                        localStorage.setItem('highScore', highScore);
-                    }
-                } else {
-                    character.x = width / 2;
-                    character.y = height / 2;
-                    character.velocity = 0;
-                    cameraY = 0;
-                    generateInitialPlatforms();
-                }
+            // Speler fysica
+            player.velocityY += player.gravity;
+            player.y += player.velocityY;
+            if (player.y + player.height >= groundY) {
+                player.y = groundY - player.height;
+                player.velocityY = 0;
+                player.isJumping = false;
             }
 
-            if (keyIsDown(LEFT_ARROW) || (touches.length > 0 && touches[0].x < width / 2)) {
-                character.x -= 5;
-            }
-            if (keyIsDown(RIGHT_ARROW) || (touches.length > 0 && touches[0].x >= width / 2)) {
-                character.x += 5;
-            }
+            // Beweeg obstakels en items links
+            obstacles.forEach(obs => obs.x -= speed);
+            items.forEach(item => item.x -= speed);
 
-            if (character.x < 0) character.x = width;
-            else if (character.x > width) character.x = 0;
-        }
+            // Verwijder off-screen
+            obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
+            items = items.filter(item => item.x + item.size > 0);
 
-        // Platforms bijwerken
-        function updatePlatforms() {
-            let speed = min(1.5 + score / 1000, 3);
-            for (let platform of platforms) platform.y += speed;
-            platforms = platforms.filter(p => p.y - cameraY < height);
-            let maxPlatforms = max(3, 6 - floor(score / 500)); // Minder platforms
-            while (platforms.length < maxPlatforms) generatePlatform();
-            score += 0.1 * baseMultiplier; // Pas score toe met basismultiplier
-        }
-
-        // Camera bijwerken
-        function updateCamera() {
-            if (character.y - cameraY < 200) {
-                cameraY -= (200 - (character.y - cameraY)) * 0.1;
-            }
-        }
-
-        // Schild bijwerken (knipperen)
-        function updateShield() {
-            if (shieldCount > 0 && shieldBlinkTimer > 0) {
-                shieldBlinkTimer--;
-            }
-        }
-
-        // Multiplier bijwerken
-        function updateMultiplier() {
-            if (multiplierTimer > 0) {
-                multiplierTimer--;
-                if (multiplierTimer <= 0) multiplier = 1;
-            }
-        }
-
-        // Onkwetsbaarheid bijwerken (voor Manager-beloning)
-        function updateInvincibility() {
-            if (invincibilityTimer > 0) {
-                invincibilityTimer--;
-            }
-        }
-
-        // Level bijwerken
-        function updateLevel() {
-            previousLevel = level;
-
-            // Bepaal level, titel, spronghoogte en basismultiplier
-            if (totalFixedRoofs >= 200) {
-                level = 6;
-                levelTitle = "Directeur";
-                jumpSpeed = -24; // +100% spronghoogte (basis -12)
-                baseMultiplier = 2.0;
-            } else if (totalFixedRoofs >= 100) {
-                level = 5;
-                levelTitle = "Manager";
-                jumpSpeed = -20; // +67% spronghoogte
-                baseMultiplier = 1.8;
-            } else if (totalFixedRoofs >= 50) {
-                level = 4;
-                levelTitle = "Projectleider";
-                jumpSpeed = -18; // +50% spronghoogte
-                baseMultiplier = 1.6;
-            } else if (totalFixedRoofs >= 25) {
-                level = 3;
-                levelTitle = "Uitvoerder";
-                jumpSpeed = -16; // +33% spronghoogte
-                baseMultiplier = 1.4;
-            } else if (totalFixedRoofs >= 10) {
-                level = 2;
-                levelTitle = "Voorman";
-                jumpSpeed = -14; // +17% spronghoogte
-                baseMultiplier = 1.2;
-            } else {
-                level = 1;
-                levelTitle = "Dakdekker";
-                jumpSpeed = -12; // Basis spronghoogte
-                baseMultiplier = 1.0;
+            // Spawn nieuwe
+            if (frameCount % obstacleSpawnRate === 0) {
+                generateObstacle();
+                if (Math.random() > 0.5) generateItem();
+                obstacleSpawnRate = Math.max(50, obstacleSpawnRate - 1); // Moeilijker over tijd
             }
 
-            // Als we een nieuw level hebben bereikt, toon een pop-up en geef een beloning
-            if (level > previousLevel) {
-                showLevelPopup = true;
-                levelPopupTimer = 120; // 2 seconden (60 fps)
-                document.getElementById('levelUpSound').play();
-
-                // Beloningen per level
-                if (level === 2) { // Voorman
-                    lives = min(lives + 1, 5); // +1 leven, max 5
-                } else if (level === 3) { // Uitvoerder
-                    multiplier = 2;
-                    multiplierTimer = 600; // 10 seconden
-                } else if (level === 4) { // Projectleider
-                    lives = min(lives + 2, 5); // +2 levens, max 5
-                } else if (level === 5) { // Manager
-                    invincibilityTimer = 300; // 5 seconden onkwetsbaarheid
-                } else if (level === 6) { // Directeur
-                    baseMultiplier = 2; // Permanente 2x multiplier
-                }
-            }
-        }
-
-        // Level-up pop-up tekenen
-        function drawLevelPopup() {
-            if (showLevelPopup && levelPopupTimer > 0) {
-                fill(255, 165, 0, 200);
-                rectMode(CENTER);
-                rect(width / 2, height / 2, 300, 100, 20);
-                fill(255);
-                textAlign(CENTER);
-                textSize(20);
-                text(`Gefeliciteerd! Je bent nu ${levelTitle}!`, width / 2, height / 2 - 10);
-                text(`Je springt nu hoger!`, width / 2, height / 2 + 20);
-                levelPopupTimer--;
-                if (levelPopupTimer <= 0) {
-                    showLevelPopup = false;
-                }
-            }
-        }
-
-        // Botsingen controleren
-        function checkCollisions() {
-            for (let platform of platforms) {
-                // Botsing met platform
-                if (
-                    character.x > platform.x &&
-                    character.x < platform.x + platform.width &&
-                    character.y + character.size / 2 > platform.y &&
-                    character.y + character.size / 2 < platform.y + platform.height &&
-                    character.velocity > 0
-                ) {
-                    if (platform.hasBat && shieldCount === 0 && invincibilityTimer === 0) {
-                        lives--;
-                        if (lives <= 0) {
-                            gameState = 'gameOver';
-                            if (score > highScore) {
-                                highScore = score;
-                                localStorage.setItem('highScore', highScore);
-                            }
-                        } else {
-                            character.x = width / 2;
-                            character.y = height / 2;
-                            character.velocity = 0;
-                            cameraY = 0;
-                            generateInitialPlatforms();
-                        }
-                    } else {
-                        character.velocity = character.hasBoost ? boostJumpSpeed : jumpSpeed;
-                        character.hasBoost = false;
-                        if (platform.isBroken) {
-                            platform.isBroken = false;
-                            fixedRoofs++;
-                            totalFixedRoofs++;
-                            localStorage.setItem('totalFixedRoofs', totalFixedRoofs); // Opslaan in localStorage
-                            score += 50 * multiplier * baseMultiplier; // Pas score toe met beide multipliers
-                            multiplier = min(multiplier + 1, 3);
-                            multiplierTimer = 120; // 2 seconden
-                            repairEffect.push({ x: platform.x + platform.width / 2, y: platform.y, timer: 30 });
-                            document.getElementById('repairSound').play();
-                        } else {
-                            score += 10 * baseMultiplier; // Pas score toe met basismultiplier
-                        }
-                        if (platform.hasBat && shieldCount > 0) {
-                            shieldCount--;
-                            shieldBlinkTimer = 60; // Knippert 1 seconde
-                        }
-                        document.getElementById('jumpSound').play();
+            // Botsing detectie
+            obstacles.forEach(obs => {
+                if (player.x + player.width > obs.x && player.x < obs.x + obs.width &&
+                    player.y + player.height > obs.y && player.y < obs.y + obs.height) {
+                    if (obs.type === 'gap' && player.y + player.height > groundY) {
+                        gameOver = true;
+                    } else if (obs.type === 'chimney') {
+                        gameOver = true;
                     }
                 }
-                // Botsing met ladder
-                if (
-                    platform.hasPowerUp &&
-                    character.x + character.size / 2 > platform.x + platform.width / 2 - 10 &&
-                    character.x - character.size / 2 < platform.x + platform.width / 2 + 10 &&
-                    character.y + character.size / 2 > platform.y - 40 &&
-                    character.y - character.size / 2 < platform.y
-                ) {
-                    character.hasBoost = true;
-                    platform.hasPowerUp = false;
+            });
+
+            // Verzamel items
+            items.forEach(item => {
+                if (!item.collected && player.x + player.width > item.x && player.x < item.x + item.size &&
+                    player.y + player.height > item.y && player.y < item.y + item.size) {
+                    item.collected = true;
+                    score += 50;
+                    // Particle effect (eenvoudig: oranje vonken)
                     for (let i = 0; i < 5; i++) {
-                        boostEffect.push({ x: character.x, y: character.y, timer: 20 });
-                    }
-                    document.getElementById('boostSound').play();
-                }
-                // Botsing met schild
-                if (
-                    platform.hasShield &&
-                    character.x + character.size / 2 > platform.x + platform.width / 2 - 10 &&
-                    character.x - character.size / 2 < platform.x + platform.width / 2 + 10 &&
-                    character.y + character.size / 2 > platform.y - 40 &&
-                    character.y - character.size / 2 < platform.y
-                ) {
-                    if (shieldCount < maxShields) {
-                        shieldCount++;
-                        platform.hasShield = false;
-                        document.getElementById('bonusSound').play();
+                        // Zou particles kunnen toevoegen, maar voor simplicity skip detailed particles
                     }
                 }
-            }
-        }
-
-        // Karakter tekenen
-        function drawCharacter() {
-            push();
-            translate(character.x, character.y - cameraY);
-            scale(0.7);
-
-            // Oranje "V"
-            fill(255, 165, 0);
-            textSize(80);
-            textStyle(BOLD);
-            textAlign(CENTER, CENTER);
-            text('V', 0, -10);
-
-            // Witte ogen met zwarte pupillen
-            fill(255);
-            ellipse(-15, -20, 20, 20);
-            ellipse(15, -20, 20, 20);
-            fill(0);
-            ellipse(-15, -20, 8, 8);
-            ellipse(15, -20, 8, 8);
-
-            // Zwevende armen
-            fill(255);
-            if (character.velocity < 0) {
-                arc(-40, 0, 40, 40, PI / 4, PI, CHORD);
-                arc(40, 0, 40, 40, 0, 3 * PI / 4, CHORD);
-            } else {
-                ellipse(-40, 0, 20, 20);
-                ellipse(40, 0, 20, 20);
-            }
-
-            pop();
-
-            // Boost effect
-            if (character.hasBoost) {
-                fill(0, 0, 255, 100);
-                ellipse(character.x, character.y - cameraY, character.size + 10, character.size + 10);
-            }
-            // Schild effect met knipperen
-            if (shieldCount > 0) {
-                if (shieldBlinkTimer == 0 || shieldBlinkTimer > 60 || (shieldBlinkTimer % 20 < 10)) {
-                    fill(0, 255, 0, 100);
-                    ellipse(character.x, character.y - cameraY, character.size + 20, character.size + 20);
-                }
-            }
-            // Onkwetsbaarheidseffect
-            if (invincibilityTimer > 0) {
-                fill(255, 215, 0, 100);
-                ellipse(character.x, character.y - cameraY, character.size + 30, character.size + 30);
-            }
-
-            // Boost-effect (vonken)
-            for (let effect of boostEffect) {
-                push();
-                translate(effect.x, effect.y - cameraY);
-                fill(0, 0, 255, effect.timer * 12);
-                ellipse(0, 0, 5, 5);
-                pop();
-            }
-        }
-
-        // Platforms tekenen
-        function drawPlatforms() {
-            for (let platform of platforms) {
-                push();
-                translate(0, -cameraY);
-                if (platform.isBroken) {
-                    fill(139, 69, 19);
-                    noStroke();
-                    beginShape();
-                    vertex(platform.x, platform.y + platform.height);
-                    vertex(platform.x + platform.width / 4, platform.y + platform.height / 2);
-                    vertex(platform.x + platform.width / 2, platform.y + platform.height);
-                    vertex(platform.x + 3 * platform.width / 4, platform.y + platform.height / 2);
-                    vertex(platform.x + platform.width, platform.y + platform.height);
-                    endShape(CLOSE);
-                    fill(0, 191, 255);
-                    ellipse(platform.x + platform.width / 2, platform.y + platform.height + 10, 10, 15);
-                } else {
-                    fill(139, 69, 19);
-                    noStroke();
-                    beginShape();
-                    vertex(platform.x, platform.y + platform.height);
-                    vertex(platform.x + platform.width / 2, platform.y);
-                    vertex(platform.x + platform.width, platform.y + platform.height);
-                    endShape(CLOSE);
-                }
-
-                // Power-ups
-                if (platform.hasPowerUp) {
-                    drawPowerUp(platform.x + platform.width / 2, platform.y - 20); // Ladder
-                }
-                if (platform.hasShield) {
-                    drawShield(platform.x + platform.width / 2, platform.y - 20); // Schild
-                }
-
-                // Vleermuis
-                if (platform.hasBat) {
-                    let batX = platform.x + platform.width / 2 + sin(frameCount * 0.05) * 30;
-                    fill(0);
-                    ellipse(batX, platform.y - 10, 20, 10);
-                    triangle(batX - 10, platform.y - 15, batX - 5, platform.y - 20, batX, platform.y - 15);
-                    triangle(batX + 10, platform.y - 15, batX + 5, platform.y - 20, batX, platform.y - 15);
-                }
-
-                pop();
-            }
-
-            // Reparatie-effect
-            for (let effect of repairEffect) {
-                push();
-                translate(0, -cameraY);
-                fill(255, 255, 255, effect.timer * 8);
-                ellipse(effect.x, effect.y, 30, 30);
-                pop();
-            }
-        }
-
-        // Power-up tekenen (realistische ladder)
-        function drawPowerUp(x, y) {
-            push();
-            translate(x, y);
-            // Zijbalken (donkergrijs, metallic)
-            fill(105, 105, 105); // Donkergrijs
-            rect(-8, -40, 6, 40, 2); // Linker zijbalk
-            rect(2, -40, 6, 40, 2);  // Rechter zijbalk
-            // Schaduw voor diepte
-            fill(0, 0, 0, 50);
-            rect(-8, -40, 2, 40); // Schaduw links
-            rect(6, -40, 2, 40);  // Schaduw rechts
-            // Sporten (lichtgrijs, stevig)
-            fill(169, 169, 169); // Lichtgrijs
-            for (let i = 0; i < 5; i++) {
-                rect(-8, -35 + i * 8, 16, 3, 1); // Sporten met lichte afronding
-                // Schaduw op sporten
-                fill(0, 0, 0, 30);
-                rect(-8, -35 + i * 8 + 2, 16, 1);
-            }
-            pop();
-        }
-
-        // Schild tekenen (groen ridderschild)
-        function drawShield(x, y) {
-            push();
-            translate(x, y);
-            fill(0, 255, 0);
-            beginShape();
-            vertex(-10, -20);
-            vertex(10, -20);
-            vertex(5, 0);
-            vertex(-5, 0);
-            endShape(CLOSE);
-            pop();
-        }
-
-        // Score tekenen
-        function drawScore() {
-            fill(0);
-            textSize(18);
-            textAlign(LEFT);
-            text('Score: ' + floor(score), 10, 30);
-            text('Daken gerepareerd: ' + fixedRoofs, 10, 50);
-            text('Totale daken: ' + totalFixedRoofs, 10, 70);
-            text('Levens: ' + lives, 10, 90);
-            text('Schilden: ' + shieldCount, 10, 110);
-            text('Level: ' + levelTitle, 10, 130);
-            text('Basismultiplier: x' + baseMultiplier.toFixed(1), 10, 150);
-            if (multiplier > 1) text('Tijdelijke multiplier: x' + multiplier, 10, 170);
-            textAlign(RIGHT);
-            text('Highscore: ' + floor(highScore), width - 10, 30);
-        }
-
-        // Game-over-scherm
-        function drawGameOverScreen() {
-            textAlign(CENTER);
-            fill(0);
-            textSize(32);
-            text('Spel Afgelopen', width / 2, height / 2 - 50);
-            textSize(24);
-            text('Score: ' + floor(score), width / 2, height / 2);
-            textSize(18);
-            text('Klik of tik om te herstarten', width / 2, height / 2 + 50);
-        }
-
-        // Platforms genereren
-        function generateInitialPlatforms() {
-            platforms = [];
-            let startY = height / 2 + 50;
-            platforms.push({
-                x: width / 2 - 50,
-                y: startY,
-                width: 100,
-                height: 15,
-                hasPowerUp: false,
-                hasShield: false,
-                isBroken: false,
-                hasBat: false
             });
-            for (let i = 1; i < 6; i++) {
-                let y = startY - i * (120 + min(score / 15, 80)) + random(-30, 30); // Max afstand 200
-                let hasPowerUp = random() < 0.1;
-                let hasShield = !hasPowerUp && score > 300 && random() < 0.1;
-                let isBroken = !hasPowerUp && !hasShield && random() < 0.1;
-                let hasBat = !hasPowerUp && !hasShield && !isBroken && score > 300 && random() < 0.1;
-                platforms.push({
-                    x: random(width - 100),
-                    y: y,
-                    width: 100,
-                    height: 15,
-                    hasPowerUp: hasPowerUp,
-                    hasShield: hasShield,
-                    isBroken: isBroken,
-                    hasBat: hasBat
-                });
-                if (hasBat) {
-                    platforms.push({
-                        x: random(width - 100),
-                        y: y - random(150, 200), // Dichtbij platform zonder vleermuis
-                        width: 100,
-                        height: 15,
-                        hasPowerUp: false,
-                        hasShield: false,
-                        isBroken: false,
-                        hasBat: false
-                    });
-                }
+
+            // Score update
+            score += 1;
+            document.getElementById('score').innerText = 'Score: ' + score;
+        }
+
+        // Teken alles
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+            drawGround();
+            drawObstacles();
+            drawItems();
+            drawPlayer();
+            ctx.shadowColor = 'transparent'; // Reset shadow
+        }
+
+        // Game loop
+        function gameLoop() {
+            update();
+            draw();
+            if (gameOver) {
+                document.getElementById('final-score').innerText = score;
+                if (score > highScore) highScore = score;
+                document.getElementById('high-score').innerText = highScore;
+                document.getElementById('game-over').style.display = 'block';
             }
-            character.y = startY - character.size / 2;
+            requestAnimationFrame(gameLoop);
         }
 
-        function generatePlatform() {
-            let highestPlatform = min(platforms.map(p => p.y));
-            let y = highestPlatform - (120 + min(score / 15, 80)) + random(-30, 30); // Max afstand 200
-            let hasPowerUp = random() < 0.1;
-            let hasShield = !hasPowerUp && score > 300 && random() < 0.1;
-            let isBroken = !hasPowerUp && !hasShield && random() < 0.1;
-            let hasBat = !hasPowerUp && !hasShield && !isBroken && score > 300 && random() < 0.1;
-            platforms.push({
-                x: random(width - 100),
-                y: y,
-                width: 100,
-                height: 15,
-                hasPowerUp: hasPowerUp,
-                hasShield: hasShield,
-                isBroken: isBroken,
-                hasBat: hasBat
-            });
-            if (hasBat) {
-                platforms.push({
-                    x: random(width - 100),
-                    y: y - random(150, 200), // Dichtbij platform zonder vleermuis
-                    width: 100,
-                    height: 15,
-                    hasPowerUp: false,
-                    hasShield: false,
-                    isBroken: false,
-                    hasBat: false
-                });
+        // Event listeners
+        window.addEventListener('keydown', e => {
+            if (e.key === ' ' && !player.isJumping) {
+                player.velocityY = player.jumpForce;
+                player.isJumping = true;
             }
-        }
+            if (e.key === ' ' && gameOver) resetGame();
+        });
 
-        // Bediening
-        function mousePressed() {
-            if (gameState === 'gameOver') resetGame();
-        }
-
-        function touchStarted() {
-            if (gameState === 'gameOver') resetGame();
-            return false;
-        }
+        // Touch voor mobiel (tik om te springen)
+        canvas.addEventListener('touchstart', () => {
+            if (!player.isJumping) {
+                player.velocityY = player.jumpForce;
+                player.isJumping = true;
+            }
+            if (gameOver) resetGame();
+        });
 
         // Reset game
         function resetGame() {
-            gameState = 'playing';
+            player.y = groundY - player.height;
+            player.velocityY = 0;
+            player.isJumping = false;
+            obstacles = [];
+            items = [];
+            frameCount = 0;
             score = 0;
-            fixedRoofs = 0; // Reset alleen de sessie-teller
-            lives = 3;
-            shieldCount = 0;
-            character.x = width / 2;
-            character.y = height / 2;
-            character.velocity = 0;
-            character.hasBoost = false;
-            shieldBlinkTimer = 0;
-            multiplier = 1;
-            baseMultiplier = 1;
-            multiplierTimer = 0;
-            invincibilityTimer = 0;
-            cameraY = 0;
-            repairEffect = [];
-            boostEffect = [];
-            fireworkEffect = [];
-            generateInitialPlatforms();
-            updateLevel(); // Reset level-specifieke instellingen
-            document.getElementById('bgMusicIntense').pause();
-            document.getElementById('bgMusic').play();
+            speed = 5;
+            obstacleSpawnRate = 100;
+            gameOver = false;
+            document.getElementById('game-over').style.display = 'none';
         }
 
-        // Popup verbergen
-        function hidePopup() {
-            document.getElementById('gamePopup').style.display = 'none';
-        }
+        // Start game
+        resetGame();
+        gameLoop();
     </script>
 </body>
 </html>
