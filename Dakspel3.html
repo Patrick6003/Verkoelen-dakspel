@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dak Runner - Verkoelen Dakspecialisten Weert</title>
     <style>
-        body { margin: 0; overflow: hidden; background: linear-gradient(#D3D3D3, #FFFFFF); } /* Huisstijl: Licht grijs naar wit */
-        canvas { display: block; margin: 0 auto; border: 1px solid #FF6600; } /* Oranje border */
-        #score { position: absolute; top: 10px; left: 10px; font-family: Arial; font-size: 24px; color: #FF6600; } /* Oranje tekst */
+        body { margin: 0; overflow: hidden; background: linear-gradient(#D3D3D3, #FFFFFF); }
+        canvas { display: block; margin: 0 auto; border: 1px solid #FF6600; }
+        #score { position: absolute; top: 10px; left: 10px; font-family: Arial; font-size: 24px; color: #FF6600; }
         #game-over { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: Arial; font-size: 32px; color: #FF6600; display: none; text-align: center; background: rgba(255, 255, 255, 0.8); padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #D3D3D3; }
     </style>
 </head>
@@ -25,13 +25,15 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = 800; // Breder voor runner feel
+        canvas.width = 800;
         canvas.height = 600;
 
         // Huisstijl kleuren
         const ORANGE = '#FF6600';
         const LIGHT_GRAY = '#D3D3D3';
         const WHITE = '#FFFFFF';
+        const DARK_GRAY = '#A9A9A9';
+        const BRICK_RED = '#CD853F';
 
         // Speler (dakdekker)
         let player = {
@@ -43,45 +45,45 @@
             gravity: 0.8,
             jumpForce: -18,
             isJumping: false,
-            animationFrame: 0 // Voor lopende animatie
+            animationFrame: 0
         };
 
-        // Grond (dak)
+        // Grond
         let groundY = canvas.height - 50;
-        let groundSpeed = 5;
+        let groundOffset = 0; // Voor scrollend patroon
+        let speed = 5;
 
         // Obstakels en items
         let obstacles = [];
         let items = [];
-        let obstacleSpawnRate = 100; // Frames tussen spawns
+        let obstacleSpawnRate = 100;
         let frameCount = 0;
 
-        // Achtergrond (parallax)
-        let bgClouds = []; // Wolken voor parallax
+        // Achtergrond
+        let bgClouds = [];
         for (let i = 0; i < 5; i++) {
             bgClouds.push({ x: Math.random() * canvas.width, y: Math.random() * 200 + 50, size: Math.random() * 50 + 50 });
         }
 
-        // Score en game state
+        // Score en state
         let score = 0;
         let highScore = 0;
         let gameOver = false;
-        let speed = 5; // Basis snelheid, verhoogt over tijd
 
-        // Genereer obstakel (schoorsteen of gat)
+        // Genereer obstakel
         function generateObstacle() {
             let type = Math.random() > 0.5 ? 'chimney' : 'gap';
             let obs = {
                 x: canvas.width,
                 y: groundY - (type === 'chimney' ? 60 : 0),
                 width: type === 'chimney' ? 40 : 80,
-                height: type === 'chimney' ? 60 : 20, // Gat is laag
+                height: type === 'chimney' ? 60 : 20,
                 type: type
             };
             obstacles.push(obs);
         }
 
-        // Genereer item (dakpan)
+        // Genereer item
         function generateItem() {
             let item = {
                 x: canvas.width + Math.random() * 200,
@@ -92,16 +94,14 @@
             items.push(item);
         }
 
-        // Teken achtergrond met parallax
+        // Teken achtergrond
         function drawBackground() {
-            // Gradient lucht
             let gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
             gradient.addColorStop(0, WHITE);
             gradient.addColorStop(1, LIGHT_GRAY);
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Wolken (parallax: beweeg langzamer)
             bgClouds.forEach(cloud => {
                 ctx.fillStyle = WHITE;
                 ctx.beginPath();
@@ -109,82 +109,161 @@
                 ctx.arc(cloud.x + cloud.size / 3, cloud.y - cloud.size / 4, cloud.size / 3, 0, Math.PI * 2);
                 ctx.arc(cloud.x - cloud.size / 3, cloud.y - cloud.size / 4, cloud.size / 3, 0, Math.PI * 2);
                 ctx.fill();
-                cloud.x -= speed / 2; // Parallax snelheid
+                cloud.x -= speed / 2;
                 if (cloud.x < -cloud.size) cloud.x = canvas.width + cloud.size;
             });
         }
 
-        // Teken grond (dak met pannenpatroon)
+        // Teken grond met dakpannen-motief en gaps
         function drawGround() {
-            ctx.fillStyle = LIGHT_GRAY;
+            ctx.fillStyle = DARK_GRAY;
             ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
-            // Pannenpatroon
-            for (let x = 0; x < canvas.width; x += 20) {
-                ctx.fillStyle = '#B0B0B0'; // Donkerder grijs voor patroon
-                ctx.fillRect(x, groundY, 18, 5);
+
+            // Dakpannen-motief (scrollend)
+            groundOffset -= speed;
+            if (groundOffset <= -40) groundOffset = 0; // Reset offset
+            for (let x = groundOffset; x < canvas.width + 40; x += 40) {
+                for (let row = 0; row < 3; row++) { // Meerdere rijen pannen
+                    let panY = groundY - row * 15;
+                    let panOffset = (row % 2) * 20; // Verspringend patroon
+                    ctx.fillStyle = ORANGE;
+                    ctx.fillRect(x + panOffset, panY, 35, 15);
+                    // Schaduw voor overlap
+                    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                    ctx.fillRect(x + panOffset + 2, panY + 2, 35, 5);
+                }
             }
+
+            // Gaten: Zwart tot onder scherm
+            obstacles.forEach(obs => {
+                if (obs.type === 'gap' && obs.x + obs.width > 0 && obs.x < canvas.width) {
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(obs.x, groundY - 20, obs.width, canvas.height - (groundY - 20));
+                }
+            });
         }
 
-        // Teken speler met animatie
+        // Teken speler als rennende dakdekker (Mario-achtig)
         function drawPlayer() {
-            // Body (oranje overall)
-            ctx.fillStyle = ORANGE;
-            ctx.fillRect(player.x, player.y, player.width, player.height);
-            // Helm (wit)
-            ctx.fillStyle = WHITE;
-            ctx.fillRect(player.x + 5, player.y - 10, player.width - 10, 10);
-            // Animatie: Bewegende benen/armen
-            player.animationFrame += 0.2;
-            let legOffset = Math.sin(player.animationFrame) * 5;
-            ctx.fillStyle = ORANGE;
-            ctx.fillRect(player.x + 5, player.y + player.height - 10, 10, 10 + legOffset); // Linkerbeen
-            ctx.fillRect(player.x + player.width - 15, player.y + player.height - 10, 10, 10 - legOffset); // Rechterbeen
-            // Shadow voor diepte
+            player.animationFrame += 0.3;
+            let armSwing = Math.sin(player.animationFrame) * 10;
+            let legSwing = Math.sin(player.animationFrame + Math.PI) * 8;
+
+            // Shadow
             ctx.shadowColor = 'rgba(0,0,0,0.3)';
             ctx.shadowBlur = 5;
             ctx.shadowOffsetX = 2;
             ctx.shadowOffsetY = 2;
+
+            // Hoofd (rond met helm)
+            ctx.fillStyle = '#FDBCB4'; // Huidskleur
+            ctx.beginPath();
+            ctx.arc(player.x + player.width / 2, player.y + 10, 12, 0, Math.PI * 2);
+            ctx.fill();
+            // Helm (wit)
+            ctx.fillStyle = WHITE;
+            ctx.beginPath();
+            ctx.arc(player.x + player.width / 2, player.y + 5, 15, 0, Math.PI * 2);
+            ctx.fill();
+            // Ogen
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(player.x + player.width / 2 - 4, player.y + 8, 2, 0, Math.PI * 2);
+            ctx.arc(player.x + player.width / 2 + 4, player.y + 8, 2, 0, Math.PI * 2);
+            ctx.fill();
+            // Snor
+            ctx.fillStyle = '#000';
+            ctx.fillRect(player.x + player.width / 2 - 6, player.y + 15, 12, 3);
+
+            // Lichaam (oranje overall)
+            ctx.fillStyle = ORANGE;
+            ctx.fillRect(player.x + 5, player.y + 20, player.width - 10, 25);
+
+            // Armen (zwaaiend)
+            ctx.fillStyle = ORANGE;
+            // Linkerarm
+            ctx.save();
+            ctx.translate(player.x + 5, player.y + 25);
+            ctx.rotate(armSwing * Math.PI / 180);
+            ctx.fillRect(0, 0, 8, 15);
+            ctx.restore();
+            // Rechterarm
+            ctx.save();
+            ctx.translate(player.x + player.width - 5, player.y + 25);
+            ctx.rotate(-armSwing * Math.PI / 180);
+            ctx.fillRect(-8, 0, 8, 15);
+            ctx.restore();
+
+            // Benen (zwaaiend)
+            // Linkerbeen
+            ctx.fillStyle = ORANGE;
+            ctx.save();
+            ctx.translate(player.x + 10, player.y + 45);
+            ctx.rotate(legSwing * Math.PI / 180);
+            ctx.fillRect(0, 0, 8, 15);
+            ctx.restore();
+            // Rechterbeen
+            ctx.save();
+            ctx.translate(player.x + player.width - 10, player.y + 45);
+            ctx.rotate(-legSwing * Math.PI / 180);
+            ctx.fillRect(0, 0, 8, 15);
+            ctx.restore();
+
+            ctx.shadowColor = 'transparent';
         }
 
         // Teken obstakels
         function drawObstacles() {
             obstacles.forEach(obs => {
                 if (obs.type === 'chimney') {
+                    // Basis
                     ctx.fillStyle = LIGHT_GRAY;
                     ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-                    // Schoorsteen top
-                    ctx.fillStyle = '#A0A0A0';
+                    // Bakstenen motief
+                    for (let by = obs.y; by < obs.y + obs.height; by += 10) {
+                        for (let bx = obs.x; bx < obs.x + obs.width; bx += 8) {
+                            let brickOffset = (Math.floor(by / 10) % 2) * 4;
+                            ctx.fillStyle = BRICK_RED;
+                            ctx.fillRect(bx + brickOffset, by, 8, 8);
+                            // Voeg lijnen toe voor mortel
+                            ctx.strokeStyle = DARK_GRAY;
+                            ctx.lineWidth = 1;
+                            ctx.strokeRect(bx + brickOffset, by, 8, 8);
+                        }
+                    }
+                    // Top
+                    ctx.fillStyle = DARK_GRAY;
                     ctx.fillRect(obs.x - 5, obs.y - 10, obs.width + 10, 10);
-                } else { // Gap
-                    ctx.fillStyle = '#333333'; // Donker gat
-                    ctx.fillRect(obs.x, groundY, obs.width, obs.height);
                 }
             });
         }
 
-        // Teken items (dakpannen)
+        // Teken items (dollar dakpan)
         function drawItems() {
             items.forEach(item => {
                 if (!item.collected) {
+                    // Dakpan basis (overlappende rechthoek)
                     ctx.fillStyle = ORANGE;
-                    ctx.beginPath();
-                    ctx.moveTo(item.x, item.y);
-                    ctx.lineTo(item.x + item.size, item.y);
-                    ctx.lineTo(item.x + item.size / 2, item.y - item.size);
-                    ctx.closePath();
-                    ctx.fill();
+                    ctx.fillRect(item.x, item.y, item.size, item.size / 2);
+                    // Schaduw voor diepte
+                    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                    ctx.fillRect(item.x + 2, item.y + 2, item.size, item.size / 2);
+                    // Dollar symbool
+                    ctx.fillStyle = WHITE;
+                    ctx.font = 'bold 12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('$', item.x + item.size / 2, item.y + item.size / 3 + 4);
                 }
             });
         }
 
-        // Update spel
+        // Update
         function update() {
             if (gameOver) return;
 
             frameCount++;
-            speed = 5 + score / 1000; // Verhoog snelheid over tijd
+            speed = 5 + score / 1000;
 
-            // Speler fysica
             player.velocityY += player.gravity;
             player.y += player.velocityY;
             if (player.y + player.height >= groundY) {
@@ -193,52 +272,41 @@
                 player.isJumping = false;
             }
 
-            // Beweeg obstakels en items links
+            groundOffset -= speed; // Scroll patroon
+
             obstacles.forEach(obs => obs.x -= speed);
             items.forEach(item => item.x -= speed);
 
-            // Verwijder off-screen
             obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
             items = items.filter(item => item.x + item.size > 0);
 
-            // Spawn nieuwe
             if (frameCount % obstacleSpawnRate === 0) {
                 generateObstacle();
                 if (Math.random() > 0.5) generateItem();
-                obstacleSpawnRate = Math.max(50, obstacleSpawnRate - 1); // Moeilijker over tijd
+                obstacleSpawnRate = Math.max(50, obstacleSpawnRate - 1);
             }
 
-            // Botsing detectie
+            // Botsingen
             obstacles.forEach(obs => {
                 if (player.x + player.width > obs.x && player.x < obs.x + obs.width &&
                     player.y + player.height > obs.y && player.y < obs.y + obs.height) {
-                    if (obs.type === 'gap' && player.y + player.height > groundY) {
-                        gameOver = true;
-                    } else if (obs.type === 'chimney') {
-                        gameOver = true;
-                    }
+                    gameOver = true;
                 }
             });
 
-            // Verzamel items
             items.forEach(item => {
                 if (!item.collected && player.x + player.width > item.x && player.x < item.x + item.size &&
                     player.y + player.height > item.y && player.y < item.y + item.size) {
                     item.collected = true;
                     score += 50;
-                    // Particle effect (eenvoudig: oranje vonken)
-                    for (let i = 0; i < 5; i++) {
-                        // Zou particles kunnen toevoegen, maar voor simplicity skip detailed particles
-                    }
                 }
             });
 
-            // Score update
             score += 1;
             document.getElementById('score').innerText = 'Score: ' + score;
         }
 
-        // Teken alles
+        // Draw
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawBackground();
@@ -246,10 +314,9 @@
             drawObstacles();
             drawItems();
             drawPlayer();
-            ctx.shadowColor = 'transparent'; // Reset shadow
         }
 
-        // Game loop
+        // Loop
         function gameLoop() {
             update();
             draw();
@@ -262,7 +329,7 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Event listeners
+        // Events
         window.addEventListener('keydown', e => {
             if (e.key === ' ' && !player.isJumping) {
                 player.velocityY = player.jumpForce;
@@ -271,7 +338,6 @@
             if (e.key === ' ' && gameOver) resetGame();
         });
 
-        // Touch voor mobiel (tik om te springen)
         canvas.addEventListener('touchstart', () => {
             if (!player.isJumping) {
                 player.velocityY = player.jumpForce;
@@ -280,7 +346,7 @@
             if (gameOver) resetGame();
         });
 
-        // Reset game
+        // Reset
         function resetGame() {
             player.y = groundY - player.height;
             player.velocityY = 0;
@@ -291,11 +357,12 @@
             score = 0;
             speed = 5;
             obstacleSpawnRate = 100;
+            groundOffset = 0;
             gameOver = false;
             document.getElementById('game-over').style.display = 'none';
         }
 
-        // Start game
+        // Start
         resetGame();
         gameLoop();
     </script>
