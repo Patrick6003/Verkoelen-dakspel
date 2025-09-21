@@ -3,20 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <table>
     <title>Dak Runner - Verkoelen Dakspecialisten Weert</title>
     <style>
         body { margin: 0; overflow: hidden; background: linear-gradient(#D3D3D3, #FFFFFF); }
         canvas { display: block; margin: 0 auto; border: 1px solid #FF6600; }
         #score { position: absolute; top: 10px; left: 10px; font-family: Arial; font-size: 24px; color: #FF6600; }
+        #money { position: absolute; top: 10px; right: 10px; font-family: Arial; font-size: 24px; color: #FF6600; }
         #game-over { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: Arial; font-size: 32px; color: #FF6600; display: none; text-align: center; background: rgba(255, 255, 255, 0.8); padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #D3D3D3; }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
     <div id="score">Score: 0</div>
+    <div id="money">Geld: €0</div>
     <div id="game-over">
         Game Over!<br>
         Score: <span id="final-score">0</span><br>
+        Geld: €<span id="final-money">0</span><br>
         Hoogste Score: <span id="high-score">0</span><br>
         Verkoelen Dakspecialisten: Bereik Nieuwe Hoogtes!<br>
         Bezoek www.verkoelen.nl voor uw dakbehoeften.<br>
@@ -34,23 +38,26 @@
         const WHITE = '#FFFFFF';
         const DARK_GRAY = '#A9A9A9';
         const BRICK_RED = '#CD853F';
+        const OVERALL_BLUE = '#0066CC'; // Andere kleur voor poppetje (blauw voor contrast)
 
         // Speler (dakdekker)
         let player = {
             x: 100,
-            y: canvas.height - 100,
+            y: canvas.height - 120, // Aangepast voor lopen op dak (hogere y voor voeten op oppervlak)
             width: 40,
             height: 60,
             velocityY: 0,
             gravity: 0.8,
             jumpForce: -18,
             isJumping: false,
-            animationFrame: 0
+            animationFrame: 0,
+            jetpackActive: false,
+            jetpackTimer: 0
         };
 
         // Grond
         let groundY = canvas.height - 50;
-        let groundOffset = 0; // Voor scrollend patroon
+        let groundOffset = 0;
         let speed = 5;
 
         // Obstakels en items
@@ -65,8 +72,9 @@
             bgClouds.push({ x: Math.random() * canvas.width, y: Math.random() * 200 + 50, size: Math.random() * 50 + 50 });
         }
 
-        // Score en state
+        // Score, geld en state
         let score = 0;
+        let money = 0;
         let highScore = 0;
         let gameOver = false;
 
@@ -83,12 +91,14 @@
             obstacles.push(obs);
         }
 
-        // Genereer item
+        // Genereer item (dollar dakpan of jetpack)
         function generateItem() {
+            let type = Math.random() > 0.8 ? 'jetpack' : 'money'; // 20% kans op jetpack
             let item = {
                 x: canvas.width + Math.random() * 200,
                 y: groundY - 80 - Math.random() * 50,
                 size: 20,
+                type: type,
                 collected: false
             };
             items.push(item);
@@ -121,14 +131,13 @@
 
             // Dakpannen-motief (scrollend)
             groundOffset -= speed;
-            if (groundOffset <= -40) groundOffset = 0; // Reset offset
+            if (groundOffset <= -40) groundOffset = 0;
             for (let x = groundOffset; x < canvas.width + 40; x += 40) {
-                for (let row = 0; row < 3; row++) { // Meerdere rijen pannen
+                for (let row = 0; row < 3; row++) {
                     let panY = groundY - row * 15;
-                    let panOffset = (row % 2) * 20; // Verspringend patroon
+                    let panOffset = (row % 2) * 20;
                     ctx.fillStyle = ORANGE;
                     ctx.fillRect(x + panOffset, panY, 35, 15);
-                    // Schaduw voor overlap
                     ctx.fillStyle = 'rgba(0,0,0,0.2)';
                     ctx.fillRect(x + panOffset + 2, panY + 2, 35, 5);
                 }
@@ -143,7 +152,7 @@
             });
         }
 
-        // Teken speler als rennende dakdekker (Mario-achtig)
+        // Teken speler als rennende dakdekker
         function drawPlayer() {
             player.animationFrame += 0.3;
             let armSwing = Math.sin(player.animationFrame) * 10;
@@ -155,12 +164,12 @@
             ctx.shadowOffsetX = 2;
             ctx.shadowOffsetY = 2;
 
-            // Hoofd (rond met helm)
-            ctx.fillStyle = '#FDBCB4'; // Huidskleur
+            // Hoofd
+            ctx.fillStyle = '#FDBCB4';
             ctx.beginPath();
             ctx.arc(player.x + player.width / 2, player.y + 10, 12, 0, Math.PI * 2);
             ctx.fill();
-            // Helm (wit)
+            // Helm
             ctx.fillStyle = WHITE;
             ctx.beginPath();
             ctx.arc(player.x + player.width / 2, player.y + 5, 15, 0, Math.PI * 2);
@@ -175,39 +184,45 @@
             ctx.fillStyle = '#000';
             ctx.fillRect(player.x + player.width / 2 - 6, player.y + 15, 12, 3);
 
-            // Lichaam (oranje overall)
-            ctx.fillStyle = ORANGE;
+            // Lichaam (nu blauw voor contrast)
+            ctx.fillStyle = OVERALL_BLUE;
             ctx.fillRect(player.x + 5, player.y + 20, player.width - 10, 25);
 
-            // Armen (zwaaiend)
-            ctx.fillStyle = ORANGE;
-            // Linkerarm
+            // Armen
+            ctx.fillStyle = OVERALL_BLUE;
             ctx.save();
             ctx.translate(player.x + 5, player.y + 25);
             ctx.rotate(armSwing * Math.PI / 180);
             ctx.fillRect(0, 0, 8, 15);
             ctx.restore();
-            // Rechterarm
             ctx.save();
             ctx.translate(player.x + player.width - 5, player.y + 25);
             ctx.rotate(-armSwing * Math.PI / 180);
             ctx.fillRect(-8, 0, 8, 15);
             ctx.restore();
 
-            // Benen (zwaaiend)
-            // Linkerbeen
-            ctx.fillStyle = ORANGE;
+            // Benen (nu blauw)
+            ctx.fillStyle = OVERALL_BLUE;
             ctx.save();
             ctx.translate(player.x + 10, player.y + 45);
             ctx.rotate(legSwing * Math.PI / 180);
             ctx.fillRect(0, 0, 8, 15);
             ctx.restore();
-            // Rechterbeen
             ctx.save();
             ctx.translate(player.x + player.width - 10, player.y + 45);
             ctx.rotate(-legSwing * Math.PI / 180);
             ctx.fillRect(0, 0, 8, 15);
             ctx.restore();
+
+            // Jetpack vlam als actief
+            if (player.jetpackActive) {
+                ctx.fillStyle = ORANGE;
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.arc(player.x + player.width / 2, player.y + player.height + 5 + i * 3, 3 + Math.random() * 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
 
             ctx.shadowColor = 'transparent';
         }
@@ -216,43 +231,50 @@
         function drawObstacles() {
             obstacles.forEach(obs => {
                 if (obs.type === 'chimney') {
-                    // Basis
                     ctx.fillStyle = LIGHT_GRAY;
                     ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-                    // Bakstenen motief
                     for (let by = obs.y; by < obs.y + obs.height; by += 10) {
                         for (let bx = obs.x; bx < obs.x + obs.width; bx += 8) {
                             let brickOffset = (Math.floor(by / 10) % 2) * 4;
                             ctx.fillStyle = BRICK_RED;
                             ctx.fillRect(bx + brickOffset, by, 8, 8);
-                            // Voeg lijnen toe voor mortel
                             ctx.strokeStyle = DARK_GRAY;
                             ctx.lineWidth = 1;
                             ctx.strokeRect(bx + brickOffset, by, 8, 8);
                         }
                     }
-                    // Top
                     ctx.fillStyle = DARK_GRAY;
                     ctx.fillRect(obs.x - 5, obs.y - 10, obs.width + 10, 10);
                 }
             });
         }
 
-        // Teken items (dollar dakpan)
+        // Teken items
         function drawItems() {
             items.forEach(item => {
                 if (!item.collected) {
-                    // Dakpan basis (overlappende rechthoek)
-                    ctx.fillStyle = ORANGE;
-                    ctx.fillRect(item.x, item.y, item.size, item.size / 2);
-                    // Schaduw voor diepte
-                    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-                    ctx.fillRect(item.x + 2, item.y + 2, item.size, item.size / 2);
-                    // Dollar symbool
-                    ctx.fillStyle = WHITE;
-                    ctx.font = 'bold 12px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('$', item.x + item.size / 2, item.y + item.size / 3 + 4);
+                    if (item.type === 'money') {
+                        // Dollar dakpan
+                        ctx.fillStyle = ORANGE;
+                        ctx.fillRect(item.x, item.y, item.size, item.size / 2);
+                        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                        ctx.fillRect(item.x + 2, item.y + 2, item.size, item.size / 2);
+                        ctx.fillStyle = WHITE;
+                        ctx.font = 'bold 12px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('$', item.x + item.size / 2, item.y + item.size / 3 + 4);
+                    } else if (item.type === 'jetpack') {
+                        // Brander (vlamvormig)
+                        ctx.fillStyle = ORANGE;
+                        ctx.beginPath();
+                        ctx.moveTo(item.x + item.size / 2, item.y);
+                        ctx.lineTo(item.x, item.y + item.size);
+                        ctx.lineTo(item.x + item.size, item.y + item.size);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                        ctx.fillRect(item.x + 5, item.y + 5, item.size - 10, 5); // Handvat
+                    }
                 }
             });
         }
@@ -264,15 +286,26 @@
             frameCount++;
             speed = 5 + score / 1000;
 
+            // Jetpack logica
+            if (player.jetpackActive) {
+                player.jetpackTimer--;
+                if (player.jetpackTimer <= 0) {
+                    player.jetpackActive = false;
+                    player.gravity = 0.8; // Herstel gravity
+                } else {
+                    player.velocityY -= 0.5; // Opwaartse boost
+                }
+            }
+
             player.velocityY += player.gravity;
             player.y += player.velocityY;
-            if (player.y + player.height >= groundY) {
+            if (player.y + player.height >= groundY && !player.jetpackActive) {
                 player.y = groundY - player.height;
                 player.velocityY = 0;
                 player.isJumping = false;
             }
 
-            groundOffset -= speed; // Scroll patroon
+            groundOffset -= speed;
 
             obstacles.forEach(obs => obs.x -= speed);
             items.forEach(item => item.x -= speed);
@@ -286,19 +319,36 @@
                 obstacleSpawnRate = Math.max(50, obstacleSpawnRate - 1);
             }
 
-            // Botsingen
+            // Botsingen met obstakels (inclusief gaps)
             obstacles.forEach(obs => {
-                if (player.x + player.width > obs.x && player.x < obs.x + obs.width &&
-                    player.y + player.height > obs.y && player.y < obs.y + obs.height) {
-                    gameOver = true;
+                if (obs.type === 'chimney') {
+                    if (player.x + player.width > obs.x && player.x < obs.x + obs.width &&
+                        player.y + player.height > obs.y && player.y < obs.y + obs.height) {
+                        gameOver = true;
+                    }
+                } else if (obs.type === 'gap') {
+                    // Gap: Als speler op ground staat maar x in gap, val dan
+                    if (!player.isJumping && player.y + player.height >= groundY - 5 && // Op ground
+                        player.x + player.width > obs.x && player.x < obs.x + obs.width) {
+                        player.gravity = 1.5; // Verhoog gravity om te vallen
+                        player.velocityY = 10; // Force val
+                    }
                 }
             });
 
+            // Verzamel items
             items.forEach(item => {
                 if (!item.collected && player.x + player.width > item.x && player.x < item.x + item.size &&
                     player.y + player.height > item.y && player.y < item.y + item.size) {
                     item.collected = true;
-                    score += 50;
+                    if (item.type === 'money') {
+                        money += 10; // €10 per dakpan
+                        document.getElementById('money').innerText = 'Geld: €' + money;
+                    } else if (item.type === 'jetpack') {
+                        player.jetpackActive = true;
+                        player.jetpackTimer = 300; // 5 seconden bij 60fps
+                        player.gravity = -0.2; // Omgekeerde gravity
+                    }
                 }
             });
 
@@ -322,6 +372,7 @@
             draw();
             if (gameOver) {
                 document.getElementById('final-score').innerText = score;
+                document.getElementById('final-money').innerText = money;
                 if (score > highScore) highScore = score;
                 document.getElementById('high-score').innerText = highScore;
                 document.getElementById('game-over').style.display = 'block';
@@ -351,15 +402,19 @@
             player.y = groundY - player.height;
             player.velocityY = 0;
             player.isJumping = false;
+            player.jetpackActive = false;
+            player.gravity = 0.8;
             obstacles = [];
             items = [];
             frameCount = 0;
             score = 0;
+            money = 0;
             speed = 5;
             obstacleSpawnRate = 100;
             groundOffset = 0;
             gameOver = false;
             document.getElementById('game-over').style.display = 'none';
+            document.getElementById('money').innerText = 'Geld: €0';
         }
 
         // Start
